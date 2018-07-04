@@ -7,7 +7,9 @@
 ```
     go get github.com/linkxzhou/go_bench
 ```
-    or
+
+or
+
 ```
     git clone git@github.com:linkxzhou/go_bench.git
     cd go_bench
