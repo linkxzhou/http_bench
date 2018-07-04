@@ -4,7 +4,15 @@
   
 ## Installation
 
+```
     go get github.com/linkxzhou/go_bench
+```
+    or
+```
+    git clone git@github.com:linkxzhou/go_bench.git
+    cd go_bench
+    go build go_bench.go
+```
 
 ## Basic Usage
 
@@ -62,4 +70,4 @@
     -host                 HTTP Host header.
     -f  Request url file, a launch request in the random selection file
 ```
-you can try : ./go_bench -n 1000 -c 10 -t 3000 -m GET -f urls.txt
+You can try : ./go_bench -n 1000 -c 10 -t 3000 -m GET -f urls.txt

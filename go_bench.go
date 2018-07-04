@@ -156,7 +156,7 @@ func (r *report) print() {
 			fmt.Printf("  [%d] %s\n", v, k)
 		}
 		
-		fmt.Printf("Summary:\n")
+		fmt.Printf("\nSummary:\n")
 		fmt.Printf("  Total:\t%4.4f secs\n", r.total.Seconds())
 		fmt.Printf("  Slowest:\t%4.4f secs\n", r.slowest)
 		fmt.Printf("  Fastest:\t%4.4f secs\n", r.fastest)
@@ -183,7 +183,6 @@ func (r *report) printCSV() {
 	}
 }
 
-// Prints percentile latencies.
 func (r *report) printLatencies() {
 	pctls := []int{10, 25, 50, 75, 90, 95, 99}
 	data := make([]float64, len(pctls))
@@ -258,7 +257,7 @@ type result struct {
 	contentLength int64
 }
 
-type Boomer struct {
+type Bencher struct {
 	// Request is the request to be made.
 	Request *BenchRequest
 
@@ -298,7 +297,7 @@ type Boomer struct {
 
 // Run makes all the requests, prints the summary. It blocks until
 // all work is done.
-func (b *Boomer) Run() {
+func (b *Bencher) Run() {
 	b.results = make(chan *result, b.N)
 
 	start := time.Now()
@@ -317,7 +316,7 @@ func (b *Boomer) Run() {
 	close(b.results)
 }
 
-func (b *Boomer) makeRequest(c *http.Client) {
+func (b *Bencher) makeRequest(c *http.Client) {
 	s := time.Now()
 	var size int64
 	var code int
@@ -337,7 +336,7 @@ func (b *Boomer) makeRequest(c *http.Client) {
 	}
 }
 
-func (b *Boomer) runWorker(n int) {
+func (b *Bencher) runWorker(n int) {
 	var throttle <-chan time.Time
 	if b.Qps > 0 {
 		throttle = time.Tick(time.Duration(1e6/(b.Qps)) * time.Microsecond)
@@ -367,7 +366,7 @@ func (b *Boomer) runWorker(n int) {
 	}
 }
 
-func (b *Boomer) runWorkers() {
+func (b *Bencher) runWorkers() {
 	var wg sync.WaitGroup
 	wg.Add(b.C)
 
@@ -440,7 +439,7 @@ var (
 	urls = flag.String("f", "", "")
 )
 
-var usage = `Usage: boom [options...] <url>
+var usage = `Usage: go_bench [options...] <url>
 Options:
   -n  Number of requests to run.
   -c  Number of requests to run concurrently. Total number of requests cannot
@@ -451,7 +450,8 @@ Options:
       metrics in comma-seperated values format.
   -m  HTTP method, one of GET, POST, PUT, DELETE, HEAD, OPTIONS.
   -H  Custom HTTP header. You can specify as many as needed by repeating the flag.
-      for example, -H "Accept: text/html" -H "Content-Type: application/xml" .
+	  for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
+	  but "Host: ***", replace that with -host.
   -t  Timeout in ms.
   -A  HTTP Accept header.
   -d  HTTP request body.
@@ -467,7 +467,7 @@ Options:
   -host                 HTTP Host header.
   -f  Request url file, a launch request in the random selection file
 Example:
-  ./go_bench -n 1000 -c 10 -t 3000 -m GET http://127.0.0.1/hello
+  ./go_bench -n 1000 -c 10 -t 3000 -m GET http://127.0.0.1/test1
   or
   ./go_bench -n 1000 -c 10 -t 3000 -m GET -f urls.txt
 
@@ -478,11 +478,10 @@ Notice:
 `
 
 func main() {
-	// 关闭命令管道
 	defer func() {
 		close(command)
 	}()
-	// 初始化管道
+
 	command = make(chan string, 100)
 	go func() {
 		for {
@@ -592,7 +591,7 @@ func main() {
 		req.Host = *hostHeader
 	}
 
-	(&Boomer{
+	(&Bencher{
 		Request:            req,
 		RequestBody:        *body,
 		N:                  num,
