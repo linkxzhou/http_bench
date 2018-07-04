@@ -43,12 +43,17 @@ type report struct {
 	sizeTotal      int64
 
 	output string
+
+	req			   *BenchRequest
 }
 
 type BenchRequest struct {
 	http.Request
 	BRequest []*http.Request // 请求以数组形式
 	BUrl []string // 存储请求的url
+	BReport *report // 对应report报告信息
+
+	BReportUrls []string // 每次请求的url
 }
 
 var benchRequestUrl map[string]int = make(map[string]int)
@@ -57,8 +62,26 @@ var command chan string // 发送消息管道
 // 返回随机请求
 func (b * BenchRequest) GetRandomRequest() *http.Request {
 	rint := rand.Intn(len(b.BRequest))
-	command <- b.BUrl[rint]
+	url := b.BUrl[rint]
+	b.BReportUrls = append(b.BReportUrls, url)
+	command <- url
 	return b.BRequest[rint]
+}
+
+func (b * BenchRequest) NewReport(size int, results chan *result, 
+	output string, total time.Duration) *report {
+	if b.BReport == nil {
+		b.BReport = &report{
+			output:         output,
+			results:        results,
+			total:          total,
+			statusCodeDist: make(map[int]int),
+			errorDist:      make(map[string]int),
+			req:			b,
+		}
+	}
+
+	return b.BReport
 }
 
 // 解析urls.txt
@@ -106,16 +129,6 @@ func NewRequest(method string, urlStr []string, body io.Reader) (*BenchRequest, 
 	}
 }
 
-func newReport(size int, results chan *result, output string, total time.Duration) *report {
-	return &report{
-		output:         output,
-		results:        results,
-		total:          total,
-		statusCodeDist: make(map[int]int),
-		errorDist:      make(map[string]int),
-	}
-}
-
 func (r *report) finalize() {
 	for {
 		select {
@@ -151,7 +164,7 @@ func (r *report) print() {
 		r.fastest = r.lats[0]
 		r.slowest = r.lats[len(r.lats)-1]
 		// 答应请求的url
-		fmt.Printf("Request:\n")
+		fmt.Printf("Requests:\n")
 		for k, v := range benchRequestUrl {
 			fmt.Printf("  [%d] %s\n", v, k)
 		}
@@ -167,8 +180,10 @@ func (r *report) print() {
 			fmt.Printf("  Size/request:\t%d bytes\n", r.sizeTotal/int64(len(r.lats)))
 		}
 		r.printStatusCodes()
+
 		// 不需要打印
 		// r.printHistogram()
+
 		r.printLatencies()
 	}
 
@@ -179,7 +194,7 @@ func (r *report) print() {
 
 func (r *report) printCSV() {
 	for i, val := range r.lats {
-		fmt.Printf("%v,%4.4f\n", i+1, val)
+		fmt.Printf("%v,%4.4f,%s\n", i+1, val, r.req.BReportUrls[i])
 	}
 }
 
@@ -306,13 +321,12 @@ func (b *Bencher) Run() {
 
 	go func() {
 		<-c
-		// TODO(jbd): Progress bar should not be finalized.
-		newReport(b.N, b.results, b.Output, time.Now().Sub(start)).finalize()
+		b.Request.NewReport(b.N, b.results, b.Output, time.Now().Sub(start)).finalize()
 		os.Exit(1)
 	}()
 
 	b.runWorkers()
-	newReport(b.N, b.results, b.Output, time.Now().Sub(start)).finalize()
+	b.Request.NewReport(b.N, b.results, b.Output, time.Now().Sub(start)).finalize()
 	close(b.results)
 }
 
