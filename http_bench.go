@@ -19,15 +19,16 @@ import (
 	"sync"
 	"time"
 	"math/rand"
-
-	"golang.org/x/net/http2"
 )
 
 const (
 	barChar = "∎"
 )
 
-type report struct {
+var benchRequestUrl map[string]int = make(map[string]int)
+var command chan string
+
+type Report struct {
 	avgTotal float64
 	fastest  float64
 	slowest  float64
@@ -49,18 +50,14 @@ type report struct {
 
 type BenchRequest struct {
 	http.Request
-	BRequest []*http.Request // 请求以数组形式
-	BUrl []string // 存储请求的url
-	BReport *report // 对应report报告信息
+	BRequest 	[]*http.Request
+	BUrl 		[]string
+	BReport 	*Report
 
-	BReportUrls []string // 每次请求的url
+	BReportUrls []string
 }
 
-var benchRequestUrl map[string]int = make(map[string]int)
-var command chan string // 发送消息管道
-
-// 返回随机请求
-func (b * BenchRequest) GetRandomRequest() *http.Request {
+func (b * BenchRequest) getRandomRequest() *http.Request {
 	rint := rand.Intn(len(b.BRequest))
 	url := b.BUrl[rint]
 	b.BReportUrls = append(b.BReportUrls, url)
@@ -68,10 +65,10 @@ func (b * BenchRequest) GetRandomRequest() *http.Request {
 	return b.BRequest[rint]
 }
 
-func (b * BenchRequest) NewReport(size int, results chan *result, 
-	output string, total time.Duration) *report {
+func (b * BenchRequest) newReport(size int, results chan *result, 
+	output string, total time.Duration) *Report {
 	if b.BReport == nil {
-		b.BReport = &report{
+		b.BReport = &Report{
 			output:         output,
 			results:        results,
 			total:          total,
@@ -84,20 +81,20 @@ func (b * BenchRequest) NewReport(size int, results chan *result,
 	return b.BReport
 }
 
-// 解析urls.txt
-func ParseUrlsFile(file string) ([]string, error) {
+func parseUrlsFile(fname string) ([]string, error) {
 	var retArr []string
-	f, err := os.Open(file)
+	f, err := os.Open(fname)
 	if err != nil {
 		return retArr, err
 	}
+
 	buf := bufio.NewReader(f)
 	for {
 		line, err := buf.ReadString('\n')
 		line = strings.TrimSpace(line)
 		if err != nil {
 			if err == io.EOF {
-				return retArr, nil
+				err = nil
 			}
 			return retArr, err
 		}
@@ -107,10 +104,10 @@ func ParseUrlsFile(file string) ([]string, error) {
 	return retArr, nil
 }
 
-func NewRequest(method string, urlStr []string, body io.Reader) (*BenchRequest, error) {
+func newRequest(method string, urlstr []string, body io.Reader) (*BenchRequest, error) {
 	breq := &BenchRequest{}
-	if len(urlStr) > 1 {
-		for _, url := range urlStr {
+	if len(urlstr) > 1 {
+		for _, url := range urlstr {
 			req, err := http.NewRequest(method, url, body)
 			if err != nil {
 				continue
@@ -121,15 +118,15 @@ func NewRequest(method string, urlStr []string, body io.Reader) (*BenchRequest, 
 
 		return breq, nil
 	} else {
-		req, err := http.NewRequest(method, urlStr[0], body)
+		req, err := http.NewRequest(method, urlstr[0], body)
 		breq.BRequest = append(breq.BRequest, req)
-		breq.BUrl = append(breq.BUrl, urlStr[0])
+		breq.BUrl = append(breq.BUrl, urlstr[0])
 
 		return breq, err
 	}
 }
 
-func (r *report) finalize() {
+func (r *Report) finalize() {
 	for {
 		select {
 		case res := <-r.results:
@@ -152,7 +149,7 @@ func (r *report) finalize() {
 	}
 }
 
-func (r *report) print() {
+func (r *Report) print() {
 	sort.Float64s(r.lats)
 
 	if r.output == "csv" {
@@ -163,7 +160,6 @@ func (r *report) print() {
 	if len(r.lats) > 0 {
 		r.fastest = r.lats[0]
 		r.slowest = r.lats[len(r.lats)-1]
-		// 答应请求的url
 		fmt.Printf("Requests:\n")
 		for k, v := range benchRequestUrl {
 			fmt.Printf("  [%d] %s\n", v, k)
@@ -181,7 +177,6 @@ func (r *report) print() {
 		}
 		r.printStatusCodes()
 
-		// 不需要打印
 		// r.printHistogram()
 
 		r.printLatencies()
@@ -192,13 +187,13 @@ func (r *report) print() {
 	}
 }
 
-func (r *report) printCSV() {
+func (r *Report) printCSV() {
 	for i, val := range r.lats {
 		fmt.Printf("%v,%4.4f,%s\n", i+1, val, r.req.BReportUrls[i])
 	}
 }
 
-func (r *report) printLatencies() {
+func (r *Report) printLatencies() {
 	pctls := []int{10, 25, 50, 75, 90, 95, 99}
 	data := make([]float64, len(pctls))
 	j := 0
@@ -217,7 +212,7 @@ func (r *report) printLatencies() {
 	}
 }
 
-func (r *report) printHistogram() {
+func (r *Report) printHistogram() {
 	bc := 10
 	buckets := make([]float64, bc+1)
 	counts := make([]int, bc+1)
@@ -251,14 +246,14 @@ func (r *report) printHistogram() {
 }
 
 // Prints status code distribution.
-func (r *report) printStatusCodes() {
+func (r *Report) printStatusCodes() {
 	fmt.Printf("\nStatus code distribution:\n")
 	for code, num := range r.statusCodeDist {
 		fmt.Printf("  [%d]\t%d responses\n", code, num)
 	}
 }
 
-func (r *report) printErrors() {
+func (r *Report) printErrors() {
 	fmt.Printf("\nError distribution:\n")
 	for err, num := range r.errorDist {
 		fmt.Printf("  [%d]\t%s\n", num, err)
@@ -275,44 +270,29 @@ type result struct {
 type Bencher struct {
 	// Request is the request to be made.
 	Request *BenchRequest
-
 	RequestBody string
-
 	// N is the total number of requests to make.
 	N int
-
 	// C is the concurrency level, the number of concurrent workers to run.
 	C int
-
-	// H2 is an option to make HTTP/2 requests
-	H2 bool
-
 	// Timeout in seconds.
 	Timeout int
-
 	// Qps is the rate limit.
 	Qps int
-
 	// DisableCompression is an option to disable compression in response
 	DisableCompression bool
-
 	// DisableKeepAlives is an option to prevents re-use of TCP connections between different HTTP requests
 	DisableKeepAlives bool
-
 	// Output represents the output type. If "csv" is provided, the
 	// output will be dumped as a csv stream.
 	Output string
-
 	// ProxyAddr is the address of HTTP proxy server in the format on "host:port".
 	// Optional.
 	ProxyAddr *url.URL
-
 	results chan *result
 }
 
-// Run makes all the requests, prints the summary. It blocks until
-// all work is done.
-func (b *Bencher) Run() {
+func (b *Bencher) run() {
 	b.results = make(chan *result, b.N)
 
 	start := time.Now()
@@ -321,12 +301,12 @@ func (b *Bencher) Run() {
 
 	go func() {
 		<-c
-		b.Request.NewReport(b.N, b.results, b.Output, time.Now().Sub(start)).finalize()
+		b.Request.newReport(b.N, b.results, b.Output, time.Now().Sub(start)).finalize()
 		os.Exit(1)
 	}()
 
 	b.runWorkers()
-	b.Request.NewReport(b.N, b.results, b.Output, time.Now().Sub(start)).finalize()
+	b.Request.newReport(b.N, b.results, b.Output, time.Now().Sub(start)).finalize()
 	close(b.results)
 }
 
@@ -335,13 +315,14 @@ func (b *Bencher) makeRequest(c *http.Client) {
 	var size int64
 	var code int
 
-	resp, err := c.Do(cloneRequest(b.Request.GetRandomRequest(), b.RequestBody))
+	resp, err := c.Do(cloneRequest(b.Request.getRandomRequest(), b.RequestBody))
 	if err == nil {
 		size = resp.ContentLength
 		code = resp.StatusCode
 		io.Copy(ioutil.Discard, resp.Body)
 		resp.Body.Close()
 	}
+	
 	b.results <- &result{
 		statusCode:    code,
 		duration:      time.Now().Sub(s),
@@ -362,15 +343,12 @@ func (b *Bencher) runWorker(n int) {
 		},
 		DisableCompression: b.DisableCompression,
 		DisableKeepAlives:  b.DisableKeepAlives,
-		// TODO(jbd): Add dial timeout.
 		TLSHandshakeTimeout: time.Duration(b.Timeout) * time.Millisecond,
 		Proxy:               http.ProxyURL(b.ProxyAddr),
 	}
-	if b.H2 {
-		http2.ConfigureTransport(tr)
-	} else {
-		tr.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
-	}
+
+	tr.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+	
 	client := &http.Client{Transport: tr}
 	for i := 0; i < n; i++ {
 		if b.Qps > 0 {
@@ -409,10 +387,25 @@ func cloneRequest(r *http.Request, body string) *http.Request {
 	return r2
 }
 
-const (
-	headerRegexp = `^([\w-]+):\s*(.+)`
-	authRegexp   = `^(.+):([^\s].+)`
-)
+func usageAndExit(msg string) {
+	if msg != "" {
+		fmt.Fprintf(os.Stderr, msg)
+		fmt.Fprintf(os.Stderr, "\n\n")
+	}
+	flag.Usage()
+	fmt.Fprintf(os.Stderr, "\n")
+	os.Exit(1)
+}
+
+func parseInputWithRegexp(input, regx string) ([]string, error) {
+	re := regexp.MustCompile(regx)
+	matches := re.FindStringSubmatch(input)
+	if len(matches) < 1 {
+		return nil, fmt.Errorf("could not parse the provided input; input = %v", input)
+	}
+
+	return matches, nil
+}
 
 type headerSlice []string
 
@@ -427,6 +420,10 @@ func (h *headerSlice) Set(value string) error {
 
 var (
 	headerslice headerSlice
+
+	headerRegexp = `^([\w-]+):\s*(.+)`
+	authRegexp   = `^(.+):([^\s].+)`
+
 	m           = flag.String("m", "GET", "")
 	headers     = flag.String("h", "", "")
 	body        = flag.String("d", "", "")
@@ -442,15 +439,13 @@ var (
 	q = flag.Int("q", 0, "")
 	t = flag.Int("t", 0, "")
 
-	h2 = flag.Bool("h2", false, "")
-
 	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
 
 	disableCompression = flag.Bool("disable-compression", false, "")
 	disableKeepAlives  = flag.Bool("disable-keepalive", false, "")
 	proxyAddr          = flag.String("x", "", "")
 
-	urls = flag.String("f", "", "")
+	urls = flag.String("file", "", "")
 )
 
 var usage = `Usage: go_bench [options...] <url>
@@ -472,18 +467,17 @@ Options:
   -T  Content-type, defaults to "text/html".
   -a  Basic authentication, username:password.
   -x  HTTP Proxy address as host:port.
-  -h2  Make HTTP/2 requests.
   -disable-compression  Disable compression.
   -disable-keepalive    Disable keep-alive, prevents re-use of TCP
                         connections between different HTTP requests.
   -cpus                 Number of used cpu cores.
                         (default for current machine is %d cores)
   -host                 HTTP Host header.
-  -f  Request url file, a launch request in the random selection file
+  -file  Request url file, a launch request in the random selection file
 Example:
   ./go_bench -n 1000 -c 10 -t 3000 -m GET http://127.0.0.1/test1
   or
-  ./go_bench -n 1000 -c 10 -t 3000 -m GET -f urls.txt
+  ./go_bench -n 1000 -c 10 -t 3000 -m GET -file urls.txt
 
 Notice:
   urls.txt format like this:
@@ -496,7 +490,7 @@ func main() {
 		close(command)
 	}()
 
-	command = make(chan string, 100)
+	command = make(chan string, 1000)
 	go func() {
 		for {
 			select{
@@ -538,11 +532,10 @@ func main() {
 
 	var urlArr []string
 	if *urls == "" {
-		urlArr = append(urlArr,flag.Args()[0])
+		urlArr = append(urlArr, flag.Args()[0])
 	} else {
-		// 解析urls.txt文件
 		var err error
-		if urlArr, err = ParseUrlsFile(*urls); err != nil {
+		if urlArr, err = parseUrlsFile(*urls); err != nil {
 			usageAndExit("urls.txt file read error.")
 		}
 	}
@@ -561,6 +554,7 @@ func main() {
 		if err != nil {
 			usageAndExit(err.Error())
 		}
+
 		header.Set(match[1], match[2])
 	}
 
@@ -591,7 +585,7 @@ func main() {
 		}
 	}
 
-	req, err := NewRequest(method, urlArr, nil)
+	req, err := newRequest(method, urlArr, nil)
 	if err != nil {
 		usageAndExit(err.Error())
 	}
@@ -614,27 +608,7 @@ func main() {
 		Timeout:            *t,
 		DisableCompression: *disableCompression,
 		DisableKeepAlives:  *disableKeepAlives,
-		H2:                 *h2,
 		ProxyAddr:          proxyURL,
 		Output:             *output,
-	}).Run()
-}
-
-func usageAndExit(msg string) {
-	if msg != "" {
-		fmt.Fprintf(os.Stderr, msg)
-		fmt.Fprintf(os.Stderr, "\n\n")
-	}
-	flag.Usage()
-	fmt.Fprintf(os.Stderr, "\n")
-	os.Exit(1)
-}
-
-func parseInputWithRegexp(input, regx string) ([]string, error) {
-	re := regexp.MustCompile(regx)
-	matches := re.FindStringSubmatch(input)
-	if len(matches) < 1 {
-		return nil, fmt.Errorf("could not parse the provided input; input = %v", input)
-	}
-	return matches, nil
+	}).run()
 }

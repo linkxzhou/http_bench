@@ -1,24 +1,24 @@
-# go_bench - a HTTP benchmarking tool
+# http_bench - a HTTP benchmarking tool
 
-    go_bench is a tiny program that sends some load to a web application.
+    http_bench is a tiny program that sends some load to a web application.
   
 ## Installation
 
 ```
-    go get github.com/linkxzhou/go_bench
+    go get github.com/linkxzhou/http_bench
 ```
 
 or
 
 ```
-    git clone git@github.com:linkxzhou/go_bench.git
-    cd go_bench
-    go build go_bench.go
+    git clone git@github.com:linkxzhou/http_bench.git
+    cd http_bench
+    go build http_bench.go
 ```
 
 ## Basic Usage
 
-    ./go_bench -n 1000 -c 10 -t 3000 -m GET http://127.0.0.1/hello
+    ./http_bench -n 1000 -c 10 -t 3000 -m GET http://www.baidu.com/
 
     This runs a benchmark for 1000 requests, keeping 10 HTTP connections open, and timeous is 3000ms
 
@@ -63,13 +63,12 @@ or
     -T  Content-type, defaults to "text/html".
     -a  Basic authentication, username:password.
     -x  HTTP Proxy address as host:port.
-    -h2  Make HTTP/2 requests.
     -disable-compression  Disable compression.
     -disable-keepalive    Disable keep-alive, prevents re-use of TCP
                             connections between different HTTP requests.
     -cpus                 Number of used cpu cores.
                             (default for current machine is 4 cores)
     -host                 HTTP Host header.
-    -f  Request url file, a launch request in the random selection file
+    -file  Request url file, a launch request in the random selection file
 ```
-You can try : ./go_bench -n 1000 -c 10 -t 3000 -m GET -f urls.txt
+You can try : ./http_bench -n 1000 -c 10 -t 3000 -m GET -file urls.txt
