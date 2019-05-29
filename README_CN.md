@@ -1,7 +1,7 @@
 # http_bench - 简单的HTTP压测工具
 
-[English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)
-[中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)
+[English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
+[中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
   
 ## 安装
 
