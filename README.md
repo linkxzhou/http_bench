@@ -8,13 +8,13 @@ http_bench is a tiny program that sends some load to a web application.
 ## Installation
 
 ```
-    go get github.com/linkxzhou/http_bench
+go get github.com/linkxzhou/http_bench
 ```
 or
 ```
-    git clone git@github.com:linkxzhou/http_bench.git
-    cd http_bench
-    go build http_bench.go
+git clone git@github.com:linkxzhou/http_bench.git
+cd http_bench
+go build http_bench.go
 ```
 
 ## Basic Usage
