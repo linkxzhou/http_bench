@@ -8,8 +8,6 @@
     go get github.com/linkxzhou/http_bench
 ```
 
-or
-
 ```
     git clone git@github.com:linkxzhou/http_bench.git
     cd http_bench
