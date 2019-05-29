@@ -1,47 +1,49 @@
 # http_bench - 简单的HTTP压测工具
 
-    [English Document](./blob/master/README.md)
-    [中文文档](./blob/master/README_CN.md)
+[English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)
+[中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)
   
 ## 安装
 
 ```
-    go get github.com/linkxzhou/http_bench
+go get github.com/linkxzhou/http_bench
 ```
 或者
 ```
-    git clone git@github.com:linkxzhou/http_bench.git
-    cd http_bench
-    go build http_bench.go
+git clone git@github.com:linkxzhou/http_bench.git
+cd http_bench
+go build http_bench.go
 ```
 
 ## 使用
 
-    ./http_bench -n 1000 -c 10 -t 3000 -m GET http://www.baidu.com/
+```
+./http_bench -n 1000 -c 10 -t 3000 -m GET http://www.baidu.com/
 
-    发送1000请求, 同时打开10个client, 超时时间设置为3000ms，请求方式为GET，请求链接http://www.baidu.com/
+发送1000请求, 同时打开10个client, 超时时间设置为3000ms，请求方式为GET，请求链接http://www.baidu.com/
 
-    Output:
-        Request:
-        [1000] http://www.baidu.com
-        Summary:
-        Total:        5.2124 secs
-        Slowest:      0.3283 secs
-        Fastest:      0.0195 secs
-        Average:      0.0345 secs
-        Requests/sec: 191.8491
+Output:
+    Request:
+    [1000] http://www.baidu.com
+    Summary:
+    Total:        5.2124 secs
+    Slowest:      0.3283 secs
+    Fastest:      0.0195 secs
+    Average:      0.0345 secs
+    Requests/sec: 191.8491
 
-        Status code distribution:
-        [200] 1000 responses
+    Status code distribution:
+    [200] 1000 responses
 
-        Latency distribution:
-        10% in 0.0253 secs
-        25% in 0.0272 secs
-        50% in 0.0298 secs
-        75% in 0.0350 secs
-        90% in 0.0498 secs
-        95% in 0.0606 secs
-        99% in 0.0872 secs
+    Latency distribution:
+    10% in 0.0253 secs
+    25% in 0.0272 secs
+    50% in 0.0298 secs
+    75% in 0.0350 secs
+    90% in 0.0498 secs
+    95% in 0.0606 secs
+    99% in 0.0872 secs
+```
 
 ## 命令行解析
 
@@ -64,4 +66,5 @@
     -host                 HTTP请求的host的值
     -file  读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
 ```
+
 测试命令行 : ./http_bench -n 1000 -c 10 -t 3000 -m GET -file urls.txt
