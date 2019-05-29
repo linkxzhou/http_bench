@@ -1,13 +1,15 @@
 # http_bench - a HTTP benchmarking tool
 
     http_bench is a tiny program that sends some load to a web application.
+    [English Document](./blob/master/README.md)
+    [中文文档](./blob/master/README_CN.md)
   
 ## Installation
 
 ```
     go get github.com/linkxzhou/http_bench
 ```
-
+or
 ```
     git clone git@github.com:linkxzhou/http_bench.git
     cd http_bench
@@ -18,7 +20,7 @@
 
     ./http_bench -n 1000 -c 10 -t 3000 -m GET http://www.baidu.com/
 
-    This runs a benchmark for 1000 requests, keeping 10 HTTP connections open, and timeous is 3000ms
+    This runs a benchmark for 1000 requests, keeping 10 HTTP connections open, and timeout is 3000ms
 
     Output:
         Request:
