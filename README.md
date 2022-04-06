@@ -20,59 +20,58 @@ go build http_bench.go
 ## Basic Usage
 
 ```
-./http_bench -n 1000 -c 10 -t 3000 -m GET http://www.baidu.com/
+./http_bench http://127.0.0.1:8000 -c 1000 -d 60s
+Running 1000 connections, @ http://127.0.0.1:8000
 
-This runs a benchmark for 1000 requests, keeping 10 HTTP connections open, and timeout is 3000ms
+Summary:
+  Total:        63.031 secs
+  Slowest:      0.640 secs
+  Fastest:      0.000 secs
+  Average:      0.072 secs
+  Requests/sec: 12132.423
+  Total data:   8.237 GB
+  Size/request: 11566 bytes
 
-Output:
-    Request:
-    [1000] http://www.baidu.com
-    Summary:
-    Total:        5.2124 secs
-    Slowest:      0.3283 secs
-    Fastest:      0.0195 secs
-    Average:      0.0345 secs
-    Requests/sec: 191.8491
+Status code distribution:
+  [200] 764713 responses
 
-    Status code distribution:
-    [200] 1000 responses
-
-    Latency distribution:
-    10% in 0.0253 secs
-    25% in 0.0272 secs
-    50% in 0.0298 secs
-    75% in 0.0350 secs
-    90% in 0.0498 secs
-    95% in 0.0606 secs
-    99% in 0.0872 secs
+Latency distribution:
+  10% in 0.014 secs
+  25% in 0.030 secs
+  50% in 0.060 secs
+  75% in 0.097 secs
+  90% in 0.149 secs
+  95% in 0.181 secs
+  99% in 0.262 secs
 ```
 
 ## Command Line Options
 
 ```
-    -n  Number of requests to run.
-    -c  Number of requests to run concurrently. Total number of requests cannot
-        be smaller than the concurency level.
-    -q  Rate limit, in seconds (QPS).
-    -o  Output type. If none provided, a summary is printed.
-        "csv" is the only supported alternative. Dumps the response
-        metrics in comma-seperated values format.
-    -m  HTTP method, one of GET, POST, PUT, DELETE, HEAD, OPTIONS.
-    -H  Custom HTTP header. You can specify as many as needed by repeating the flag.
-        for example, -H "Accept: text/html" -H "Content-Type: application/xml" .
-    -t  Timeout in ms.
-    -A  HTTP Accept header.
-    -d  HTTP request body.
-    -T  Content-type, defaults to "text/html".
-    -a  Basic authentication, username:password.
-    -x  HTTP Proxy address as host:port.
-    -disable-compression  Disable compression.
-    -disable-keepalive    Disable keep-alive, prevents re-use of TCP
-                            connections between different HTTP requests.
-    -cpus                 Number of used cpu cores.
-                            (default for current machine is 4 cores)
-    -host                 HTTP Host header.
-    -file  Request url file, a launch request in the random selection file
+	-n  Number of requests to run.
+	-c  Number of requests to run concurrently. Total number of requests cannot
+		be smaller than the concurency level.
+	-q  Rate limit, in seconds (QPS).
+	-d  Duration of the benchmark, e.g. 2s, 2m, 2h
+	-t  Timeout in ms.
+	-o  Output type. If none provided, a summary is printed.
+		"csv" is the only supported alternative. Dumps the response
+		metrics in comma-seperated values format.
+	-m  HTTP method, one of GET, POST, PUT, DELETE, HEAD, OPTIONS.
+	-H  Custom HTTP header. You can specify as many as needed by repeating the flag.
+		for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
+		but "Host: ***", replace that with -host.
+	-body  Request body, default empty.
+	-a  Basic authentication, username:password.
+	-x  HTTP Proxy address as host:port.
+	-disable-compression  Disable compression.
+	-disable-keepalive    Disable keep-alive, prevents re-use of TCP
+						connections between different HTTP requests.
+	-cpus                 Number of used cpu cores.
+						(default for current machine is %d cores).
+	-url 		Request single url.
+	-verbose 	Print detail logs.
+	-file 		Read url list from file and random benchmark.
 ```
 
 You can try : ./http_bench -n 1000 -c 10 -t 3000 -m GET -file urls.txt
