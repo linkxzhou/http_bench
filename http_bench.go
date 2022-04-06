@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"regexp"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"sort"
 	"strconv"
@@ -615,6 +616,8 @@ func main() {
 		pprof.StartCPUProfile(file)
 		defer pprof.StopCPUProfile()
 	}
+
+	debug.SetGCPercent(500)
 
 	p := &BenchProducer{
 		RequestParams: &params,
