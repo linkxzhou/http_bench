@@ -43,7 +43,7 @@ func (h *flagSlice) Set(value string) error {
 	return nil
 }
 
-type BenchResult struct {
+type StressResult struct {
 	ErrCode  int    `json:"err_code"`
 	ErrMsg   string `json:"err_msg"`
 	AvgTotal int64  `json:"avg_total"`
@@ -61,7 +61,7 @@ type BenchResult struct {
 	Output         string           `json:"output"`
 }
 
-func (result *BenchResult) print() {
+func (result *StressResult) print() {
 	switch result.Output {
 	case "csv":
 		fmt.Printf("Duration,Count\n")
@@ -100,7 +100,7 @@ func (result *BenchResult) print() {
 }
 
 // Print latency distribution.
-func (result *BenchResult) printLatencies() {
+func (result *StressResult) printLatencies() {
 	pctls := []int{10, 25, 50, 75, 90, 95, 99}
 	data := make([]string, len(pctls))
 	durationLats := make([]string, 0)
@@ -126,21 +126,21 @@ func (result *BenchResult) printLatencies() {
 }
 
 // Print status code distribution.
-func (result *BenchResult) printStatusCodes() {
+func (result *StressResult) printStatusCodes() {
 	fmt.Printf("\nStatus code distribution:\n")
 	for code, num := range result.StatusCodeDist {
 		fmt.Printf("  [%d]\t%d responses\n", code, num)
 	}
 }
 
-func (result *BenchResult) printErrors() {
+func (result *StressResult) printErrors() {
 	fmt.Printf("\nError distribution:\n")
 	for err, num := range result.ErrorDist {
 		fmt.Printf("  [%d]\t%s\n", num, err)
 	}
 }
 
-type BenchParameters struct {
+type StressParameters struct {
 	// Sequence
 	SequenceId int64 `json:"sequence_id"`
 	// Commands
@@ -153,7 +153,7 @@ type BenchParameters struct {
 	N int `json:"n"`
 	// C is the concurrency level, the number of concurrent workers to run.
 	C int `json:"c"`
-	// D is the duration for benchmark
+	// D is the duration for stress test
 	Duration int64 `json:"duration"`
 	// Timeout in ms.
 	Timeout int `json:"timeout"`
@@ -174,7 +174,7 @@ type BenchParameters struct {
 	Output string `json:"output"`
 }
 
-func (p *BenchParameters) String() string {
+func (p *StressParameters) String() string {
 	if body, err := json.MarshalIndent(p, "", "\t"); err != nil {
 		return err.Error()
 	} else {
@@ -190,10 +190,10 @@ type (
 		contentLength int64
 	}
 
-	BenchWorker struct {
-		RequestParams *BenchParameters
+	StressWorker struct {
+		RequestParams *StressParameters
 		results       chan *result
-		resultList    []BenchResult
+		resultList    []StressResult
 
 		totalTime time.Duration
 		// Wait some task finish
@@ -201,9 +201,9 @@ type (
 	}
 )
 
-func (b *BenchWorker) Start() {
+func (b *StressWorker) Start() {
 	b.results = make(chan *result, 2*b.RequestParams.C+1)
-	b.resultList = make([]BenchResult, 0)
+	b.resultList = make([]StressResult, 0)
 
 	b.collectReport()
 	b.runWorkers()
@@ -212,32 +212,32 @@ func (b *BenchWorker) Start() {
 	b.wg.Wait()
 }
 
-func (b *BenchWorker) Stop() {
+func (b *StressWorker) Stop() {
 	b.RequestParams.Cmd = CMD_STOP
 	b.wg.Wait()
 }
 
-func (b *BenchWorker) IsStop() bool {
+func (b *StressWorker) IsStop() bool {
 	return b.RequestParams.Cmd == CMD_STOP
 }
 
-func (b *BenchWorker) Append(result BenchResult) {
+func (b *StressWorker) Append(result StressResult) {
 	b.resultList = append(b.resultList, result)
 }
 
-func (b *BenchWorker) Add(n int) {
+func (b *StressWorker) Add(n int) {
 	b.wg.Add(n)
 }
 
-func (b *BenchWorker) Done() {
+func (b *StressWorker) Done() {
 	b.wg.Done()
 }
 
-func (b *BenchWorker) Wait() *BenchResult {
+func (b *StressWorker) Wait() *StressResult {
 	b.wg.Wait()
 
 	if len(b.resultList) <= 0 {
-		fmt.Fprintf(os.Stderr, "Internal err: benchmark result empty")
+		fmt.Fprintf(os.Stderr, "Internal err: stress test result empty")
 		return nil
 	}
 
@@ -275,7 +275,7 @@ func (b *BenchWorker) Wait() *BenchResult {
 	return &(b.resultList[0])
 }
 
-func (b *BenchWorker) runWorker(n int) {
+func (b *StressWorker) runWorker(n int) {
 	var (
 		throttle  <-chan time.Time
 		runCounts int = 0
@@ -344,7 +344,7 @@ func (b *BenchWorker) runWorker(n int) {
 	}
 }
 
-func (b *BenchWorker) runWorkers() {
+func (b *StressWorker) runWorkers() {
 	if len(b.RequestParams.Urls) > 1 {
 		fmt.Printf("Running %d connections, @ random urls.txt\n", b.RequestParams.C)
 	} else {
@@ -371,7 +371,7 @@ func (b *BenchWorker) runWorkers() {
 	close(b.results)
 }
 
-func (b *BenchWorker) getRequest(url string) *http.Request {
+func (b *StressWorker) getRequest(url string) *http.Request {
 	req, err := http.NewRequest(b.RequestParams.RequestMethod, url,
 		strings.NewReader(b.RequestParams.RequestBody))
 	if err != nil {
@@ -381,7 +381,7 @@ func (b *BenchWorker) getRequest(url string) *http.Request {
 	return req
 }
 
-func (b *BenchWorker) collectReport() {
+func (b *StressWorker) collectReport() {
 	b.wg.Add(1)
 
 	go func() {
@@ -391,7 +391,7 @@ func (b *BenchWorker) collectReport() {
 			b.wg.Done()
 		}()
 
-		result := BenchResult{
+		result := StressResult{
 			ErrorDist:      make(map[string]int, 0),
 			StatusCodeDist: make(map[int]int, 0),
 			Lats:           make(map[string]int64, 0),
@@ -513,36 +513,36 @@ func parseTime(timeStr string) int64 {
 
 func handleWorker(w http.ResponseWriter, r *http.Request) {
 	if reqStr, err := ioutil.ReadAll(r.Body); err == nil {
-		var params BenchParameters
+		var params StressParameters
 		if err := json.Unmarshal(reqStr, &params); err != nil {
 			fmt.Fprintf(os.Stderr, "Unmarshal body err: %s\n", err.Error())
 		} else {
 			verbosePrint("Request params: %s\n", params.String())
-			var benchmark *BenchWorker
-			if v, ok := benchList.Load(params.SequenceId); ok && v != nil {
-				benchmark = v.(*BenchWorker)
+			var stressTest *StressWorker
+			if v, ok := stressList.Load(params.SequenceId); ok && v != nil {
+				stressTest = v.(*StressWorker)
 			} else {
-				benchmark = &BenchWorker{
+				stressTest = &StressWorker{
 					RequestParams: &params,
 				}
-				benchList.Store(params.SequenceId, benchmark)
+				stressList.Store(params.SequenceId, stressTest)
 			}
 			switch params.Cmd {
 			case CMD_START:
-				benchmark.Start()
-				respResult := benchmark.Wait()
+				stressTest.Start()
+				respResult := stressTest.Wait()
 				wbody, _ := json.Marshal(*respResult)
 				w.Write(wbody)
 				respResult.print()
 			case CMD_STOP:
-				benchmark.Stop()
+				stressTest.Stop()
 			}
-			benchList.Delete(params.SequenceId)
+			stressList.Delete(params.SequenceId)
 		}
 	}
 }
 
-func requestWorker(addr string, body []byte, needResult bool) *BenchResult {
+func requestWorker(addr string, body []byte, needResult bool) *StressResult {
 	verbosePrint("Request body: %s\n", string(body))
 	resp, err := http.Post("http://"+addr+"/", "application/json", bytes.NewBuffer(body))
 	if err != nil {
@@ -552,7 +552,7 @@ func requestWorker(addr string, body []byte, needResult bool) *BenchResult {
 
 	defer resp.Body.Close()
 
-	var result BenchResult
+	var result StressResult
 	respStr, _ := ioutil.ReadAll(resp.Body)
 	if err := json.Unmarshal(respStr, &result); err != nil && needResult {
 		fmt.Fprintf(os.Stderr, "RequestWorker body(%s), err: %s\n", string(respStr), err.Error())
@@ -563,7 +563,7 @@ func requestWorker(addr string, body []byte, needResult bool) *BenchResult {
 }
 
 var (
-	benchList  sync.Map
+	stressList sync.Map
 	workerList flagSlice // Worker mechine addr list.
 
 	headerRegexp = `^([\w-]+):\s*(.+)`
@@ -581,7 +581,7 @@ var (
 	c = flag.Int("c", 50, "")       // Number of requests to run concurrently
 	n = flag.Int("n", 0, "")        // Number of requests to run
 	q = flag.Int("q", 0, "")        // Rate limit, in seconds (QPS)
-	d = flag.String("d", "10s", "") // Duration for benchmark
+	d = flag.String("d", "10s", "") // Duration for stress test
 	t = flag.Int("t", 3000, "")     // Timeout in ms
 
 	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
@@ -603,7 +603,7 @@ Options:
 	-c  Number of requests to run concurrently. Total number of requests cannot
 		be smaller than the concurency level.
 	-q  Rate limit, in seconds (QPS).
-	-d  Duration of the benchmark, e.g. 2s, 2m, 2h
+	-d  Duration of the stress test, e.g. 2s, 2m, 2h
 	-t  Timeout in ms.
 	-o  Output type. If none provided, a summary is printed.
 		"csv" is the only supported alternative. Dumps the response
@@ -622,16 +622,16 @@ Options:
 						(default for current machine is %d cores).
 	-url 		Request single url.
 	-verbose 	Print detail logs.
-	-file 		Read url list from file and random benchmark.
-	-listen 	Listen IP:PORT for distributed benchmark and worker mechine (default empty). e.g. "127.0.0.1:12710".
-	-W			Running distributed benchmark worker mechine list.
+	-file 		Read url list from file and random stress test.
+	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
+	-W			Running distributed stress test worker mechine list.
 				for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
-Example benchmark:
+Example stress test:
 	./http_bench -n 1000 -c 10 -t 3000 -m GET -url "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1" -file urls.txt
 
-Example distributed benchmark:
+Example distributed stress test:
 	(1) ./http_bench -listen "127.0.0.1:12710" -verbose true
 	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose true -W "127.0.0.1:12710"
 `
@@ -641,7 +641,7 @@ func main() {
 		fmt.Fprint(os.Stderr, fmt.Sprintf(usage, runtime.NumCPU()))
 	}
 
-	var params BenchParameters
+	var params StressParameters
 	var headerslice flagSlice
 	flag.Var(&headerslice, "H", "") // Custom HTTP header
 	flag.Var(&workerList, "W", "")  // Worker mechine
@@ -741,7 +741,7 @@ func main() {
 
 		stopSignal = make(chan os.Signal)
 		signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
-		benchmark := &BenchWorker{
+		stressTest := &StressWorker{
 			RequestParams: &params,
 		}
 
@@ -755,13 +755,13 @@ func main() {
 					return err
 				}
 				for _, v := range workerList {
-					benchmark.Add(1)
+					stressTest.Add(1)
 					go func(addr string) {
 						result := requestWorker(addr, paramsJson, needResult)
 						if needResult && result != nil {
-							benchmark.Append(*result)
+							stressTest.Append(*result)
 						}
-						benchmark.Done()
+						stressTest.Done()
 					}(v)
 				}
 				return nil
@@ -776,21 +776,21 @@ func main() {
 				if requestFunc != nil {
 					err = requestFunc(false)
 				}
-				benchmark.Stop() // Recv stop signal and Stop commands
+				stressTest.Stop() // Recv stop signal and Stop commands
 			}
 		}()
 
 		if len(workerList) > 0 {
 			err = requestFunc(true)
 		} else {
-			benchmark.Start()
+			stressTest.Start()
 		}
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Internal err: %s\n", err.Error())
 		}
 
-		if r := benchmark.Wait(); r != nil {
+		if r := stressTest.Wait(); r != nil {
 			close(stopSignal)
 			r.print()
 		}

@@ -1,6 +1,6 @@
-# http_bench - a HTTP benchmarking tool
+# http_bench - a HTTP stress test tool
 
-http_bench is a tiny program that sends some load to a web application.  
+http_bench is a tiny program that sends some load to a web application, support single and distributed.  
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
@@ -52,7 +52,7 @@ Latency distribution:
 -c  Number of requests to run concurrently. Total number of requests cannot
 	be smaller than the concurency level.
 -q  Rate limit, in seconds (QPS).
--d  Duration of the benchmark, e.g. 2s, 2m, 2h
+-d  Duration of the stress test, e.g. 2s, 2m, 2h
 -t  Timeout in ms.
 -o  Output type. If none provided, a summary is printed.
 	"csv" is the only supported alternative. Dumps the response
@@ -71,25 +71,25 @@ Latency distribution:
 					(default for current machine is %d cores).
 -url 		Request single url.
 -verbose 	Print detail logs.
--file 		Read url list from file and random benchmark.
--listen 	Listen IP:PORT for distributed benchmark and worker mechine (default empty). e.g. "127.0.0.1:12710".
--W			Running distributed benchmark worker mechine list.
+-file 		Read url list from file and random stress test.
+-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
+-W			Running distributed stress test worker mechine list.
 			for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 ```
 
-Example benchmark for url(print detail info "-verbose true"):
+Example stress test for url(print detail info "-verbose true"):
 ```
 ./http_bench -n 1000 -c 10 -m GET -url "http://127.0.0.1/test1"
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1"
 ```
 
-Example benchmark for file(print detail info "-verbose true"):
+Example stress test for file(print detail info "-verbose true"):
 ```
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -file urls.txt
 ./http_bench -d10s -c 10 -m POST "http://127.0.0.1/test1" -body "{}" -file urls.txt
 ```
 
-Example distributed benchmark(print detail info "-verbose true"):
+Example distributed stress test(print detail info "-verbose true"):
 ```
 (1) First step:
 	./http_bench -listen "127.0.0.1:12710" -verbose true
