@@ -45,6 +45,9 @@ Latency distribution:
   99% in 0.262 secs
 ```
 
+## Architecture
+![avatar](./arch.png)
+
 ## Command Line Options
 
 ```
@@ -73,7 +76,7 @@ Latency distribution:
 -verbose 	Print detail logs.
 -file 		Read url list from file and random stress test.
 -listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
--W			Running distributed stress test worker mechine list.
+-W  Running distributed stress test worker mechine list.
 			for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 ```
 
