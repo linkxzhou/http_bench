@@ -647,6 +647,10 @@ func main() {
 	flag.Var(&workerList, "W", "")  // Worker mechine
 	flag.Parse()
 
+	if len(flag.Args()) <= 0 {
+		usageAndExit("args invalid.")
+	}
+
 	for flag.NArg() > 0 {
 		if len(*urlstr) == 0 {
 			*urlstr = flag.Args()[0]
