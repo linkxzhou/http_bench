@@ -95,8 +95,8 @@ Example stress test for file(print detail info "-verbose true"):
 Example distributed stress test(print detail info "-verbose true"):
 ```
 (1) First step:
-	./http_bench -listen "127.0.0.1:12710" -verbose true
-	./http_bench -listen "127.0.0.1:12711" -verbose true
+./http_bench -listen "127.0.0.1:12710" -verbose true
+./http_bench -listen "127.0.0.1:12711" -verbose true
 (2) Second step:
-	./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose true
+./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose true
 ```

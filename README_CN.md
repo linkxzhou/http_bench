@@ -85,8 +85,8 @@ Latency distribution:
 分布式压测样例(使用"-verbose true"打印详细日志):
 ```
 (1) 第一步:
-  ./http_bench -listen "127.0.0.1:12710" -verbose true
-  ./http_bench -listen "127.0.0.1:12711" -verbose true
+./http_bench -listen "127.0.0.1:12710" -verbose true
+./http_bench -listen "127.0.0.1:12711" -verbose true
 (2) 第二步:
-  ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose true
+./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose true
 ```
