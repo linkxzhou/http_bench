@@ -1,2 +1,3 @@
 ./http_bench
 *.pprof
+./test/echo

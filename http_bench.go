@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
-	"net/url"
 	gourl "net/url"
 	"os"
 	"os/signal"
@@ -23,26 +22,15 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
-	"unsafe"
 )
 
 const (
-	MUTEX_LOCKED = 1 << iota
-
 	CMD_START int = iota
 	CMD_STOP
+	SCALE_NUM = 10000
 )
-
-type Mutex struct {
-	sync.Mutex
-}
-
-func (m *Mutex) TryLock() bool {
-	return atomic.CompareAndSwapInt32((*int32)(unsafe.Pointer(&m.Mutex)), 0, MUTEX_LOCKED)
-}
 
 type flagSlice []string
 
@@ -56,52 +44,52 @@ func (h *flagSlice) Set(value string) error {
 }
 
 type BenchResult struct {
-	ErrCode  int     `json:"err_code"`
-	ErrMsg   string  `json:"err_msg"`
-	AvgTotal float64 `json:"avg_total"`
-	Fastest  float64 `json:"fastest"`
-	Slowest  float64 `json:"slowest"`
-	Average  float64 `json:"average"`
-	Rps      float64 `json:"rps"`
+	ErrCode  int    `json:"err_code"`
+	ErrMsg   string `json:"err_msg"`
+	AvgTotal int64  `json:"avg_total"`
+	Fastest  int64  `json:"fastest"`
+	Slowest  int64  `json:"slowest"`
+	Average  int64  `json:"average"`
+	Rps      int64  `json:"rps"`
 
 	ErrorDist      map[string]int   `json:"error_dist"`
 	StatusCodeDist map[int]int      `json:"status_code_dist"`
 	Lats           map[string]int64 `json:"lats"`
 	LatsTotal      int64            `json:"lats_total"`
 	SizeTotal      int64            `json:"size_total"`
-	Duration       float64          `json:"duration"`
+	Duration       int64            `json:"duration"`
 	Output         string           `json:"output"`
 }
 
 func (result *BenchResult) print() {
 	switch result.Output {
 	case "csv":
-		result.printCSV()
+		fmt.Printf("Duration,Count\n")
+		for duration, val := range result.Lats {
+			fmt.Printf("%s,%d\n", duration, val/SCALE_NUM)
+		}
 		return
 	default:
-		// pass
 	}
 
 	if len(result.Lats) > 0 {
 		fmt.Printf("\nSummary:\n")
-		fmt.Printf("  Total:\t%4.3f secs\n", result.Duration)
-		fmt.Printf("  Slowest:\t%4.3f secs\n", result.Slowest)
-		fmt.Printf("  Fastest:\t%4.3f secs\n", result.Fastest)
-		fmt.Printf("  Average:\t%4.3f secs\n", result.Average)
-		fmt.Printf("  Requests/sec:\t%4.3f\n", result.Rps)
+		fmt.Printf("  Total:\t%4.3f secs\n", float32(result.Duration)/SCALE_NUM)
+		fmt.Printf("  Slowest:\t%4.3f secs\n", float32(result.Slowest)/SCALE_NUM)
+		fmt.Printf("  Fastest:\t%4.3f secs\n", float32(result.Fastest)/SCALE_NUM)
+		fmt.Printf("  Average:\t%4.3f secs\n", float32(result.Average)/SCALE_NUM)
+		fmt.Printf("  Requests/sec:\t%4.3f\n", float32(result.Rps)/SCALE_NUM)
 		if result.SizeTotal > 1073741824 {
 			fmt.Printf("  Total data:\t%4.3f GB\n", float64(result.SizeTotal)/1073741824)
-			fmt.Printf("  Size/request:\t%d bytes\n", result.SizeTotal/result.LatsTotal)
 		} else if result.SizeTotal > 1024*1024 {
 			fmt.Printf("  Total data:\t%4.3f MB\n", float64(result.SizeTotal)/1048576)
-			fmt.Printf("  Size/request:\t%d bytes\n", result.SizeTotal/result.LatsTotal)
 		} else if result.SizeTotal > 1024 {
 			fmt.Printf("  Total data:\t%4.3f KB\n", float64(result.SizeTotal)/1024)
-			fmt.Printf("  Size/request:\t%d bytes\n", result.SizeTotal/result.LatsTotal)
 		} else if result.SizeTotal > 0 {
 			fmt.Printf("  Total data:\t%4.3f bytes\n", float64(result.SizeTotal))
-			fmt.Printf("  Size/request:\t%d bytes\n", result.SizeTotal/result.LatsTotal)
+		} else {
 		}
+		fmt.Printf("  Size/request:\t%d bytes\n", result.SizeTotal/result.LatsTotal)
 		result.printStatusCodes()
 		result.printLatencies()
 	}
@@ -111,14 +99,7 @@ func (result *BenchResult) print() {
 	}
 }
 
-func (result *BenchResult) printCSV() {
-	fmt.Printf("Duration,Count\n")
-	for duration, val := range result.Lats {
-		fmt.Printf("%s,%d\n", duration, val)
-	}
-}
-
-// Prints latency distribution.
+// Print latency distribution.
 func (result *BenchResult) printLatencies() {
 	pctls := []int{10, 25, 50, 75, 90, 95, 99}
 	data := make([]string, len(pctls))
@@ -144,7 +125,7 @@ func (result *BenchResult) printLatencies() {
 	}
 }
 
-// Prints status code distribution.
+// Print status code distribution.
 func (result *BenchResult) printStatusCodes() {
 	fmt.Printf("\nStatus code distribution:\n")
 	for code, num := range result.StatusCodeDist {
@@ -160,6 +141,8 @@ func (result *BenchResult) printErrors() {
 }
 
 type BenchParameters struct {
+	// Sequence
+	SequenceId int64 `json:"sequence_id"`
 	// Commands
 	Cmd int `json:"cmd"`
 	// Request Method.
@@ -180,14 +163,15 @@ type BenchParameters struct {
 	DisableCompression bool `json:"disable_compression"`
 	// DisableKeepAlives is an option to prevents re-use of TCP connections between different HTTP requests
 	DisableKeepAlives bool `json:"disable_keepalives"`
-	// ProxyAddr is the address of HTTP proxy server in the format on "host:port".
-	ProxyAddr string `json:"proxy_addr"`
 	// Basic authentication, username:password.
 	AuthUsername string `json:"auth_username"`
 	AuthPassword string `json:"auth_password"`
 	// Custom HTTP header.
 	Headers map[string][]string `json:"headers"`
 	Urls    []string            `json:"urls"`
+	// Output represents the output type. If "csv" is provided, the
+	// output will be dumped as a csv stream.
+	Output string `json:"output"`
 }
 
 func (p *BenchParameters) String() string {
@@ -208,39 +192,23 @@ type (
 
 	BenchWorker struct {
 		RequestParams *BenchParameters
-		// Output represents the output type. If "csv" is provided, the
-		// output will be dumped as a csv stream.
-		Output string
-		// ProxyAddr is the address of HTTP proxy server in the format on "host:port".
-		ProxyURL   *url.URL
-		results    chan *result
-		resultList []BenchResult
+		results       chan *result
+		resultList    []BenchResult
 
-		stopSignal chan os.Signal
-		totalTime  time.Duration
+		totalTime time.Duration
 		// Wait some task finish
-		wg    sync.WaitGroup
-		mutex Mutex
+		wg sync.WaitGroup
 	}
 )
 
 func (b *BenchWorker) Start() {
-	if !b.mutex.TryLock() {
-		fmt.Printf("Worker is running and wait")
-		return
-	}
-
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-
 	b.results = make(chan *result, 2*b.RequestParams.C+1)
 	b.resultList = make([]BenchResult, 0)
-	b.stopSignal = make(chan os.Signal)
-	signal.Notify(b.stopSignal, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGSTOP)
 
 	b.collectReport()
 	b.runWorkers()
 
+	verbosePrint("Worker finished and wait result")
 	b.wg.Wait()
 }
 
@@ -249,48 +217,62 @@ func (b *BenchWorker) Stop() {
 	b.wg.Wait()
 }
 
-func (b *BenchWorker) Append(result BenchResult) {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-
-	if len(b.resultList) > 0 {
-		b.resultList = append(b.resultList, result)
-	}
+func (b *BenchWorker) IsStop() bool {
+	return b.RequestParams.Cmd == CMD_STOP
 }
 
-func (b *BenchWorker) Print() *BenchResult {
-	if len(b.resultList) < 0 {
-		fmt.Fprintf(os.Stderr, "Benchmark result empty")
+func (b *BenchWorker) Append(result BenchResult) {
+	b.resultList = append(b.resultList, result)
+}
+
+func (b *BenchWorker) Add(n int) {
+	b.wg.Add(n)
+}
+
+func (b *BenchWorker) Done() {
+	b.wg.Done()
+}
+
+func (b *BenchWorker) Wait() *BenchResult {
+	b.wg.Wait()
+
+	if len(b.resultList) <= 0 {
+		fmt.Fprintf(os.Stderr, "Internal err: benchmark result empty")
 		return nil
 	}
 
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-
-	for _, v := range b.resultList[1:] {
-		if b.resultList[0].Slowest < v.Slowest {
-			b.resultList[0].Slowest = v.Slowest
-		}
-		if b.resultList[0].Fastest > v.Fastest {
-			b.resultList[0].Fastest = v.Fastest
-		}
-		b.resultList[0].LatsTotal += v.LatsTotal
-		b.resultList[0].AvgTotal += v.AvgTotal
-		for code, c := range v.StatusCodeDist {
-			b.resultList[0].StatusCodeDist[code] += c
-		}
-		b.resultList[0].SizeTotal += v.SizeTotal
-		for code, c := range v.ErrorDist {
-			b.resultList[0].ErrorDist[code] += c
-		}
-		for lats, c := range v.Lats {
-			b.resultList[0].Lats[lats] += c
+	if len(b.resultList) > 1 {
+		for _, v := range b.resultList[1:] {
+			if b.resultList[0].Slowest < v.Slowest {
+				b.resultList[0].Slowest = v.Slowest
+			}
+			if b.resultList[0].Fastest > v.Fastest {
+				b.resultList[0].Fastest = v.Fastest
+			}
+			b.resultList[0].LatsTotal += v.LatsTotal
+			b.resultList[0].AvgTotal += v.AvgTotal
+			for code, c := range v.StatusCodeDist {
+				b.resultList[0].StatusCodeDist[code] += c
+			}
+			b.resultList[0].SizeTotal += v.SizeTotal
+			for code, c := range v.ErrorDist {
+				b.resultList[0].ErrorDist[code] += c
+			}
+			for lats, c := range v.Lats {
+				b.resultList[0].Lats[lats] += c
+			}
 		}
 	}
-	b.resultList = b.resultList[:1]
-	b.resultList[0].Rps = float64(b.resultList[0].LatsTotal) / b.resultList[0].Duration
-	b.resultList[0].Average = b.resultList[0].AvgTotal / float64(b.resultList[0].LatsTotal)
-	return &b.resultList[0]
+
+	if b.resultList[0].Duration > 0 {
+		b.resultList[0].Rps = int64((b.resultList[0].LatsTotal * SCALE_NUM * SCALE_NUM) / b.resultList[0].Duration)
+	}
+
+	if b.resultList[0].LatsTotal > 0 {
+		b.resultList[0].Average = b.resultList[0].AvgTotal / b.resultList[0].LatsTotal
+	}
+
+	return &(b.resultList[0])
 }
 
 func (b *BenchWorker) runWorker(n int) {
@@ -298,6 +280,7 @@ func (b *BenchWorker) runWorker(n int) {
 		throttle  <-chan time.Time
 		runCounts int = 0
 	)
+
 	if b.RequestParams.Qps > 0 {
 		throttle = time.Tick(time.Duration(1e6/(b.RequestParams.Qps)) * time.Microsecond)
 	}
@@ -318,8 +301,8 @@ func (b *BenchWorker) runWorker(n int) {
 		IdleConnTimeout: time.Duration(60) * time.Second,
 	}
 
-	if b.ProxyURL != nil {
-		tr.Proxy = http.ProxyURL(b.ProxyURL)
+	if proxyUrl != nil {
+		tr.Proxy = http.ProxyURL(proxyUrl)
 	}
 
 	client := &http.Client{
@@ -368,8 +351,10 @@ func (b *BenchWorker) runWorkers() {
 		fmt.Printf("Running %d connections, @ %s\n", b.RequestParams.C, b.RequestParams.Urls[0])
 	}
 
-	var start = time.Now()
-	var wg sync.WaitGroup
+	var (
+		start = time.Now()
+		wg    sync.WaitGroup
+	)
 
 	// Ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
 	for i := 0; i < b.RequestParams.C && b.RequestParams.Cmd != CMD_STOP; i++ {
@@ -392,11 +377,7 @@ func (b *BenchWorker) getRequest(url string) *http.Request {
 	if err != nil {
 		return nil
 	}
-	for k, v := range b.RequestParams.Headers {
-		if v != nil && len(v) > 0 {
-			req.Header.Set(k, v[0])
-		}
-	}
+	req.Header = b.RequestParams.Headers
 	return req
 }
 
@@ -414,23 +395,21 @@ func (b *BenchWorker) collectReport() {
 			ErrorDist:      make(map[string]int, 0),
 			StatusCodeDist: make(map[int]int, 0),
 			Lats:           make(map[string]int64, 0),
-			Output:         b.Output,
 		}
 
 		for {
 			select {
 			case res, ok := <-b.results:
 				if !ok {
-					result.Duration = b.totalTime.Seconds()
+					result.Duration = int64(b.totalTime.Seconds() * SCALE_NUM)
 					b.resultList = append(b.resultList, result)
 					return
 				}
 				if res.err != nil {
 					result.ErrorDist[res.err.Error()]++
 				} else {
-					duration := res.duration.Seconds()
-					lats := fmt.Sprintf("%4.3f", duration)
-					result.Lats[lats]++
+					result.Lats[fmt.Sprintf("%4.3f", res.duration.Seconds())]++
+					duration := int64(res.duration.Seconds() * SCALE_NUM)
 					if result.LatsTotal == 0 {
 						result.Slowest = duration
 						result.Fastest = duration
@@ -449,11 +428,8 @@ func (b *BenchWorker) collectReport() {
 						result.SizeTotal += res.contentLength
 					}
 				}
-			case <-b.stopSignal:
-				verbosePrint("Recv stop signal")
-				b.RequestParams.Cmd = CMD_STOP // Recv stop signal and Stop commands
 			case <-timeTicker.C:
-				verbosePrint("Time ticker upcoming, duration: %ds", b.RequestParams.Duration)
+				verbosePrint("Time ticker upcoming, duration: %ds\n", b.RequestParams.Duration)
 				b.RequestParams.Cmd = CMD_STOP // Time ticker exec Stop commands
 			}
 		}
@@ -475,25 +451,27 @@ func parseInputWithRegexp(input, regx string) ([]string, error) {
 	if len(matches) < 1 {
 		return nil, fmt.Errorf("could not parse the provided input; input = %v", input)
 	}
-
 	return matches, nil
 }
 
 func parseUrlsFile(fname string) ([]string, error) {
 	var retArr []string
-	if file, err := os.Open(fname); err != nil {
+	file, err := os.Open(fname)
+	if err != nil {
+		return retArr, err
+	}
+
+	defer file.Close()
+
+	if content, err := ioutil.ReadAll(file); err != nil {
 		return retArr, err
 	} else {
-		if content, err := ioutil.ReadAll(file); err != nil {
-			return retArr, err
-		} else {
-			arr := strings.FieldsFunc(string(content), func(r rune) bool {
-				return r == '\n' || r == '\r' || r == ' '
-			})
-			for _, v := range arr {
-				if len(v) > 0 {
-					retArr = append(retArr, v)
-				}
+		arr := strings.FieldsFunc(string(content), func(r rune) bool {
+			return r == '\n' || r == '\r' || r == ' '
+		})
+		for _, v := range arr {
+			if len(v) > 0 {
+				retArr = append(retArr, v)
 			}
 		}
 	}
@@ -507,84 +485,92 @@ func verbosePrint(vfmt string, args ...interface{}) {
 	}
 }
 
-func parseTime(st string) int64 {
+func parseTime(timeStr string) int64 {
 	var (
-		tst  string = st
-		tcov int64  = 1
+		timeStrLen       = len(timeStr) - 1
+		multi      int64 = 1
 	)
-	if len(tst) > 1 {
-		switch tst[len(tst)-1] {
+	if timeStrLen > 0 {
+		switch timeStr[timeStrLen] {
 		case 's':
-			tst = tst[:len(tst)-1]
-			tcov = 1
+			timeStr = timeStr[:timeStrLen]
 		case 'm':
-			tst = tst[:len(tst)-1]
-			tcov = 60
+			timeStr = timeStr[:timeStrLen]
+			multi = 60
 		case 'h':
-			tst = tst[:len(tst)-1]
-			tcov = 3600
-		default:
-			// pass
-		}
-	}
-	if t, err := strconv.ParseInt(tst, 10, 64); err != nil {
-		usageAndExit("Duration parse err: " + err.Error())
-	} else {
-		if t*tcov > 0 {
-			return t * tcov
+			timeStr = timeStr[:timeStrLen]
+			multi = 3600
 		}
 	}
 
-	return 1
+	t, err := strconv.ParseInt(timeStr, 10, 64)
+	if err != nil || t <= 0 {
+		usageAndExit("Duration parse err: " + err.Error())
+	}
+
+	return multi * t
 }
 
-func handleStart(w http.ResponseWriter, r *http.Request) {
-	if sbody, err := ioutil.ReadAll(r.Body); err == nil {
-		if err := json.Unmarshal(sbody, &benchmark.RequestParams); err != nil {
+func handleWorker(w http.ResponseWriter, r *http.Request) {
+	if reqStr, err := ioutil.ReadAll(r.Body); err == nil {
+		var params BenchParameters
+		if err := json.Unmarshal(reqStr, &params); err != nil {
 			fmt.Fprintf(os.Stderr, "Unmarshal body err: %s\n", err.Error())
 		} else {
-			switch benchmark.RequestParams.Cmd {
+			verbosePrint("Request params: %s\n", params.String())
+			var benchmark *BenchWorker
+			if v, ok := benchList.Load(params.SequenceId); ok && v != nil {
+				benchmark = v.(*BenchWorker)
+			} else {
+				benchmark = &BenchWorker{
+					RequestParams: &params,
+				}
+				benchList.Store(params.SequenceId, benchmark)
+			}
+			switch params.Cmd {
 			case CMD_START:
 				benchmark.Start()
-				rbody := benchmark.Print()
-				if *verbose {
-					rbody.print()
-				}
-				wbody, _ := json.Marshal(benchmark.Print())
+				respResult := benchmark.Wait()
+				wbody, _ := json.Marshal(*respResult)
 				w.Write(wbody)
+				respResult.print()
 			case CMD_STOP:
 				benchmark.Stop()
 			}
+			benchList.Delete(params.SequenceId)
 		}
 	}
 }
 
-func requestWorker(addr string, body []byte) {
+func requestWorker(addr string, body []byte, needResult bool) *BenchResult {
+	verbosePrint("Request body: %s\n", string(body))
 	resp, err := http.Post("http://"+addr+"/", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "RequestWorker addr(%s), err: %s\n", addr, err.Error())
-		return
+		return nil
 	}
 
 	defer resp.Body.Close()
 
 	var result BenchResult
-	rbody, _ := ioutil.ReadAll(resp.Body)
-	if err := json.Unmarshal(rbody, &result); err != nil {
-		fmt.Fprintf(os.Stderr, "RequestWorker Unmarshal body(%s), err: %s\n", string(rbody), err.Error())
-	} else {
-		benchmark.resultList = append(benchmark.resultList, result)
+	respStr, _ := ioutil.ReadAll(resp.Body)
+	if err := json.Unmarshal(respStr, &result); err != nil && needResult {
+		fmt.Fprintf(os.Stderr, "RequestWorker body(%s), err: %s\n", string(respStr), err.Error())
+		return nil
 	}
+
+	return &result
 }
 
 var (
-	mux        *http.ServeMux
-	params     BenchParameters
-	benchmark  *BenchWorker
+	benchList  sync.Map
 	workerList flagSlice // Worker mechine addr list.
 
 	headerRegexp = `^([\w-]+):\s*(.+)`
 	authRegexp   = `^(.+):([^\s].+)`
+
+	proxyUrl   *gourl.URL
+	stopSignal chan os.Signal
 
 	m          = flag.String("m", "GET", "")
 	body       = flag.String("body", "", "")
@@ -637,13 +623,17 @@ Options:
 	-url 		Request single url.
 	-verbose 	Print detail logs.
 	-file 		Read url list from file and random benchmark.
-	-listen 	Listen ip and port (default empty). e.g. "127.0.0.1:12710".
-	-W			Running benchmark worker mechine list.
+	-listen 	Listen IP:PORT for distributed benchmark and worker mechine (default empty). e.g. "127.0.0.1:12710".
+	-W			Running distributed benchmark worker mechine list.
 				for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
-Example:
+Example benchmark:
 	./http_bench -n 1000 -c 10 -t 3000 -m GET -url "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1" -file urls.txt
+
+Example distributed benchmark:
+	(1) ./http_bench -listen "127.0.0.1:12710" -verbose true
+	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose true -W "127.0.0.1:12710"
 `
 
 func main() {
@@ -651,6 +641,7 @@ func main() {
 		fmt.Fprint(os.Stderr, fmt.Sprintf(usage, runtime.NumCPU()))
 	}
 
+	var params BenchParameters
 	var headerslice flagSlice
 	flag.Var(&headerslice, "H", "") // Custom HTTP header
 	flag.Var(&workerList, "W", "")  // Worker mechine
@@ -717,13 +708,11 @@ func main() {
 	// set request timeout
 	params.Timeout = *t
 
-	var proxyUrl *gourl.URL
 	if *proxyAddr != "" {
 		var err error
 		if proxyUrl, err = gourl.Parse(*proxyAddr); err != nil {
 			usageAndExit(err.Error())
 		}
-		params.ProxyAddr = *proxyAddr
 	}
 
 	if *verbose {
@@ -735,41 +724,71 @@ func main() {
 
 	debug.SetGCPercent(500)
 
-	benchmark = &BenchWorker{
-		RequestParams: &params,
-		Output:        *output,
-		ProxyURL:      proxyUrl,
-	}
-
 	if len(*listen) > 0 {
-		mux = http.NewServeMux()
-		mux.HandleFunc("/", handleStart)
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", handleWorker)
+		fmt.Fprintf(os.Stdout, "Server listen %s\n", *listen)
 		if err := http.ListenAndServe(*listen, mux); err != nil {
 			fmt.Fprintf(os.Stderr, "ListenAndServe err: %s\n", err.Error())
-		} else {
-			fmt.Fprintf(os.Stdout, "Server listen %s\n", *listen)
 		}
 	} else {
-		verbosePrint("Request params: %s\n", params)
+		params.SequenceId = time.Now().Unix()
+		verbosePrint("Request params: %s\n", params.String())
+
+		stopSignal = make(chan os.Signal)
+		signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
+		benchmark := &BenchWorker{
+			RequestParams: &params,
+		}
+
+		var requestFunc func(needResult bool) error
+		var err error
+
 		if len(workerList) > 0 {
-			rbody, err := json.Marshal(params)
-			if err != nil {
-				usageAndExit("Params err: " + err.Error())
+			requestFunc = func(needResult bool) error {
+				paramsJson, err := json.Marshal(params)
+				if err != nil {
+					return err
+				}
+				for _, v := range workerList {
+					benchmark.Add(1)
+					go func(addr string) {
+						result := requestWorker(addr, paramsJson, needResult)
+						if needResult && result != nil {
+							benchmark.Append(*result)
+						}
+						benchmark.Done()
+					}(v)
+				}
+				return nil
 			}
-			// TODO: fix stop
-			var wg sync.WaitGroup
-			for _, v := range workerList {
-				wg.Add(1)
-				go func(addr string) {
-					requestWorker(addr, rbody)
-					wg.Done()
-				}(v)
+		}
+
+		go func() {
+			select {
+			case <-stopSignal:
+				verbosePrint("Recv stop signal\n")
+				params.Cmd = CMD_STOP
+				if requestFunc != nil {
+					err = requestFunc(false)
+				}
+				benchmark.Stop() // Recv stop signal and Stop commands
 			}
-			wg.Wait()
+		}()
+
+		if len(workerList) > 0 {
+			err = requestFunc(true)
 		} else {
 			benchmark.Start()
 		}
-	}
 
-	benchmark.Print().print()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Internal err: %s\n", err.Error())
+		}
+
+		if r := benchmark.Wait(); r != nil {
+			close(stopSignal)
+			r.print()
+		}
+	}
 }

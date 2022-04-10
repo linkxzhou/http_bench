@@ -72,6 +72,28 @@ Latency distribution:
 	-url 		Request single url.
 	-verbose 	Print detail logs.
 	-file 		Read url list from file and random benchmark.
+	-listen 	Listen IP:PORT for distributed benchmark and worker mechine (default empty). e.g. "127.0.0.1:12710".
+	-W			Running distributed benchmark worker mechine list.
+				for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 ```
 
-You can try : ./http_bench -n 1000 -c 10 -t 3000 -m GET -file urls.txt
+Example benchmark for url(print detail info "-verbose true"):
+```
+	./http_bench -n 1000 -c 10 -m GET -url "http://127.0.0.1/test1"
+	./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1"
+```
+
+Example benchmark for file(print detail info "-verbose true"):
+```
+	./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -file urls.txt
+	./http_bench -d10s -c 10 -m POST "http://127.0.0.1/test1" -body "{}" -file urls.txt
+```
+
+Example distributed benchmark(print detail info "-verbose true"):
+```
+	(1) First step:
+		./http_bench -listen "127.0.0.1:12710" -verbose true
+		./http_bench -listen "127.0.0.1:12711" -verbose true
+	(2) Second step:
+		./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose true
+```

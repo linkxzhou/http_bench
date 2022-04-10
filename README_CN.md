@@ -50,7 +50,7 @@ Latency distribution:
     -c  并发的客户端数量，但是不能大于HTTP的请求次数
     -q  频率限制，每秒的请求数
     -d  压测持续时间，默认10秒，例如：2s, 2m, 2h（s:秒，m:分钟，h:小时）
-	-t  设置请求的超时时间，默认3s
+	  -t  设置请求的超时时间，默认3s
     -o  输出结果格式，可以为CSV，也可以直接打印
     -m  HTTP方法，包括GET, POST, PUT, DELETE, HEAD, OPTIONS.
     -H  请求发起的HTTP的头部信息，例如：-H "Accept: text/html" -H "Content-Type: application/xml"
@@ -62,7 +62,28 @@ Latency distribution:
     -cpus                 使用cpu的内核数
     -url                  压测单个URL
     -verbose 	          打印详细日志，默认不开启
-    -file  读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
+    -file   读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
+    -listen 分布式压测任务机器监听IP:PORT，例如： "127.0.0.1:12710".
+	  -W	    分布式压测执行任务的机器列表，例如： -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 ```
 
-测试命令行 : ./http_bench -n 1000 -c 10 -t 3000 -m GET -file urls.txt
+执行压测样例(使用"-verbose true"打印详细日志):
+```
+	./http_bench -n 1000 -c 10 -m GET -url "http://127.0.0.1/test1"
+	./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1"
+```
+
+执行压测按照文件随机压测(使用"-verbose true"打印详细日志):
+```
+	./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -file urls.txt
+	./http_bench -d10s -c 10 -m POST "http://127.0.0.1/test1" -body "{}" -file urls.txt
+```
+
+分布式压测样例(使用"-verbose true"打印详细日志):
+```
+	(1) 第一步:
+		./http_bench -listen "127.0.0.1:12710" -verbose true
+		./http_bench -listen "127.0.0.1:12711" -verbose true
+	(2) 第二步:
+		./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose true
+```
