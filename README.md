@@ -1,4 +1,4 @@
-# http_bench - a HTTP stress test tool
+# http_bench - a HTTP stress test tool, support single and distributed.
 
 http_bench is a tiny program that sends some load to a web application, support single and distributed.  
 
