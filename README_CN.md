@@ -1,9 +1,9 @@
-# 简单的HTTP(HTTP/1,HTTP/2)压测工具，支持单机和分布式
+## HTTP(HTTP/1,HTTP/2)压测工具，支持单机和分布式
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
   
-## 安装
+### 安装
 
 ```
 go get github.com/linkxzhou/http_bench
@@ -15,7 +15,10 @@ cd http_bench
 go build http_bench.go
 ```
 
-## 使用
+### 架构
+![avatar](./arch.png)
+
+### 使用
 
 ```
 ./http_bench http://127.0.0.1:8000 -c 1000 -d 60s
@@ -43,10 +46,7 @@ Latency distribution:
   99% in 0.262 secs
 ```
 
-## 架构
-![avatar](./arch.png)
-
-## 命令行解析
+### 命令行解析
 
 ```
 -n  请求HTTP的次数

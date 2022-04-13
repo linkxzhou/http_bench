@@ -1,23 +1,26 @@
-# a HTTP(HTTP/1, HTTP/2) stress test tool, support single and distributed.
+## a HTTP(HTTP/1, HTTP/2) stress test tool, support single and distributed.
 
 http_bench is a tiny program that sends some load to a web application, support single and distributed mechine, http/1 and http/2.
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
   
-## Installation
+### Installation
 
 ```
 go get github.com/linkxzhou/http_bench
 ```
-or
+OR
 ```
 git clone git@github.com:linkxzhou/http_bench.git
 cd http_bench
 go build http_bench.go
 ```
 
-## Basic Usage
+### Architecture
+![avatar](./arch.png)
+
+### Basic Usage
 
 ```
 ./http_bench http://127.0.0.1:8000 -c 1000 -d 60s
@@ -45,10 +48,7 @@ Latency distribution:
   99% in 0.262 secs
 ```
 
-## Architecture
-![avatar](./arch.png)
-
-## Command Line Options
+### Command Line Options
 
 ```
 -n  Number of requests to run.
