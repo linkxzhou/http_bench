@@ -24,12 +24,19 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"golang.org/x/net/http2"
 )
 
 const (
 	CMD_START int = iota
 	CMD_STOP
+
 	SCALE_NUM = 10000
+
+	TYPE_HTTP1 = "http1"
+	TYPE_HTTP2 = "http2"
+	TYPE_HTTP3 = "http3"
 )
 
 type flagSlice []string
@@ -149,6 +156,8 @@ type StressParameters struct {
 	RequestMethod string `json:"request_method"`
 	// Request Body.
 	RequestBody string `json:"request_body"`
+	// Request HTTP Type
+	RequestHttpType string `json:"request_httptype"`
 	// N is the total number of requests to make.
 	N int `json:"n"`
 	// C is the concurrency level, the number of concurrent workers to run.
@@ -285,29 +294,39 @@ func (b *StressWorker) runWorker(n int) {
 		throttle = time.Tick(time.Duration(1e6/(b.RequestParams.Qps)) * time.Microsecond)
 	}
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-		DisableCompression:  b.RequestParams.DisableCompression,
-		DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
-		TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-		TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
-		DialContext: (&net.Dialer{
-			Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
-			KeepAlive: time.Duration(60) * time.Second,
-		}).DialContext,
-		MaxIdleConns:    200,
-		IdleConnTimeout: time.Duration(60) * time.Second,
-	}
-
-	if proxyUrl != nil {
-		tr.Proxy = http.ProxyURL(proxyUrl)
-	}
-
 	client := &http.Client{
-		Transport: tr,
-		Timeout:   time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+		Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+	}
+
+	switch b.RequestParams.RequestHttpType {
+	case TYPE_HTTP2:
+		tr := &http2.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			DisableCompression: b.RequestParams.DisableCompression,
+		}
+		client.Transport = tr
+	default:
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			DisableCompression:  b.RequestParams.DisableCompression,
+			DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
+			TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
+			DialContext: (&net.Dialer{
+				Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
+				KeepAlive: time.Duration(60) * time.Second,
+			}).DialContext,
+			MaxIdleConns:    200,
+			IdleConnTimeout: time.Duration(60) * time.Second,
+		}
+		if proxyUrl != nil {
+			tr.Proxy = http.ProxyURL(proxyUrl)
+		}
+		client.Transport = tr
 	}
 
 	// random set seed
@@ -578,11 +597,12 @@ var (
 
 	output = flag.String("o", "", "") // Output type
 
-	c = flag.Int("c", 50, "")       // Number of requests to run concurrently
-	n = flag.Int("n", 0, "")        // Number of requests to run
-	q = flag.Int("q", 0, "")        // Rate limit, in seconds (QPS)
-	d = flag.String("d", "10s", "") // Duration for stress test
-	t = flag.Int("t", 3000, "")     // Timeout in ms
+	c        = flag.Int("c", 50, "")               // Number of requests to run concurrently
+	n        = flag.Int("n", 0, "")                // Number of requests to run
+	q        = flag.Int("q", 0, "")                // Rate limit, in seconds (QPS)
+	d        = flag.String("d", "10s", "")         // Duration for stress test
+	t        = flag.Int("t", 3000, "")             // Timeout in ms
+	httpType = flag.String("http", TYPE_HTTP1, "") // HTTP Version
 
 	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
 
@@ -612,6 +632,7 @@ Options:
 	-H  Custom HTTP header. You can specify as many as needed by repeating the flag.
 		for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
 		but "Host: ***", replace that with -host.
+	-http  Support HTTP/1 HTTP/2, default HTTP/1.
 	-body  Request body, default empty.
 	-a  Basic authentication, username:password.
 	-x  HTTP Proxy address as host:port.
@@ -683,6 +704,16 @@ func main() {
 	}
 
 	params.RequestMethod = strings.ToUpper(*m)
+	params.DisableCompression = *disableCompression
+	params.DisableKeepAlives = *disableKeepAlives
+	params.RequestBody = *body
+
+	switch strings.ToLower(*httpType) {
+	case TYPE_HTTP1, TYPE_HTTP2:
+		params.RequestHttpType = strings.ToLower(*httpType)
+	default:
+		usageAndExit("Not support -http: " + *httpType)
+	}
 
 	// set any other additional repeatable headers
 	for _, h := range headerslice {

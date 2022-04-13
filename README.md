@@ -1,6 +1,6 @@
-# http_bench - a HTTP stress test tool, support single and distributed.
+# http_bench - a HTTP(HTTP/1, HTTP/2) stress test tool, support single and distributed.
 
-http_bench is a tiny program that sends some load to a web application, support single and distributed.  
+http_bench is a tiny program that sends some load to a web application, support single and distributed mechine, http/1 and http/2.
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
@@ -67,6 +67,7 @@ Latency distribution:
 -body  Request body, default empty.
 -a  Basic authentication, username:password.
 -x  HTTP Proxy address as host:port.
+-http  Support HTTP/1 HTTP/2, default HTTP/1.
 -disable-compression  Disable compression.
 -disable-keepalive    Disable keep-alive, prevents re-use of TCP
 					connections between different HTTP requests.
@@ -89,7 +90,12 @@ Example stress test for url(print detail info "-verbose true"):
 Example stress test for file(print detail info "-verbose true"):
 ```
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -file urls.txt
-./http_bench -d10s -c 10 -m POST "http://127.0.0.1/test1" -body "{}" -file urls.txt
+./http_bench -d 10s -c 10 -m POST -body "{}" -file urls.txt
+```
+
+Example stress test for http/2:
+```
+./http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
 Example distributed stress test(print detail info "-verbose true"):

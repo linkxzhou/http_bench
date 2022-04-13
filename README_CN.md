@@ -1,4 +1,4 @@
-# http_bench - 简单的HTTP压测工具，支持单机和分布式
+# http_bench - 简单的HTTP(HTTP/1,HTTP/2)压测工具，支持单机和分布式
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
@@ -59,12 +59,13 @@ Latency distribution:
 -H  请求发起的HTTP的头部信息，例如：-H "Accept: text/html" -H "Content-Type: application/xml"
 -body  HTTP发起POST请求的body数据
 -a  HTTP的鉴权请求, 例如：http://username:password@xxx/
+-http  支持HTTP/1和HTTP/2, 默认HTTP/1
 -x  HTTP的代理IP和端口
 -disable-compression  不启用压缩
 -disable-keepalive    不开启keepalive
 -cpus                 使用cpu的内核数
 -url                  压测单个URL
--verbose 	          打印详细日志，默认不开启
+-verbose 	            打印详细日志，默认不开启
 -file   读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
 -listen 分布式压测任务机器监听IP:PORT，例如： "127.0.0.1:12710".
 -W  分布式压测执行任务的机器列表，例如： -W "127.0.0.1:12710" -W "127.0.0.1:12711".
@@ -80,6 +81,11 @@ Latency distribution:
 ```
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -file urls.txt
 ./http_bench -d10s -c 10 -m POST "http://127.0.0.1/test1" -body "{}" -file urls.txt
+```
+
+执行压测，使用http/2:
+```
+./http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
 分布式压测样例(使用"-verbose true"打印详细日志):
