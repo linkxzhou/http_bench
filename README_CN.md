@@ -65,8 +65,9 @@ Latency distribution:
 -disable-keepalive    不开启keepalive
 -cpus                 使用cpu的内核数
 -url                  压测单个URL
--verbose 	            打印详细日志，默认不开启
--file   读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
+-verbose 	            打印详细日志，默认等级：2(0:TRACE, 1:DEBUG, 2:INFO ~ ERROR)
+-url-file 读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
+-body-file 从文件中读取请求的body数据
 -listen 分布式压测任务机器监听IP:PORT，例如： "127.0.0.1:12710".
 -W  分布式压测执行任务的机器列表，例如： -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 ```
@@ -79,8 +80,8 @@ Latency distribution:
 
 执行压测按照文件随机压测(使用"-verbose true"打印详细日志):
 ```
-./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -file urls.txt
-./http_bench -d10s -c 10 -m POST "http://127.0.0.1/test1" -body "{}" -file urls.txt
+./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -url-file urls.txt
+./http_bench -d10s -c 10 -m POST "http://127.0.0.1/test1" -body "{}" -url-file urls.txt
 ```
 
 执行压测，使用http/2:

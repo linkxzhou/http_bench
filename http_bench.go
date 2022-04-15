@@ -37,6 +37,10 @@ const (
 	TYPE_HTTP1 = "http1"
 	TYPE_HTTP2 = "http2"
 	TYPE_HTTP3 = "http3"
+
+	VERBOSE_TRACE = 0
+	VERBOSE_DEBUG = 1
+	VERBOSE_INFO  = 2
 )
 
 type flagSlice []string
@@ -217,7 +221,7 @@ func (b *StressWorker) Start() {
 	b.collectReport()
 	b.runWorkers()
 
-	verbosePrint("Worker finished and wait result")
+	verbosePrint(VERBOSE_INFO, "Worker finished and wait result")
 	b.wg.Wait()
 }
 
@@ -448,7 +452,7 @@ func (b *StressWorker) collectReport() {
 					}
 				}
 			case <-timeTicker.C:
-				verbosePrint("Time ticker upcoming, duration: %ds\n", b.RequestParams.Duration)
+				verbosePrint(VERBOSE_INFO, "Time ticker upcoming, duration: %ds\n", b.RequestParams.Duration)
 				b.RequestParams.Cmd = CMD_STOP // Time ticker exec Stop commands
 			}
 		}
@@ -473,33 +477,46 @@ func parseInputWithRegexp(input, regx string) ([]string, error) {
 	return matches, nil
 }
 
-func parseUrlsFile(fname string) ([]string, error) {
-	var retArr []string
-	file, err := os.Open(fname)
+func parseFile(fileName string, delimiter []rune) ([]string, error) {
+	var contentList []string
+	file, err := os.Open(fileName)
 	if err != nil {
-		return retArr, err
+		return contentList, err
 	}
 
 	defer file.Close()
 
 	if content, err := ioutil.ReadAll(file); err != nil {
-		return retArr, err
+		return contentList, err
 	} else {
-		arr := strings.FieldsFunc(string(content), func(r rune) bool {
-			return r == '\n' || r == '\r' || r == ' '
+		if delimiter == nil {
+			return []string{string(content)}, nil
+		}
+		lines := strings.FieldsFunc(string(content), func(r rune) bool {
+			for _, v := range delimiter {
+				if r == v {
+					return true
+				}
+			}
+			return false
 		})
-		for _, v := range arr {
-			if len(v) > 0 {
-				retArr = append(retArr, v)
+		for _, line := range lines {
+			if len(line) > 0 {
+				contentList = append(contentList, line)
 			}
 		}
 	}
 
-	return retArr, nil
+	return contentList, nil
 }
 
-func verbosePrint(vfmt string, args ...interface{}) {
-	if *verbose {
+func verbosePrint(level int, vfmt string, args ...interface{}) {
+	switch level {
+	case VERBOSE_TRACE:
+		fmt.Printf("[TREACE VERBOSE] "+vfmt, args...)
+	case VERBOSE_DEBUG:
+		fmt.Printf("[DEBUG VERBOSE] "+vfmt, args...)
+	default:
 		fmt.Printf("[VERBOSE] "+vfmt, args...)
 	}
 }
@@ -536,7 +553,7 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(reqStr, &params); err != nil {
 			fmt.Fprintf(os.Stderr, "Unmarshal body err: %s\n", err.Error())
 		} else {
-			verbosePrint("Request params: %s\n", params.String())
+			verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
 			var stressTest *StressWorker
 			if v, ok := stressList.Load(params.SequenceId); ok && v != nil {
 				stressTest = v.(*StressWorker)
@@ -562,7 +579,7 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 }
 
 func requestWorker(addr string, body []byte, needResult bool) *StressResult {
-	verbosePrint("Request body: %s\n", string(body))
+	verbosePrint(VERBOSE_DEBUG, "Request body: %s\n", string(body))
 	resp, err := http.Post("http://"+addr+"/", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "RequestWorker addr(%s), err: %s\n", addr, err.Error())
@@ -611,10 +628,11 @@ var (
 	proxyAddr          = flag.String("x", "", "")
 
 	urlstr  = flag.String("url", "", "")
-	verbose = flag.Bool("verbose", false, "")
-
-	urlFile = flag.String("file", "", "")
+	verbose = flag.Int("verbose", 2, "")
 	listen  = flag.String("listen", "", "")
+
+	urlFile  = flag.String("url-file", "", "")
+	bodyFile = flag.String("body-file", "", "")
 )
 
 var usage = `Usage: http_bench [options...] <url>
@@ -642,19 +660,21 @@ Options:
 	-cpus                 Number of used cpu cores.
 						(default for current machine is %d cores).
 	-url 		Request single url.
-	-verbose 	Print detail logs.
-	-file 		Read url list from file and random stress test.
+	-verbose 	Print detail logs, default 2(0:TRACE, 1:DEBUG, 2:INFO ~ ERROR).
+	-url-file 	Read url list from file and random stress test.
+	-body-file  Request body from file.
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
 	-W  Running distributed stress test worker mechine list.
 				for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
+
 Example stress test:
 	./http_bench -n 1000 -c 10 -t 3000 -m GET -url "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1"
-	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1" -file urls.txt
+	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1" -url-file urls.txt
 
 Example distributed stress test:
-	(1) ./http_bench -listen "127.0.0.1:12710" -verbose true
-	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose true -W "127.0.0.1:12710"
+	(1) ./http_bench -listen "127.0.0.1:12710" -verbose 1
+	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose 1 -W "127.0.0.1:12710"
 `
 
 func main() {
@@ -698,7 +718,7 @@ func main() {
 		params.Urls = append(params.Urls, *urlstr)
 	} else {
 		var err error
-		if params.Urls, err = parseUrlsFile(*urlFile); err != nil {
+		if params.Urls, err = parseFile(*urlFile, []rune{'\r', '\n', ' '}); err != nil {
 			usageAndExit(*urlFile + " file read error(" + err.Error() + ").")
 		}
 	}
@@ -707,6 +727,16 @@ func main() {
 	params.DisableCompression = *disableCompression
 	params.DisableKeepAlives = *disableKeepAlives
 	params.RequestBody = *body
+
+	if *bodyFile != "" {
+		if readBody, err := parseFile(*urlFile, nil); err != nil {
+			usageAndExit(*bodyFile + " file read error(" + err.Error() + ").")
+		} else {
+			if len(readBody) > 0 {
+				params.RequestBody = readBody[0]
+			}
+		}
+	}
 
 	switch strings.ToLower(*httpType) {
 	case TYPE_HTTP1, TYPE_HTTP2:
@@ -750,7 +780,7 @@ func main() {
 		}
 	}
 
-	if *verbose {
+	if *verbose == VERBOSE_TRACE {
 		file, _ := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
 		defer file.Close()
 		pprof.StartCPUProfile(file)
@@ -768,7 +798,7 @@ func main() {
 		}
 	} else {
 		params.SequenceId = time.Now().Unix()
-		verbosePrint("Request params: %s\n", params.String())
+		verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
 
 		stopSignal = make(chan os.Signal)
 		signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
@@ -802,7 +832,7 @@ func main() {
 		go func() {
 			select {
 			case <-stopSignal:
-				verbosePrint("Recv stop signal\n")
+				verbosePrint(VERBOSE_INFO, "Recv stop signal\n")
 				params.Cmd = CMD_STOP
 				if requestFunc != nil {
 					err = requestFunc(false)
