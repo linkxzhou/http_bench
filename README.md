@@ -4,6 +4,13 @@ http_bench is a tiny program that sends some load to a web application, support 
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
+
+- [x] HTTP/1 stress
+- [x] HTTP/2 stress
+- [x] Distributed stress
+- [x] Support functions
+- [ ] Support variable
+- [ ] HTTP/3 stress
   
 ### Installation
 
