@@ -1,3 +1,4 @@
 http_bench
 *.pprof
 test/echo
+arch.drawio

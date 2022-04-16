@@ -65,7 +65,7 @@ Latency distribution:
 -disable-keepalive    不开启keepalive
 -cpus                 使用cpu的内核数
 -url                  压测单个URL
--verbose              打印详细日志，默认等级：2(0:TRACE, 1:DEBUG, 2:INFO ~ ERROR)
+-verbose              打印详细日志，默认等级：3(0:TRACE, 1:DEBUG, 2:INFO, 3:ERROR)
 -url-file 读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
 -body-file 从文件中读取请求的body数据
 -listen 分布式压测任务机器监听IP:PORT，例如： "127.0.0.1:12710".

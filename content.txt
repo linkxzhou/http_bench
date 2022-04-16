@@ -1,0 +1,6 @@
+{
+    "aaaa": 1,
+    "bbbb": 2,
+    "fn_randomString": "{{ randomString 20 }}",
+    "fn_randomNum": "{{ randomNum 10 }}"
+}

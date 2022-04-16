@@ -23,10 +23,98 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"text/template"
 	"time"
 
 	"golang.org/x/net/http2"
 )
+
+// template functions
+func intSum(v ...int64) int64 {
+	var r int64
+	for _, r1 := range v {
+		r += int64(r1)
+	}
+	return r
+}
+
+func random(min, max int64) int64 {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Int63n(max-min) + min
+}
+
+func formatTime(now time.Time, fmt string) string {
+	switch fmt {
+	case "YMD":
+		return now.Format("20060201")
+	case "HMS":
+		return now.Format("150405")
+	default:
+		return now.Format("20060201-150405")
+	}
+}
+
+// YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss
+func date(fmt string) string {
+	return formatTime(time.Now(), fmt)
+}
+
+func randomDate(fmt string) string {
+	return formatTime(time.Unix(rand.Int63n(time.Now().Unix()-94608000)+94608000, 0), fmt)
+}
+
+const (
+	letterIdxBits  = 6                    // 6 bits to represent a letter index
+	letterIdxMask  = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+	letterIdxMax   = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+	letterBytes    = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	letterNumBytes = "0123456789"
+)
+
+var (
+	// for functions
+	fnSrc = rand.NewSource(time.Now().UnixNano())
+	fnMap = template.FuncMap{
+		"intSum":       intSum,
+		"random":       random,
+		"randomDate":   randomDate,
+		"randomString": randomString,
+		"randomNum":    randomNum,
+		"date":         date,
+	}
+)
+
+func randomString(n int) string {
+	b := make([]byte, n)
+	for i, cache, remain := n-1, fnSrc.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = fnSrc.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			b[i] = letterBytes[idx]
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
+	}
+	return string(b)
+}
+
+func randomNum(n int) string {
+	b := make([]byte, n)
+	for i, cache, remain := n-1, fnSrc.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = fnSrc.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(letterNumBytes) {
+			b[i] = letterNumBytes[idx]
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
+	}
+	return string(b)
+}
 
 const (
 	CMD_START int = iota
@@ -41,6 +129,7 @@ const (
 	VERBOSE_TRACE = 0
 	VERBOSE_DEBUG = 1
 	VERBOSE_INFO  = 2
+	VERBOSE_ERROR = 3
 )
 
 type flagSlice []string
@@ -210,7 +299,8 @@ type (
 
 		totalTime time.Duration
 		// Wait some task finish
-		wg sync.WaitGroup
+		wg                        sync.WaitGroup
+		bodyTemplate, urlTemplate *template.Template
 	}
 )
 
@@ -375,9 +465,18 @@ func (b *StressWorker) runWorkers() {
 	}
 
 	var (
-		start = time.Now()
-		wg    sync.WaitGroup
+		start            = time.Now()
+		wg               sync.WaitGroup
+		err              error
+		bodyTemplateName = fmt.Sprintf("BODY-%d", b.RequestParams.SequenceId)
+		urlTemplateName  = fmt.Sprintf("URL-%d", b.RequestParams.SequenceId)
 	)
+	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Urls[0]); err != nil {
+		verbosePrint(VERBOSE_ERROR, "Parse function err: "+err.Error())
+	}
+	if b.bodyTemplate, err = template.New(bodyTemplateName).Funcs(fnMap).Parse(b.RequestParams.RequestBody); err != nil {
+		verbosePrint(VERBOSE_ERROR, "Parse function err: "+err.Error())
+	}
 
 	// Ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
 	for i := 0; i < b.RequestParams.C && b.RequestParams.Cmd != CMD_STOP; i++ {
@@ -395,8 +494,21 @@ func (b *StressWorker) runWorkers() {
 }
 
 func (b *StressWorker) getRequest(url string) *http.Request {
-	req, err := http.NewRequest(b.RequestParams.RequestMethod, url,
-		strings.NewReader(b.RequestParams.RequestBody))
+	var urlBytes, bodyBytes bytes.Buffer
+	if b.urlTemplate != nil && len(url) > 0 {
+		b.urlTemplate.Execute(&urlBytes, nil)
+	} else {
+		urlBytes.WriteString(url)
+	}
+	if len(b.RequestParams.RequestBody) > 0 && b.bodyTemplate != nil {
+		b.bodyTemplate.Execute(&bodyBytes, nil)
+	} else {
+		bodyBytes.WriteString(b.RequestParams.RequestBody)
+	}
+	verbosePrint(VERBOSE_TRACE, "Request url: %s\n", urlBytes.String())
+	verbosePrint(VERBOSE_TRACE, "Request body: %s\n", bodyBytes.String())
+	req, err := http.NewRequest(b.RequestParams.RequestMethod, urlBytes.String(),
+		strings.NewReader(bodyBytes.String()))
 	if err != nil {
 		return nil
 	}
@@ -511,13 +623,19 @@ func parseFile(fileName string, delimiter []rune) ([]string, error) {
 }
 
 func verbosePrint(level int, vfmt string, args ...interface{}) {
+	if *verbose > level {
+		return
+	}
+
 	switch level {
 	case VERBOSE_TRACE:
-		fmt.Printf("[TREACE VERBOSE] "+vfmt, args...)
+		fmt.Printf("[VERBOSE TRACE] "+vfmt, args...)
 	case VERBOSE_DEBUG:
-		fmt.Printf("[DEBUG VERBOSE] "+vfmt, args...)
+		fmt.Printf("[VERBOSE DEBUG] "+vfmt, args...)
+	case VERBOSE_INFO:
+		fmt.Printf("[VERBOSE INFO] "+vfmt, args...)
 	default:
-		fmt.Printf("[VERBOSE] "+vfmt, args...)
+		fmt.Printf("[VERBOSE ERROR] "+vfmt, args...)
 	}
 }
 
@@ -628,7 +746,7 @@ var (
 	proxyAddr          = flag.String("x", "", "")
 
 	urlstr  = flag.String("url", "", "")
-	verbose = flag.Int("verbose", 2, "")
+	verbose = flag.Int("verbose", 3, "")
 	listen  = flag.String("listen", "", "")
 
 	urlFile  = flag.String("url-file", "", "")
@@ -660,7 +778,7 @@ Options:
 	-cpus                 Number of used cpu cores.
 						(default for current machine is %d cores).
 	-url 		Request single url.
-	-verbose 	Print detail logs, default 2(0:TRACE, 1:DEBUG, 2:INFO ~ ERROR).
+	-verbose 	Print detail logs, default 3(0:TRACE, 1:DEBUG, 2:INFO, 3:ERROR).
 	-url-file 	Read url list from file and random stress test.
 	-body-file  Request body from file.
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
@@ -729,7 +847,7 @@ func main() {
 	params.RequestBody = *body
 
 	if *bodyFile != "" {
-		if readBody, err := parseFile(*urlFile, nil); err != nil {
+		if readBody, err := parseFile(*bodyFile, nil); err != nil {
 			usageAndExit(*bodyFile + " file read error(" + err.Error() + ").")
 		} else {
 			if len(readBody) > 0 {
