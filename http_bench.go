@@ -806,10 +806,6 @@ func main() {
 	flag.Var(&workerList, "W", "")  // Worker mechine
 	flag.Parse()
 
-	if len(flag.Args()) <= 0 {
-		usageAndExit("args invalid.")
-	}
-
 	for flag.NArg() > 0 {
 		if len(*urlstr) == 0 {
 			*urlstr = flag.Args()[0]
@@ -829,7 +825,7 @@ func main() {
 	}
 
 	if (params.N < params.C) && (params.Duration < 0) {
-		usageAndExit("n cannot be less than c")
+		usageAndExit("n cannot be less than c.")
 	}
 
 	if *urlFile == "" {
@@ -915,6 +911,10 @@ func main() {
 			fmt.Fprintf(os.Stderr, "ListenAndServe err: %s\n", err.Error())
 		}
 	} else {
+		if len(params.Urls) <= 0 || len(params.Urls[0]) <= 0 {
+			usageAndExit("url or url-file empty.")
+		}
+
 		params.SequenceId = time.Now().Unix()
 		verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
 
