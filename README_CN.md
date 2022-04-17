@@ -66,19 +66,19 @@ Latency distribution:
 -cpus                 使用cpu的内核数
 -url                  压测单个URL
 -verbose              打印详细日志，默认等级：3(0:TRACE, 1:DEBUG, 2:INFO, 3:ERROR)
--url-file 读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
--body-file 从文件中读取请求的body数据
+-url-file   读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
+-body-file  从文件中读取请求的body数据
 -listen 分布式压测任务机器监听IP:PORT，例如： "127.0.0.1:12710".
 -W  分布式压测执行任务的机器列表，例如： -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 ```
 
-执行压测样例(使用"-verbose true"打印详细日志):
+执行压测样例(使用"-verbose 1"打印详细日志):
 ```
 ./http_bench -n 1000 -c 10 -m GET -url "http://127.0.0.1/test1"
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1"
 ```
 
-执行压测按照文件随机压测(使用"-verbose true"打印详细日志):
+执行压测按照文件随机压测(使用"-verbose 1"打印详细日志):
 ```
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -url-file urls.txt
 ./http_bench -d10s -c 10 -m POST "http://127.0.0.1/test1" -body "{}" -url-file urls.txt
@@ -89,11 +89,66 @@ Latency distribution:
 ./http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
-分布式压测样例(使用"-verbose true"打印详细日志):
+分布式压测样例(使用"-verbose 1"打印详细日志):
 ```
 (1) 第一步:
-./http_bench -listen "127.0.0.1:12710" -verbose true
-./http_bench -listen "127.0.0.1:12711" -verbose true
+./http_bench -listen "127.0.0.1:12710" -verbose 1
+./http_bench -listen "127.0.0.1:12711" -verbose 1
 (2) 第二步:
-./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose true
+./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose 1
+```
+
+## 函数和变量
+**(1) 计算整数之和**  
+```
+== Params: intSum number1 number2 number3 ...
+== Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ intSum 1 2 3 4}}" -verbose 0
+== Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ intSum 1 2 3 4 }}" -verbose 0
+```
+
+**(2) 生成随机整数**  
+```
+== Params: random min_value max_value
+== Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ random 1 100000}}" -verbose 0
+== Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ random 1 100000 }}" -verbose 0
+```
+
+**(3) 生成随机日期**  
+```
+== Params: randomDate format(random date string: YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
+== Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate \"YMD\"}}" -verbose 0
+== Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate \"YMD\" }}" -verbose 0
+```
+
+**(4) 生成制定大小的随机字符串**  
+```
+== Params: randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
+== Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
+== Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
+```
+
+**(5) 生成制定大小的随机数字字符串**  
+```
+== Params: randomNum count(random string: 0123456789)
+== Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
+== Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
+```
+
+**(6) 输出当前日志**  
+```
+== Params: date format(YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
+== Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date \"YMD\" }}" -verbose 0
+== Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date \"YMD\" }}" -verbose 0
 ```
