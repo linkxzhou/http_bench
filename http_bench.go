@@ -471,6 +471,7 @@ func (b *StressWorker) runWorkers() {
 		bodyTemplateName = fmt.Sprintf("BODY-%d", b.RequestParams.SequenceId)
 		urlTemplateName  = fmt.Sprintf("URL-%d", b.RequestParams.SequenceId)
 	)
+
 	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Urls[0]); err != nil {
 		verbosePrint(VERBOSE_ERROR, "Parse function err: "+err.Error())
 	}
@@ -482,12 +483,16 @@ func (b *StressWorker) runWorkers() {
 	for i := 0; i < b.RequestParams.C && b.RequestParams.Cmd != CMD_STOP; i++ {
 		wg.Add(1)
 		go func() {
+			defer func() {
+				wg.Done()
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "Internal err: %v\n", r)
+				}
+			}()
 			b.runWorker(b.RequestParams.N / b.RequestParams.C)
-			wg.Done()
 		}()
 	}
 
-	// Wait all task finish.
 	wg.Wait()
 	b.totalTime = time.Now().Sub(start)
 	close(b.results)
