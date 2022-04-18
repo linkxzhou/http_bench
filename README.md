@@ -171,3 +171,12 @@ Example distributed stress test(print detail info "-verbose 1"):
 == Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date \"YMD\" }}" -verbose 0
 ```
+
+**(7) UUID**  
+```
+== Params: UUID
+== Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID }}" -verbose 0
+== Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID }}" -verbose 0
+```

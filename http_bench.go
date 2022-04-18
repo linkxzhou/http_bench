@@ -13,6 +13,7 @@ import (
 	_ "net/http/pprof"
 	gourl "net/url"
 	"os"
+	"os/exec"
 	"os/signal"
 	"regexp"
 	"runtime"
@@ -54,6 +55,14 @@ func formatTime(now time.Time, fmt string) string {
 	}
 }
 
+func uuidStr() string {
+	if out, err := exec.Command("uuidgen").Output(); err != nil {
+		return randomString(10)
+	} else {
+		return string(out)
+	}
+}
+
 // YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss
 func date(fmt string) string {
 	return formatTime(time.Now(), fmt)
@@ -81,7 +90,9 @@ var (
 		"randomString": randomString,
 		"randomNum":    randomNum,
 		"date":         date,
+		"UUID":         UUID,
 	}
+	fnUUID = uuidStr()
 )
 
 func randomString(n int) string {
@@ -114,6 +125,10 @@ func randomNum(n int) string {
 		remain--
 	}
 	return string(b)
+}
+
+func UUID() string {
+	return fnUUID
 }
 
 const (
@@ -311,7 +326,7 @@ func (b *StressWorker) Start() {
 	b.collectReport()
 	b.runWorkers()
 
-	verbosePrint(VERBOSE_INFO, "Worker finished and wait result")
+	verbosePrint(VERBOSE_INFO, "Worker finished and wait result\n")
 	b.wg.Wait()
 }
 
@@ -441,7 +456,13 @@ func (b *StressWorker) runWorker(n int) {
 		var code int
 
 		randv := rand.Intn(len(b.RequestParams.Urls)) % len(b.RequestParams.Urls)
-		resp, err := client.Do(b.getRequest(b.RequestParams.Urls[randv]))
+		// if req = nil and break
+		req := b.getRequest(b.RequestParams.Urls[randv])
+		if req == nil {
+			b.RequestParams.Cmd = CMD_STOP
+			break
+		}
+		resp, err := client.Do(req)
 		if err == nil {
 			size = resp.ContentLength
 			code = resp.StatusCode
@@ -473,10 +494,10 @@ func (b *StressWorker) runWorkers() {
 	)
 
 	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Urls[0]); err != nil {
-		verbosePrint(VERBOSE_ERROR, "Parse function err: "+err.Error())
+		verbosePrint(VERBOSE_ERROR, "Parse function err: "+err.Error()+"\n")
 	}
 	if b.bodyTemplate, err = template.New(bodyTemplateName).Funcs(fnMap).Parse(b.RequestParams.RequestBody); err != nil {
-		verbosePrint(VERBOSE_ERROR, "Parse function err: "+err.Error())
+		verbosePrint(VERBOSE_ERROR, "Parse function err: "+err.Error()+"\n")
 	}
 
 	// Ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
@@ -485,6 +506,7 @@ func (b *StressWorker) runWorkers() {
 		go func() {
 			defer func() {
 				wg.Done()
+				b.RequestParams.Cmd = CMD_STOP
 				if r := recover(); r != nil {
 					fmt.Fprintf(os.Stderr, "Internal err: %v\n", r)
 				}
@@ -510,10 +532,12 @@ func (b *StressWorker) getRequest(url string) *http.Request {
 	} else {
 		bodyBytes.WriteString(b.RequestParams.RequestBody)
 	}
+	if !checkURL(urlBytes.String()) {
+		return nil
+	}
 	verbosePrint(VERBOSE_TRACE, "Request url: %s\n", urlBytes.String())
 	verbosePrint(VERBOSE_TRACE, "Request body: %s\n", bodyBytes.String())
-	req, err := http.NewRequest(b.RequestParams.RequestMethod, urlBytes.String(),
-		strings.NewReader(bodyBytes.String()))
+	req, err := http.NewRequest(b.RequestParams.RequestMethod, urlBytes.String(), strings.NewReader(bodyBytes.String()))
 	if err != nil {
 		return nil
 	}
@@ -594,6 +618,14 @@ func parseInputWithRegexp(input, regx string) ([]string, error) {
 	return matches, nil
 }
 
+func checkURL(url string) bool {
+	if _, err := gourl.ParseRequestURI(url); err != nil {
+		fmt.Fprintln(os.Stderr, "Parse URL err: ", err.Error())
+		return false
+	}
+	return true
+}
+
 func parseFile(fileName string, delimiter []rune) ([]string, error) {
 	var contentList []string
 	file, err := os.Open(fileName)
@@ -645,10 +677,8 @@ func verbosePrint(level int, vfmt string, args ...interface{}) {
 }
 
 func parseTime(timeStr string) int64 {
-	var (
-		timeStrLen       = len(timeStr) - 1
-		multi      int64 = 1
-	)
+	var timeStrLen = len(timeStr) - 1
+	var multi int64 = 1
 	if timeStrLen > 0 {
 		switch timeStr[timeStrLen] {
 		case 's':
