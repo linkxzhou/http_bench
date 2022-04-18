@@ -176,7 +176,16 @@ Example distributed stress test(print detail info "-verbose 1"):
 ```
 == Params: UUID
 == Client Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID }}" -verbose 0
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
 == Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID }}" -verbose 0
+```
+
+**(8) escape**  
+```
+== Params: escape str(pipeline with other functions)
+== Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
+== Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID | escape }}" -verbose 0
 ```

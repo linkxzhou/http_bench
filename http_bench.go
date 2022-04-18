@@ -72,6 +72,10 @@ func randomDate(fmt string) string {
 	return formatTime(time.Unix(rand.Int63n(time.Now().Unix()-94608000)+94608000, 0), fmt)
 }
 
+func escape(u string) string {
+	return gourl.QueryEscape(u)
+}
+
 const (
 	letterIdxBits  = 6                    // 6 bits to represent a letter index
 	letterIdxMask  = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
@@ -91,6 +95,7 @@ var (
 		"randomNum":    randomNum,
 		"date":         date,
 		"UUID":         UUID,
+		"escape":       escape,
 	}
 	fnUUID = uuidStr()
 )
