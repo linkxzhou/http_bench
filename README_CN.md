@@ -101,7 +101,10 @@ Latency distribution:
 ## 函数和变量
 **(1) 计算整数之和**  
 ```
-== Params: intSum number1 number2 number3 ...
+Function: 
+  intSum number1 number2 number3 ...
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ intSum 1 2 3 4}}" -verbose 0
 == Body Request Example:
@@ -110,7 +113,10 @@ Latency distribution:
 
 **(2) 生成随机整数**  
 ```
-== Params: random min_value max_value
+Function: 
+  random min_value max_value 
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ random 1 100000}}" -verbose 0
 == Body Request Example:
@@ -119,7 +125,10 @@ Latency distribution:
 
 **(3) 生成随机日期**  
 ```
-== Params: randomDate format(random date string: YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
+Function: 
+  randomDate format(random date string: YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate \"YMD\"}}" -verbose 0
 == Body Request Example:
@@ -128,7 +137,10 @@ Latency distribution:
 
 **(4) 生成制定大小的随机字符串**  
 ```
-== Params: randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
+Function: 
+  randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
 == Body Request Example:
@@ -137,18 +149,48 @@ Latency distribution:
 
 **(5) 生成制定大小的随机数字字符串**  
 ```
-== Params: randomNum count(random string: 0123456789)
+Function: 
+  randomNum count(random string: 0123456789)
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
 == Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
 ```
 
-**(6) 输出当前日志**  
+**(6) 输出当前日期**  
 ```
-== Params: date format(YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
+Function: 
+  date format(YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss) 
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date \"YMD\" }}" -verbose 0
 == Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date \"YMD\" }}" -verbose 0
+```
+
+**(7) UUID标识（如果异常返回一个唯一随机字符串）**  
+```
+Function: 
+  UUID 
+
+Example:  
+== Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
+== Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID }}" -verbose 0
+```
+
+**(8) 字符串转换**  
+```
+Function: 
+  escape str(pipeline with other functions)
+
+Example:  
+== Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
+== Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID | escape }}" -verbose 0
 ```

@@ -120,7 +120,10 @@ Example distributed stress test(print detail info "-verbose 1"):
 
 **(1) intSum**  
 ```
-== Params: intSum number1 number2 number3 ...
+Function: 
+  intSum number1 number2 number3 ...
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ intSum 1 2 3 4}}" -verbose 0
 == Body Request Example:
@@ -129,7 +132,10 @@ Example distributed stress test(print detail info "-verbose 1"):
 
 **(2) random**  
 ```
-== Params: random min_value max_value
+Function: 
+  random min_value max_value 
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ random 1 100000}}" -verbose 0
 == Body Request Example:
@@ -138,7 +144,10 @@ Example distributed stress test(print detail info "-verbose 1"):
 
 **(3) randomDate**  
 ```
-== Params: randomDate format(random date string: YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
+Function: 
+  randomDate format(random date string: YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate \"YMD\"}}" -verbose 0
 == Body Request Example:
@@ -147,7 +156,10 @@ Example distributed stress test(print detail info "-verbose 1"):
 
 **(4) randomString**  
 ```
-== Params: randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
+Function: 
+  randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
 == Body Request Example:
@@ -156,16 +168,22 @@ Example distributed stress test(print detail info "-verbose 1"):
 
 **(5) randomNum**  
 ```
-== Params: randomNum count(random string: 0123456789)
+Function: 
+  randomNum count(random string: 0123456789)
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
 == Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
 ```
 
-**(6) date**  
+**(6) date** 
 ```
-== Params: date format(YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
+Function: 
+  date format(YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss) 
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date \"YMD\" }}" -verbose 0
 == Body Request Example:
@@ -174,7 +192,10 @@ Example distributed stress test(print detail info "-verbose 1"):
 
 **(7) UUID**  
 ```
-== Params: UUID
+Function: 
+  UUID 
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
 == Body Request Example:
@@ -183,7 +204,10 @@ Example distributed stress test(print detail info "-verbose 1"):
 
 **(8) escape**  
 ```
-== Params: escape str(pipeline with other functions)
+Function: 
+  escape str(pipeline with other functions)
+
+Example:  
 == Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
 == Body Request Example:
