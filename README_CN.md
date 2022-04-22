@@ -2,7 +2,16 @@
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
-  
+
+- [x] HTTP/1 压测
+- [x] HTTP/2 压测
+- [x] 分布式压测
+- [x] 支持函数
+- [ ] 支持变量
+- [ ] HTTP/3 压测
+- [ ] Websocket 压测
+- [ ] UI Metrics
+
 ### 安装
 
 ```
