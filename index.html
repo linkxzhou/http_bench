@@ -3,27 +3,21 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <script type="text/javascript" src="//cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-    <!-- 导入样式 -->
-    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/element-plus/dist/index.css"/>
-    <!-- 导入 Vue 3 -->
-    <script src="//cdn.jsdelivr.net/npm/vue@next"></script>
-    <!-- 导入组件库 -->
-    <script src="//cdn.jsdelivr.net/npm/element-plus"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css" rel="stylesheet"/>
 </head>
 <body style="height: 100%; margin: 0">
     <div id="container" style="height: 70%"></div>
-    <form class="form-inline" style="margin: 10px;">
+    <div style="margin: 5px;">
         <div class="form-group">
-            <label for="exampleInputName2">Name</label>
-            <input type="text" class="form-control" id="exampleInputName2" placeholder="Jane Doe">
+            <label for="requestForm">Input Request:</label>
+            <button type="button" class="btn btn-outline-success" click="start">Start</button>
+            <button type="button" class="btn btn-outline-danger" click="stop">Stop</button>
         </div>
         <div class="form-group">
-            <label for="exampleInputEmail2">Email</label>
-            <input type="email" class="form-control" id="exampleInputEmail2" placeholder="jane.doe@example.com">
+            <textarea class="form-control" id="requestForm" rows="10"></textarea>
         </div>
-        <button type="submit" class="btn btn-default">Send invitation</button>
-    </form>
+    </div>
     <script type="text/javascript">
         var dom = document.getElementById('container');
         var stressChart = echarts.init(dom, 'dark', {

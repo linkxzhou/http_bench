@@ -709,8 +709,9 @@ func parseTime(timeStr string) int64 {
 	return multi * t
 }
 
-func execStress(params StressParameters, stressTest *StressWorker) *StressResult {
+func execStress(params StressParameters, stressTestPtr **StressWorker) *StressResult {
 	var stressResult *StressResult
+	var stressTest *StressWorker
 	if v, ok := stressList.Load(params.SequenceId); ok && v != nil {
 		stressTest = v.(*StressWorker)
 	} else {
@@ -719,6 +720,7 @@ func execStress(params StressParameters, stressTest *StressWorker) *StressResult
 		}
 		stressList.Store(params.SequenceId, stressTest)
 	}
+	*stressTestPtr = stressTest
 	switch params.Cmd {
 	case CMD_START:
 		if len(workerList) > 0 {
@@ -756,9 +758,9 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 		} else {
 			verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
 			var stressWorker *StressWorker
-			if result := execStress(params, stressWorker); result != nil {
+			if result := execStress(params, &stressWorker); result != nil {
 				if wbody, err := json.Marshal(result); err != nil {
-					verbosePrint(VERBOSE_ERROR, "Marshal result: %v", err)
+					verbosePrint(VERBOSE_ERROR, "Marshal result: %v\n", err)
 				} else {
 					w.Write(wbody)
 				}
@@ -1015,16 +1017,14 @@ func main() {
 
 		go func() {
 			<-stopSignal
-			verbosePrint(VERBOSE_INFO, "Recv stop signal\n")
+			verbosePrint(VERBOSE_INFO, "Recv stop signal")
 			params.Cmd = CMD_STOP
 			jsonBody, _ := json.Marshal(params)
 			requestWorkerList(jsonBody, stressTest)
-			if stressTest != nil {
-				stressTest.Stop(true) // Recv stop signal and Stop commands
-			}
+			stressTest.Stop(true) // Recv stop signal and Stop commands
 		}()
 
-		if stressResult = execStress(params, stressTest); stressResult != nil {
+		if stressResult = execStress(params, &stressTest); stressResult != nil {
 			close(stopSignal)
 			stressResult.print()
 		}
