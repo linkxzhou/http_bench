@@ -568,7 +568,6 @@ func (b *StressWorker) collectReport() {
 			timeTicker.Stop()
 			b.wg.Done()
 		}()
-
 		b.currentResult = StressResult{
 			ErrorDist:      make(map[string]int, 0),
 			StatusCodeDist: make(map[int]int, 0),
@@ -576,7 +575,6 @@ func (b *StressWorker) collectReport() {
 			Slowest:        int64(INT_MIN),
 			Fastest:        int64(INT_MAX),
 		}
-
 		for {
 			select {
 			case res, ok := <-b.results:
@@ -711,8 +709,7 @@ func parseTime(timeStr string) int64 {
 	return multi * t
 }
 
-func execStress(params StressParameters) (*StressWorker, *StressResult) {
-	var stressTest *StressWorker
+func execStress(params StressParameters, stressTest *StressWorker) *StressResult {
 	var stressResult *StressResult
 	if v, ok := stressList.Load(params.SequenceId); ok && v != nil {
 		stressTest = v.(*StressWorker)
@@ -732,7 +729,9 @@ func execStress(params StressParameters) (*StressWorker, *StressResult) {
 			stressTest.Start()
 		}
 		stressResult = stressTest.Wait()
-		stressResult.print()
+		if stressResult != nil {
+			stressResult.print()
+		}
 		stressList.Delete(params.SequenceId)
 	case CMD_STOP:
 		stressTest.Stop(true)
@@ -746,7 +745,7 @@ func execStress(params StressParameters) (*StressWorker, *StressResult) {
 			stressResult = &stressTest.currentResult
 		}
 	}
-	return stressTest, stressResult
+	return stressResult
 }
 
 func handleWorker(w http.ResponseWriter, r *http.Request) {
@@ -756,7 +755,8 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(os.Stderr, "Unmarshal body err: %s\n", err.Error())
 		} else {
 			verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
-			if _, result := execStress(params); result != nil {
+			var stressWorker *StressWorker
+			if result := execStress(params, stressWorker); result != nil {
 				if wbody, err := json.Marshal(result); err != nil {
 					verbosePrint(VERBOSE_ERROR, "Marshal result: %v", err)
 				} else {
@@ -829,6 +829,7 @@ var (
 				}
 			}(v)
 		}
+		wg.Wait()
 		return stressResult
 	}
 )
@@ -1016,14 +1017,14 @@ func main() {
 			<-stopSignal
 			verbosePrint(VERBOSE_INFO, "Recv stop signal\n")
 			params.Cmd = CMD_STOP
+			jsonBody, _ := json.Marshal(params)
+			requestWorkerList(jsonBody, stressTest)
 			if stressTest != nil {
-				jsonBody, _ := json.Marshal(params)
-				requestWorkerList(jsonBody, stressTest)
 				stressTest.Stop(true) // Recv stop signal and Stop commands
 			}
 		}()
 
-		if stressTest, stressResult = execStress(params); stressResult != nil {
+		if stressResult = execStress(params, stressTest); stressResult != nil {
 			close(stopSignal)
 			stressResult.print()
 		}
