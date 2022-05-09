@@ -10,7 +10,7 @@
 - [ ] 支持变量
 - [ ] HTTP/3 压测
 - [ ] Websocket 压测
-- [ ] UI Metrics
+- [x] UI Metrics
 
 ### 安装
 

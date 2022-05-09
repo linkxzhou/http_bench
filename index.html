@@ -8,30 +8,34 @@
 </head>
 <body style="height: 100%; margin: 0">
     <div id="container" style="height: 70%"></div>
-    <div style="margin: 5px;">
-        <div class="form-group">
-            <label for="requestForm">Input Request:</label>
-            <button type="button" class="btn btn-outline-success" onclick="submitStart()">Start</button>
-            <button type="button" class="btn btn-outline-danger" onclick="submitStop()">Stop</button>
+    <div>
+        <div class="form-group form-inline" style="margin: 5px;">
+            <label for="requestForm" style="margin-left: 5px;">Input Request:</label>
+            <button type="button" class="btn btn-success" onclick="submitStart()" style="margin-left: 5px;">Start</button>
+            <button type="button" class="btn btn-danger" onclick="submitStop()" style="margin-left: 5px;">Stop</button>
+        </div>
+        <div class="form-group form-inline" style="margin: 5px;">
+            <label for="requestForm" style="margin-left: 5px;">Time Metrics:</label>
+            <input type="text" class="form-control" id="timeMetrics" aria-describedby="Time Metrics" style="margin-left: 5px;" value="1000" />
         </div>
         <div class="form-group">
             <textarea class="form-control" id="requestForm" rows="10">
 {
-    "request_method": "GET",
-    "request_body": "",
-    "request_httptype": "http1",
-    "n": 0,
-    "c": 1,
-    "duration": 1000,
-    "timeout": 3000,
-    "qps": 0,
-    "disable_compression": false,
-    "disable_keepalives": false,
-    "auth_username": "",
-    "auth_password": "",
-    "headers": null,
-    "urls": ["http://9.134.13.199:8000?data=1"],
-    "output": ""
+        "request_method": "GET",
+        "request_body": "",
+        "request_httptype": "http1",
+        "n": 0,
+        "c": 1,
+        "duration": 1000,
+        "timeout": 3000,
+        "qps": 0,
+        "disable_compression": false,
+        "disable_keepalives": false,
+        "auth_username": "",
+        "auth_password": "",
+        "headers": null,
+        "urls": ["http://9.134.13.199:8000?data=1"],
+        "output": ""
 }</textarea>
         </div>
     </div>
@@ -60,7 +64,9 @@
         var interval;
         function submitStart(e) {
             seqid = seqid + 1;
-            var requestData = JSON.parse(document.getElementById("requestForm").innerHTML);
+            var requestData = JSON.parse(document.getElementById("requestForm").value);
+            var timeMetrics = parseInt(document.getElementById("timeMetrics").value);
+            timeMetrics = timeMetrics ? timeMetrics : 5000;
             requestData.cmd = 0;
             requestData.sequence_id = seqid;
             fetch('/api', {
@@ -76,18 +82,18 @@
                     headers: {'Content-Type': 'application/json;charset=utf-8'},
                     body: JSON.stringify(requestData)
                 }).then(response => response.json()).then(data => {
-                    if (data && data.lats_total) {
+                    if (data && data.lats_total && (data.lats_total - latsTotal) >= 0) {
                         timeList.push(new Date().format("hh:mm:ss"));
-                        dataList.push(data.lats_total - latsTotal);
+                        dataList.push((data.lats_total - latsTotal)*1000/timeMetrics);
                         metricsLoad(timeList, dataList);
                         latsTotal = data.lats_total;
                     }
                 })
-            }, 1000)
+            }, timeMetrics)
         }
         function submitStop(e) {
             clearInterval(interval);
-            var requestData = JSON.parse(document.getElementById("requestForm").innerHTML);
+            var requestData = JSON.parse(document.getElementById("requestForm").value);
             requestData.cmd = 1;
             requestData.sequence_id = seqid;
             fetch('/api', {

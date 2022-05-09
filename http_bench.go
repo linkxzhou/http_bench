@@ -194,8 +194,8 @@ type StressResult struct {
 }
 
 func (result *StressResult) print() {
-	result.rdLock.Lock()
-	defer result.rdLock.Unlock()
+	result.rdLock.RLock()
+	defer result.rdLock.RUnlock()
 
 	switch result.Output {
 	case "csv":
@@ -224,6 +224,7 @@ func (result *StressResult) print() {
 		} else if result.SizeTotal > 0 {
 			fmt.Printf("  Total data:\t%4.3f bytes\n", float64(result.SizeTotal))
 		} else {
+			// pass
 		}
 		fmt.Printf("  Size/request:\t%d bytes\n", result.SizeTotal/result.LatsTotal)
 		result.printStatusCodes()
@@ -237,9 +238,6 @@ func (result *StressResult) print() {
 
 // Print latency distribution.
 func (result *StressResult) printLatencies() {
-	result.rdLock.Lock()
-	defer result.rdLock.Unlock()
-
 	pctls := []int{10, 25, 50, 75, 90, 95, 99}
 	data := make([]string, len(pctls))
 	durationLats := make([]string, 0)
@@ -264,9 +262,6 @@ func (result *StressResult) printLatencies() {
 
 // Print status code distribution.
 func (result *StressResult) printStatusCodes() {
-	result.rdLock.Lock()
-	defer result.rdLock.Unlock()
-
 	fmt.Printf("\nStatus code distribution:\n")
 	for code, num := range result.StatusCodeDist {
 		fmt.Printf("  [%d]\t%d responses\n", code, num)
@@ -274,9 +269,6 @@ func (result *StressResult) printStatusCodes() {
 }
 
 func (result *StressResult) printErrors() {
-	result.rdLock.Lock()
-	defer result.rdLock.Unlock()
-
 	fmt.Printf("\nError distribution:\n")
 	for err, num := range result.ErrorDist {
 		fmt.Printf("  [%d]\t%s\n", num, err)
@@ -284,10 +276,68 @@ func (result *StressResult) printErrors() {
 }
 
 func (result *StressResult) marshal() ([]byte, error) {
+	result.rdLock.RLock()
+	defer result.rdLock.RUnlock()
+
+	return json.Marshal(result)
+}
+
+func (result *StressResult) result(res *result) {
 	result.rdLock.Lock()
 	defer result.rdLock.Unlock()
 
-	return json.Marshal(result)
+	if res.err != nil {
+		result.ErrorDist[res.err.Error()]++
+	} else {
+		result.Lats[fmt.Sprintf("%4.3f", res.duration.Seconds())]++
+		duration := int64(res.duration.Seconds() * SCALE_NUM)
+		result.LatsTotal++
+		if result.Slowest < duration {
+			result.Slowest = duration
+		}
+		if result.Fastest > duration {
+			result.Fastest = duration
+		}
+		result.AvgTotal += duration
+		result.StatusCodeDist[res.statusCode]++
+		if res.contentLength > 0 {
+			result.SizeTotal += res.contentLength
+		}
+	}
+}
+
+func (result *StressResult) combine(resultList ...StressResult) {
+	result.rdLock.RLock()
+	defer result.rdLock.RUnlock()
+
+	for _, v := range resultList {
+		if result.Slowest < v.Slowest {
+			result.Slowest = v.Slowest
+		}
+		if result.Fastest > v.Fastest {
+			result.Fastest = v.Fastest
+		}
+		result.LatsTotal += v.LatsTotal
+		result.AvgTotal += v.AvgTotal
+		for code, c := range v.StatusCodeDist {
+			result.StatusCodeDist[code] += c
+		}
+		result.SizeTotal += v.SizeTotal
+		for code, c := range v.ErrorDist {
+			result.ErrorDist[code] += c
+		}
+		for lats, c := range v.Lats {
+			result.Lats[lats] += c
+		}
+	}
+
+	if result.Duration > 0 {
+		result.Rps = int64((result.LatsTotal * SCALE_NUM * SCALE_NUM) / result.Duration)
+	}
+
+	if result.LatsTotal > 0 {
+		result.Average = result.AvgTotal / result.LatsTotal
+	}
 }
 
 type StressParameters struct {
@@ -387,42 +437,8 @@ func (b *StressWorker) Wait() *StressResult {
 		return nil
 	}
 
+	b.resultList[0].combine(b.resultList[1:]...)
 	verbosePrint(VERBOSE_DEBUG, "resultList len: %d\n", len(b.resultList))
-
-	b.resultList[0].rdLock.Lock()
-	defer b.resultList[0].rdLock.Unlock()
-
-	if len(b.resultList) > 1 {
-		for _, v := range b.resultList[1:] {
-			if b.resultList[0].Slowest < v.Slowest {
-				b.resultList[0].Slowest = v.Slowest
-			}
-			if b.resultList[0].Fastest > v.Fastest {
-				b.resultList[0].Fastest = v.Fastest
-			}
-			b.resultList[0].LatsTotal += v.LatsTotal
-			b.resultList[0].AvgTotal += v.AvgTotal
-			for code, c := range v.StatusCodeDist {
-				b.resultList[0].StatusCodeDist[code] += c
-			}
-			b.resultList[0].SizeTotal += v.SizeTotal
-			for code, c := range v.ErrorDist {
-				b.resultList[0].ErrorDist[code] += c
-			}
-			for lats, c := range v.Lats {
-				b.resultList[0].Lats[lats] += c
-			}
-		}
-	}
-
-	if b.resultList[0].Duration > 0 {
-		b.resultList[0].Rps = int64((b.resultList[0].LatsTotal * SCALE_NUM * SCALE_NUM) / b.resultList[0].Duration)
-	}
-
-	if b.resultList[0].LatsTotal > 0 {
-		b.resultList[0].Average = b.resultList[0].AvgTotal / b.resultList[0].LatsTotal
-	}
-
 	return &(b.resultList[0])
 }
 
@@ -545,6 +561,7 @@ func (b *StressWorker) runWorkers() {
 					fmt.Fprintf(os.Stderr, "Internal err: %v\n", r)
 				}
 			}()
+
 			b.runWorker(b.RequestParams.N / b.RequestParams.C)
 		}()
 	}
@@ -603,32 +620,12 @@ func (b *StressWorker) collectReport() {
 		for {
 			select {
 			case res, ok := <-b.results:
-				b.currentResult.rdLock.Lock()
 				if !ok {
 					b.currentResult.Duration = int64(b.totalTime.Seconds() * SCALE_NUM)
 					b.resultList = append(b.resultList, b.currentResult)
-					b.currentResult.rdLock.Unlock()
 					return
 				}
-				if res.err != nil {
-					b.currentResult.ErrorDist[res.err.Error()]++
-				} else {
-					b.currentResult.Lats[fmt.Sprintf("%4.3f", res.duration.Seconds())]++
-					duration := int64(res.duration.Seconds() * SCALE_NUM)
-					b.currentResult.LatsTotal++
-					if b.currentResult.Slowest < duration {
-						b.currentResult.Slowest = duration
-					}
-					if b.currentResult.Fastest > duration {
-						b.currentResult.Fastest = duration
-					}
-					b.currentResult.AvgTotal += duration
-					b.currentResult.StatusCodeDist[res.statusCode]++
-					if res.contentLength > 0 {
-						b.currentResult.SizeTotal += res.contentLength
-					}
-				}
-				b.currentResult.rdLock.Unlock()
+				b.currentResult.result(res)
 			case <-timeTicker.C:
 				verbosePrint(VERBOSE_INFO, "Time ticker upcoming, duration: %ds\n", b.RequestParams.Duration)
 				b.Stop(false) // Time ticker exec Stop commands
