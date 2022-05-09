@@ -11,39 +11,118 @@
     <div style="margin: 5px;">
         <div class="form-group">
             <label for="requestForm">Input Request:</label>
-            <button type="button" class="btn btn-outline-success" click="start">Start</button>
-            <button type="button" class="btn btn-outline-danger" click="stop">Stop</button>
+            <button type="button" class="btn btn-outline-success" onclick="submitStart()">Start</button>
+            <button type="button" class="btn btn-outline-danger" onclick="submitStop()">Stop</button>
         </div>
         <div class="form-group">
-            <textarea class="form-control" id="requestForm" rows="10"></textarea>
+            <textarea class="form-control" id="requestForm" rows="10">
+{
+    "request_method": "GET",
+    "request_body": "",
+    "request_httptype": "http1",
+    "n": 0,
+    "c": 1,
+    "duration": 1000,
+    "timeout": 3000,
+    "qps": 0,
+    "disable_compression": false,
+    "disable_keepalives": false,
+    "auth_username": "",
+    "auth_password": "",
+    "headers": null,
+    "urls": ["http://9.134.13.199:8000?data=1"],
+    "output": ""
+}</textarea>
         </div>
     </div>
     <script type="text/javascript">
+        Date.prototype.format = function(fmt) { 
+            var o = { 
+                "M+" : this.getMonth()+1,
+                "d+" : this.getDate(),
+                "h+" : this.getHours(),
+                "m+" : this.getMinutes(),
+                "s+" : this.getSeconds(),
+                "q+" : Math.floor((this.getMonth()+3)/3),
+                "S"  : this.getMilliseconds()
+            }; 
+            if(/(y+)/.test(fmt)) {
+                fmt=fmt.replace(RegExp.$1, (this.getFullYear()+"").substr(4 - RegExp.$1.length)); 
+            }
+            for(var k in o) {
+                if(new RegExp("("+ k +")").test(fmt)){
+                    fmt = fmt.replace(RegExp.$1, (RegExp.$1.length==1) ? (o[k]) : (("00"+ o[k]).substr((""+ o[k]).length)));
+                }
+            }
+            return fmt; 
+        }
+        var seqid = Math.floor(Math.random() * 1000000) + 1;
+        var interval;
+        function submitStart(e) {
+            seqid = seqid + 1;
+            var requestData = JSON.parse(document.getElementById("requestForm").innerHTML);
+            requestData.cmd = 0;
+            requestData.sequence_id = seqid;
+            fetch('/api', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json;charset=utf-8'},
+                body: JSON.stringify(requestData)
+            }).then(response => response.json());
+            var timeList = [], dataList = [], latsTotal = 0;
+            interval = setInterval(function() {
+                requestData.cmd = 2;
+                fetch('/api', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json;charset=utf-8'},
+                    body: JSON.stringify(requestData)
+                }).then(response => response.json()).then(data => {
+                    if (data && data.lats_total) {
+                        timeList.push(new Date().format("hh:mm:ss"));
+                        dataList.push(data.lats_total - latsTotal);
+                        metricsLoad(timeList, dataList);
+                        latsTotal = data.lats_total;
+                    }
+                })
+            }, 1000)
+        }
+        function submitStop(e) {
+            clearInterval(interval);
+            var requestData = JSON.parse(document.getElementById("requestForm").innerHTML);
+            requestData.cmd = 1;
+            requestData.sequence_id = seqid;
+            fetch('/api', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json;charset=utf-8'},
+                body: JSON.stringify(requestData)
+            });
+        }
         var dom = document.getElementById('container');
         var stressChart = echarts.init(dom, 'dark', {
             renderer: 'canvas',
             useDirtyRect: false
         });
-        var app = {};
-        var option = {
-            xAxis: {
-                type: 'category',
-                data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-            },
-            yAxis: {
-                type: 'value'
-            },
-            series: [
-                {
-                    data: [820, 932, 901, 934, 1290, 1330, 1320],
-                    type: 'line',
-                    smooth: true
-                }
-            ]
-        };
-        if (option && typeof option === 'object') {
-            stressChart.setOption(option);
+        function metricsLoad(timeList, dataList) {
+            var option = {
+                xAxis: {
+                    type: 'category',
+                    data: timeList
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [
+                    {
+                        data: dataList,
+                        type: 'line',
+                        smooth: true
+                    }
+                ]
+            };
+            if (option && typeof option === 'object') {
+                stressChart.setOption(option);
+            }
         }
+        metricsLoad([new Date().format("hh:mm:ss")], [0])
         window.addEventListener('resize', stressChart.resize);
     </script>
 </body>

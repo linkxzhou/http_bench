@@ -190,9 +190,13 @@ type StressResult struct {
 	SizeTotal      int64            `json:"size_total"`
 	Duration       int64            `json:"duration"`
 	Output         string           `json:"output"`
+	rdLock         sync.RWMutex     `json:"-"`
 }
 
 func (result *StressResult) print() {
+	result.rdLock.Lock()
+	defer result.rdLock.Unlock()
+
 	switch result.Output {
 	case "csv":
 		fmt.Printf("Duration,Count\n")
@@ -233,6 +237,9 @@ func (result *StressResult) print() {
 
 // Print latency distribution.
 func (result *StressResult) printLatencies() {
+	result.rdLock.Lock()
+	defer result.rdLock.Unlock()
+
 	pctls := []int{10, 25, 50, 75, 90, 95, 99}
 	data := make([]string, len(pctls))
 	durationLats := make([]string, 0)
@@ -257,6 +264,9 @@ func (result *StressResult) printLatencies() {
 
 // Print status code distribution.
 func (result *StressResult) printStatusCodes() {
+	result.rdLock.Lock()
+	defer result.rdLock.Unlock()
+
 	fmt.Printf("\nStatus code distribution:\n")
 	for code, num := range result.StatusCodeDist {
 		fmt.Printf("  [%d]\t%d responses\n", code, num)
@@ -264,10 +274,20 @@ func (result *StressResult) printStatusCodes() {
 }
 
 func (result *StressResult) printErrors() {
+	result.rdLock.Lock()
+	defer result.rdLock.Unlock()
+
 	fmt.Printf("\nError distribution:\n")
 	for err, num := range result.ErrorDist {
 		fmt.Printf("  [%d]\t%s\n", num, err)
 	}
+}
+
+func (result *StressResult) marshal() ([]byte, error) {
+	result.rdLock.Lock()
+	defer result.rdLock.Unlock()
+
+	return json.Marshal(result)
 }
 
 type StressParameters struct {
@@ -366,6 +386,11 @@ func (b *StressWorker) Wait() *StressResult {
 		fmt.Fprintf(os.Stderr, "Internal err: stress test result empty")
 		return nil
 	}
+
+	verbosePrint(VERBOSE_DEBUG, "resultList len: %d\n", len(b.resultList))
+
+	b.resultList[0].rdLock.Lock()
+	defer b.resultList[0].rdLock.Unlock()
 
 	if len(b.resultList) > 1 {
 		for _, v := range b.resultList[1:] {
@@ -578,9 +603,11 @@ func (b *StressWorker) collectReport() {
 		for {
 			select {
 			case res, ok := <-b.results:
+				b.currentResult.rdLock.Lock()
 				if !ok {
 					b.currentResult.Duration = int64(b.totalTime.Seconds() * SCALE_NUM)
 					b.resultList = append(b.resultList, b.currentResult)
+					b.currentResult.rdLock.Unlock()
 					return
 				}
 				if res.err != nil {
@@ -601,6 +628,7 @@ func (b *StressWorker) collectReport() {
 						b.currentResult.SizeTotal += res.contentLength
 					}
 				}
+				b.currentResult.rdLock.Unlock()
 			case <-timeTicker.C:
 				verbosePrint(VERBOSE_INFO, "Time ticker upcoming, duration: %ds\n", b.RequestParams.Duration)
 				b.Stop(false) // Time ticker exec Stop commands
@@ -736,13 +764,21 @@ func execStress(params StressParameters, stressTestPtr **StressWorker) *StressRe
 		}
 		stressList.Delete(params.SequenceId)
 	case CMD_STOP:
+		if len(workerList) > 0 {
+			jsonBody, _ := json.Marshal(params)
+			requestWorkerList(jsonBody, stressTest)
+		}
 		stressTest.Stop(true)
 		stressList.Delete(params.SequenceId)
 	case CMD_METRICS:
 		if len(workerList) > 0 {
 			jsonBody, _ := json.Marshal(params)
-			resultList := requestWorkerList(jsonBody, stressTest)
-			stressTest.Append(resultList...)
+			if resultList := requestWorkerList(jsonBody, stressTest); len(resultList) > 0 {
+				stressResult = &StressResult{}
+				for i := 0; i < len(resultList); i++ {
+					stressResult.LatsTotal += resultList[i].LatsTotal
+				} // TODO: dispose other variable
+			}
 		} else {
 			stressResult = &stressTest.currentResult
 		}
@@ -759,7 +795,7 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 			verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
 			var stressWorker *StressWorker
 			if result := execStress(params, &stressWorker); result != nil {
-				if wbody, err := json.Marshal(result); err != nil {
+				if wbody, err := result.marshal(); err != nil {
 					verbosePrint(VERBOSE_ERROR, "Marshal result: %v\n", err)
 				} else {
 					w.Write(wbody)
