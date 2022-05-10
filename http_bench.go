@@ -442,50 +442,12 @@ func (b *StressWorker) Wait() *StressResult {
 	return &(b.resultList[0])
 }
 
-func (b *StressWorker) runWorker(n int) {
+func (b *StressWorker) runWorker(n int, client *http.Client) {
 	var throttle <-chan time.Time
 	var runCounts int = 0
 
 	if b.RequestParams.Qps > 0 {
 		throttle = time.Tick(time.Duration(1e6/(b.RequestParams.Qps)) * time.Microsecond)
-	}
-
-	client := &http.Client{
-		Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-	}
-
-	switch b.RequestParams.RequestHttpType {
-	case TYPE_HTTP2:
-		tr := &http2.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-			DisableCompression: b.RequestParams.DisableCompression,
-		}
-		client.Transport = tr
-	case TYPE_HTTP1:
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-			DisableCompression:  b.RequestParams.DisableCompression,
-			DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
-			TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-			TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
-			DialContext: (&net.Dialer{
-				Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
-				KeepAlive: time.Duration(60) * time.Second,
-			}).DialContext,
-			MaxIdleConns:    200,
-			IdleConnTimeout: time.Duration(60) * time.Second,
-		}
-		if proxyUrl != nil {
-			tr.Proxy = http.ProxyURL(proxyUrl)
-		}
-		client.Transport = tr
-	case TYPE_HTTP3: // TODO: not support http3
-		fmt.Fprintf(os.Stderr, "Not support %s\n", TYPE_HTTP3)
-		return
 	}
 
 	// random set seed
@@ -551,6 +513,46 @@ func (b *StressWorker) runWorkers() {
 		verbosePrint(VERBOSE_ERROR, "Parse request body function err: "+err.Error()+"\n")
 	}
 
+	client := &http.Client{
+		Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+	}
+
+	switch b.RequestParams.RequestHttpType {
+	case TYPE_HTTP2:
+		tr := &http2.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			DisableCompression: b.RequestParams.DisableCompression,
+		}
+		client.Transport = tr
+	case TYPE_HTTP1:
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			DisableCompression:  b.RequestParams.DisableCompression,
+			DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
+			TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
+			DialContext: (&net.Dialer{
+				Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
+				KeepAlive: time.Duration(60) * time.Second,
+			}).DialContext,
+			MaxIdleConns:        200,
+			MaxIdleConnsPerHost: 200,
+			MaxConnsPerHost:     200,
+			IdleConnTimeout:     time.Duration(60) * time.Second,
+		}
+		if proxyUrl != nil {
+			tr.Proxy = http.ProxyURL(proxyUrl)
+		}
+		client.Transport = tr
+	case TYPE_HTTP3: // TODO: not support http3
+		fmt.Fprintf(os.Stderr, "Not support %s\n", TYPE_HTTP3)
+		return
+	}
+
 	// Ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
 	for i := 0; i < b.RequestParams.C && !(b.IsStop()); i++ {
 		wg.Add(1)
@@ -562,7 +564,7 @@ func (b *StressWorker) runWorkers() {
 				}
 			}()
 
-			b.runWorker(b.RequestParams.N / b.RequestParams.C)
+			b.runWorker(b.RequestParams.N/b.RequestParams.C, client)
 		}()
 	}
 
