@@ -774,7 +774,7 @@ func execStress(params StressParameters, stressTestPtr **StressWorker) *StressRe
 				stressResult = &StressResult{}
 				for i := 0; i < len(resultList); i++ {
 					stressResult.LatsTotal += resultList[i].LatsTotal
-				} // TODO: dispose other variable
+				} // TODO: assign other variable
 			}
 		} else {
 			stressResult = &stressTest.currentResult

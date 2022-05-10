@@ -12,8 +12,10 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [ ] Support variable
 - [ ] HTTP/3 stress
 - [ ] Websocket stress
-- [ ] Show UI Metrics
-  
+- [x] Show UI Metrics
+
+![avatar](./demo.png)
+
 ### Installation
 
 ```
@@ -87,8 +89,9 @@ Latency distribution:
 -url-file 	Read url list from file and random stress test.
 -body-file  Request body from file.
 -listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
+-web Listen web IP:PORT and operate stress test on browser(see qps).
 -W  Running distributed stress test worker mechine list.
-      for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
+      for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711". 
 ```
 
 Example stress test for url(print detail info "-verbose 1"):
@@ -117,6 +120,16 @@ Example distributed stress test(print detail info "-verbose 1"):
 (2) Second step:
 ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose 1
 ```
+
+Example stress test on browser:
+```
+(1) First step:
+./http_bench -web "127.0.0.1:12345" -verbose 1
+
+(2) Second step:
+Open url(http://127.0.0.1:12345) on browser
+```
+
 
 ### Support Function and Variable
 
