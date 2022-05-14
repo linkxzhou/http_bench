@@ -406,7 +406,6 @@ type (
 		// Wait some task finish
 		wg                        sync.WaitGroup
 		bodyTemplate, urlTemplate *template.Template
-		client                    []*http.Client
 	}
 )
 
@@ -498,58 +497,6 @@ func (b *StressWorker) runWorker(n int, client *http.Client) {
 	}
 }
 
-func (b *StressWorker) initClient() {
-	if b.client != nil {
-		return
-	}
-
-	b.client = make([]*http.Client, 0)
-	for i := 0; i < HTTPTR_NUM; i++ {
-		client := &http.Client{
-			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-		}
-
-		switch b.RequestParams.RequestHttpType {
-		case TYPE_HTTP2:
-			tr := &http2.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-				DisableCompression: b.RequestParams.DisableCompression,
-			}
-			client.Transport = tr
-		case TYPE_HTTP1:
-			tr := &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-				DisableCompression:  b.RequestParams.DisableCompression,
-				DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
-				TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-				TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
-				DialContext: (&net.Dialer{
-					Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
-					KeepAlive: time.Duration(60) * time.Second,
-				}).DialContext,
-				MaxIdleConns:        10,
-				MaxIdleConnsPerHost: 10,
-				MaxConnsPerHost:     10,
-				IdleConnTimeout:     time.Duration(90) * time.Second,
-			}
-			if proxyUrl != nil {
-				tr.Proxy = http.ProxyURL(proxyUrl)
-			}
-			client.Transport = tr
-		}
-		b.client = append(b.client, client)
-	}
-}
-
-func (b *StressWorker) getClient() *http.Client {
-	randv := rand.Intn(len(b.client)) % len(b.client)
-	return b.client[randv]
-}
-
 func (b *StressWorker) runWorkers() {
 	if len(b.RequestParams.Urls) > 1 {
 		fmt.Printf("Running %d connections, @ random urls.txt\n", b.RequestParams.C)
@@ -578,20 +525,56 @@ func (b *StressWorker) runWorkers() {
 		verbosePrint(VERBOSE_ERROR, "Parse request body function err: "+err.Error()+"\n")
 	}
 
-	b.initClient()
-
 	// Ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
 	for i := 0; i < b.RequestParams.C && !(b.IsStop()); i++ {
 		wg.Add(1)
 		go func() {
+			client := &http.Client{
+				Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			}
+
 			defer func() {
+				client.CloseIdleConnections()
 				wg.Done()
 				if r := recover(); r != nil {
 					fmt.Fprintf(os.Stderr, "Internal err: %v\n", r)
 				}
 			}()
 
-			b.runWorker(b.RequestParams.N/b.RequestParams.C, b.getClient())
+			switch b.RequestParams.RequestHttpType {
+			case TYPE_HTTP2:
+				tr := &http2.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+					DisableCompression: b.RequestParams.DisableCompression,
+				}
+				client.Transport = tr
+			case TYPE_HTTP1:
+				tr := &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+					DisableCompression:  b.RequestParams.DisableCompression,
+					DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
+					TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+					TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
+					DialContext: (&net.Dialer{
+						Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
+						KeepAlive: time.Duration(60) * time.Second,
+					}).DialContext,
+					MaxIdleConns:        10,
+					MaxIdleConnsPerHost: 10,
+					MaxConnsPerHost:     10,
+					IdleConnTimeout:     time.Duration(90) * time.Second,
+				}
+				if proxyUrl != nil {
+					tr.Proxy = http.ProxyURL(proxyUrl)
+				}
+				client.Transport = tr
+			}
+
+			b.runWorker(b.RequestParams.N/b.RequestParams.C, client)
 		}()
 	}
 
@@ -1073,7 +1056,9 @@ func main() {
 	}
 
 	// decrease gc profile
-	debug.SetGCPercent(500)
+	if getEnv("BENCH_GC") == "1" {
+		debug.SetGCPercent(500)
+	}
 
 	if len(*listen) > 0 {
 		mux := http.NewServeMux()
