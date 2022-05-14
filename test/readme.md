@@ -9,3 +9,6 @@ go test -v echo_http2_test.go
 ../http_bench -d 10s -c 10 -m POST "http://127.0.0.1:18090" -body "{}"
 ../http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1:19090" -body "{}"
 ```
+
+# TODO:
+[] test script

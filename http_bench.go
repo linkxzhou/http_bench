@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"flag"
@@ -1038,33 +1039,46 @@ func main() {
 		}
 	}
 
+	var mainServer *http.Server
+	_, mainCancel := context.WithCancel(context.Background())
+
 	if getEnv("BENCH_PROFILE") == "1" {
 		file, err := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 		if err == nil {
 			fmt.Fprintf(os.Stdout, "== StartCPUProfile ==\n")
 			pprof.StartCPUProfile(file)
+			defer func() {
+				pprof.StopCPUProfile()
+				file.Close()
+				fmt.Fprintf(os.Stdout, "== StopCPUProfile ==\n")
+			}()
+
 			osSignal := make(chan os.Signal)
 			signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
 			go func() {
 				<-osSignal
-				pprof.StopCPUProfile()
-				file.Close()
-				fmt.Fprintf(os.Stdout, "== StopCPUProfile ==\n")
-				os.Exit(0)
+				if mainServer != nil {
+					mainServer.Shutdown(context.Background())
+				}
+				mainCancel()
 			}()
 		}
 	}
 
 	// decrease gc profile
 	if getEnv("BENCH_GC") == "1" {
-		debug.SetGCPercent(500)
+		debug.SetGCPercent(200)
 	}
 
 	if len(*listen) > 0 {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", handleWorker)
 		fmt.Fprintf(os.Stdout, "Worker listen %s\n", *listen)
-		if err := http.ListenAndServe(*listen, mux); err != nil {
+		mainServer = &http.Server{
+			Addr:    *listen,
+			Handler: mux,
+		}
+		if err := mainServer.ListenAndServe(); err != nil {
 			fmt.Fprintf(os.Stderr, "ListenAndServe err: %s\n", err.Error())
 		}
 	} else if len(*web) > 0 {
@@ -1072,13 +1086,18 @@ func main() {
 		mux.Handle("/", http.FileServer(http.Dir("./")))
 		mux.HandleFunc("/api", handleWorker)
 		fmt.Fprintf(os.Stdout, "Web listen %s\n", *web)
-		if err := http.ListenAndServe(*web, mux); err != nil {
+		mainServer = &http.Server{
+			Addr:    *web,
+			Handler: mux,
+		}
+		if err := mainServer.ListenAndServe(); err != nil {
 			fmt.Fprintf(os.Stderr, "ListenAndServe err: %s\n", err.Error())
 		}
 	} else {
 		if len(params.Urls) <= 0 || len(params.Urls[0]) <= 0 {
 			usageAndExit("url or url-file empty.")
 		}
+
 		params.SequenceId = time.Now().Unix()
 		params.Cmd = CMD_START
 		verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
@@ -1090,11 +1109,12 @@ func main() {
 
 		go func() {
 			<-stopSignal
-			verbosePrint(VERBOSE_INFO, "Recv stop signal")
+			verbosePrint(VERBOSE_INFO, "Recv stop signal\n")
 			params.Cmd = CMD_STOP
 			jsonBody, _ := json.Marshal(params)
 			requestWorkerList(jsonBody, stressTest)
 			stressTest.Stop(true) // Recv stop signal and Stop commands
+			mainCancel()
 		}()
 
 		if stressResult = execStress(params, &stressTest); stressResult != nil {
