@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"os/signal"
 	"regexp"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"sort"
 	"strconv"
@@ -149,6 +151,8 @@ const (
 	CMD_METRICS
 
 	SCALE_NUM = 10000
+
+	HTTPTR_NUM = 20
 
 	TYPE_HTTP1 = "http1"
 	TYPE_HTTP2 = "http2"
@@ -402,6 +406,7 @@ type (
 		// Wait some task finish
 		wg                        sync.WaitGroup
 		bodyTemplate, urlTemplate *template.Template
+		client                    []*http.Client
 	}
 )
 
@@ -478,7 +483,10 @@ func (b *StressWorker) runWorker(n int, client *http.Client) {
 		if err == nil {
 			size = resp.ContentLength
 			code = resp.StatusCode
-			resp.Body.Close()
+			defer resp.Body.Close()
+			if n, _ := fastRead(resp.Body); size <= 0 {
+				size = n
+			}
 		}
 
 		b.results <- &result{
@@ -490,11 +498,68 @@ func (b *StressWorker) runWorker(n int, client *http.Client) {
 	}
 }
 
+func (b *StressWorker) initClient() {
+	if b.client != nil {
+		return
+	}
+
+	b.client = make([]*http.Client, 0)
+	for i := 0; i < HTTPTR_NUM; i++ {
+		client := &http.Client{
+			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+		}
+
+		switch b.RequestParams.RequestHttpType {
+		case TYPE_HTTP2:
+			tr := &http2.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+				DisableCompression: b.RequestParams.DisableCompression,
+			}
+			client.Transport = tr
+		case TYPE_HTTP1:
+			tr := &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+				DisableCompression:  b.RequestParams.DisableCompression,
+				DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
+				TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+				TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
+				DialContext: (&net.Dialer{
+					Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
+					KeepAlive: time.Duration(60) * time.Second,
+				}).DialContext,
+				MaxIdleConns:        10,
+				MaxIdleConnsPerHost: 10,
+				MaxConnsPerHost:     10,
+				IdleConnTimeout:     time.Duration(90) * time.Second,
+			}
+			if proxyUrl != nil {
+				tr.Proxy = http.ProxyURL(proxyUrl)
+			}
+			client.Transport = tr
+		}
+		b.client = append(b.client, client)
+	}
+}
+
+func (b *StressWorker) getClient() *http.Client {
+	randv := rand.Intn(len(b.client)) % len(b.client)
+	return b.client[randv]
+}
+
 func (b *StressWorker) runWorkers() {
 	if len(b.RequestParams.Urls) > 1 {
 		fmt.Printf("Running %d connections, @ random urls.txt\n", b.RequestParams.C)
 	} else {
 		fmt.Printf("Running %d connections, @ %s\n", b.RequestParams.C, b.RequestParams.Urls[0])
+	}
+
+	if b.RequestParams.RequestHttpType == TYPE_HTTP3 { // TODO: not support http3
+		fmt.Fprintf(os.Stderr, "Not support %s\n", TYPE_HTTP3)
+		return
 	}
 
 	var (
@@ -513,45 +578,7 @@ func (b *StressWorker) runWorkers() {
 		verbosePrint(VERBOSE_ERROR, "Parse request body function err: "+err.Error()+"\n")
 	}
 
-	client := &http.Client{
-		Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-	}
-
-	switch b.RequestParams.RequestHttpType {
-	case TYPE_HTTP2:
-		tr := &http2.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-			DisableCompression: b.RequestParams.DisableCompression,
-		}
-		client.Transport = tr
-	case TYPE_HTTP1:
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-			DisableCompression:  b.RequestParams.DisableCompression,
-			DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
-			TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-			TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
-			DialContext: (&net.Dialer{
-				Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
-				KeepAlive: time.Duration(60) * time.Second,
-			}).DialContext,
-			MaxIdleConns:        200,
-			MaxIdleConnsPerHost: 200,
-			MaxConnsPerHost:     200,
-			IdleConnTimeout:     time.Duration(60) * time.Second,
-		}
-		if proxyUrl != nil {
-			tr.Proxy = http.ProxyURL(proxyUrl)
-		}
-		client.Transport = tr
-	case TYPE_HTTP3: // TODO: not support http3
-		fmt.Fprintf(os.Stderr, "Not support %s\n", TYPE_HTTP3)
-		return
-	}
+	b.initClient()
 
 	// Ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
 	for i := 0; i < b.RequestParams.C && !(b.IsStop()); i++ {
@@ -564,7 +591,7 @@ func (b *StressWorker) runWorkers() {
 				}
 			}()
 
-			b.runWorker(b.RequestParams.N/b.RequestParams.C, client)
+			b.runWorker(b.RequestParams.N/b.RequestParams.C, b.getClient())
 		}()
 	}
 
@@ -643,6 +670,21 @@ func usageAndExit(msg string) {
 	flag.Usage()
 	fmt.Fprintf(os.Stderr, "\n")
 	os.Exit(1)
+}
+
+func fastRead(r io.Reader) (int64, error) {
+	n := int64(0)
+	b := make([]byte, 0, 512)
+	for {
+		n1, err := r.Read(b[0:cap(b)])
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+			}
+			return n, err
+		}
+		n += int64(n1)
+	}
 }
 
 func parseInputWithRegexp(input, regx string) ([]string, error) {
@@ -1013,14 +1055,25 @@ func main() {
 		}
 	}
 
-	if *verbose == VERBOSE_TRACE {
-		file, _ := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
-		defer func() {
-			file.Close()
-			pprof.StopCPUProfile()
-		}()
-		pprof.StartCPUProfile(file)
+	if getEnv("BENCH_PROFILE") == "1" {
+		file, err := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
+		if err == nil {
+			fmt.Fprintf(os.Stdout, "== StartCPUProfile ==\n")
+			pprof.StartCPUProfile(file)
+			osSignal := make(chan os.Signal)
+			signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
+			go func() {
+				<-osSignal
+				pprof.StopCPUProfile()
+				file.Close()
+				fmt.Fprintf(os.Stdout, "== StopCPUProfile ==\n")
+				os.Exit(0)
+			}()
+		}
 	}
+
+	// decrease gc profile
+	debug.SetGCPercent(500)
 
 	if len(*listen) > 0 {
 		mux := http.NewServeMux()
