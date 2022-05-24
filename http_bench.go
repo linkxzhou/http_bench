@@ -529,7 +529,9 @@ func (b *StressWorker) runWorkers() {
 				}
 			}()
 
-			b.runWorker(b.RequestParams.N/b.RequestParams.C, client)
+			if client != nil {
+				b.runWorker(b.RequestParams.N/b.RequestParams.C, client)
+			}
 		}()
 	}
 
@@ -655,7 +657,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 			code = http.StatusOK
 		}
 	default:
-		// TODO:
+		// TODO: add http3
 	}
 
 	return
@@ -664,11 +666,15 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 func (b *StressWorker) closeClient(client *StressClient) {
 	switch b.RequestParams.RequestHttpType {
 	case TYPE_HTTP1, TYPE_HTTP2:
-		client.httpClient.CloseIdleConnections()
+		if client.httpClient != nil {
+			client.httpClient.CloseIdleConnections()
+		}
 	case TYPE_WS:
-		client.wsClient.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if client.wsClient != nil {
+			client.wsClient.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		}
 	default:
-		// TODO:
+		// TODO: add http3
 	}
 }
 
