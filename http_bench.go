@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -29,6 +30,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"golang.org/x/net/http2"
 )
 
@@ -158,6 +160,7 @@ const (
 	TYPE_HTTP1 = "http1"
 	TYPE_HTTP2 = "http2"
 	TYPE_HTTP3 = "http3"
+	TYPE_WS    = "ws"
 
 	VERBOSE_TRACE = 0
 	VERBOSE_DEBUG = 1
@@ -447,7 +450,7 @@ func (b *StressWorker) Wait() *StressResult {
 	return &(b.resultList[0])
 }
 
-func (b *StressWorker) runWorker(n int, client *http.Client) {
+func (b *StressWorker) runWorker(n int, client *StressClient) {
 	var throttle <-chan time.Time
 	var runCounts int = 0
 
@@ -469,31 +472,17 @@ func (b *StressWorker) runWorker(n int, client *http.Client) {
 		}
 
 		var t = time.Now()
-		var size int64
-		var code int
 
-		randv := rand.Intn(len(b.RequestParams.Urls)) % len(b.RequestParams.Urls)
-		// if req = nil and break
-		req := b.getRequest(b.RequestParams.Urls[randv])
-		if req == nil {
+		if code, size, err := b.doClient(client); err != nil {
 			b.Stop(false)
 			break
-		}
-		resp, err := client.Do(req)
-		if err == nil {
-			size = resp.ContentLength
-			code = resp.StatusCode
-			defer resp.Body.Close()
-			if n, _ := fastRead(resp.Body); size <= 0 {
-				size = n
+		} else {
+			b.results <- &result{
+				statusCode:    code,
+				duration:      time.Now().Sub(t),
+				err:           err,
+				contentLength: size,
 			}
-		}
-
-		b.results <- &result{
-			statusCode:    code,
-			duration:      time.Now().Sub(t),
-			err:           err,
-			contentLength: size,
 		}
 	}
 }
@@ -530,50 +519,15 @@ func (b *StressWorker) runWorkers() {
 	for i := 0; i < b.RequestParams.C && !(b.IsStop()); i++ {
 		wg.Add(1)
 		go func() {
-			client := &http.Client{
-				Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-			}
+			client := b.getClient()
 
 			defer func() {
-				client.CloseIdleConnections()
+				b.closeClient(client)
 				wg.Done()
 				if r := recover(); r != nil {
 					fmt.Fprintf(os.Stderr, "Internal err: %v\n", r)
 				}
 			}()
-
-			switch b.RequestParams.RequestHttpType {
-			case TYPE_HTTP2:
-				tr := &http2.Transport{
-					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: true,
-					},
-					DisableCompression: b.RequestParams.DisableCompression,
-				}
-				client.Transport = tr
-			case TYPE_HTTP1:
-				tr := &http.Transport{
-					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: true,
-					},
-					DisableCompression:  b.RequestParams.DisableCompression,
-					DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
-					TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-					TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
-					DialContext: (&net.Dialer{
-						Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
-						KeepAlive: time.Duration(60) * time.Second,
-					}).DialContext,
-					MaxIdleConns:        10,
-					MaxIdleConnsPerHost: 10,
-					MaxConnsPerHost:     10,
-					IdleConnTimeout:     time.Duration(90) * time.Second,
-				}
-				if proxyUrl != nil {
-					tr.Proxy = http.ProxyURL(proxyUrl)
-				}
-				client.Transport = tr
-			}
 
 			b.runWorker(b.RequestParams.N/b.RequestParams.C, client)
 		}()
@@ -585,8 +539,63 @@ func (b *StressWorker) runWorkers() {
 	close(b.results)
 }
 
-func (b *StressWorker) getRequest(url string) *http.Request {
+func (b *StressWorker) getClient() *StressClient {
+	client := &StressClient{}
+	switch b.RequestParams.RequestHttpType {
+	case TYPE_HTTP2:
+		client.httpClient = &http.Client{
+			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			Transport: &http2.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+				DisableCompression: b.RequestParams.DisableCompression,
+			},
+		}
+	case TYPE_HTTP1:
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			DisableCompression:  b.RequestParams.DisableCompression,
+			DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
+			TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
+			DialContext: (&net.Dialer{
+				Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
+				KeepAlive: time.Duration(60) * time.Second,
+			}).DialContext,
+			MaxIdleConns:        10,
+			MaxIdleConnsPerHost: 10,
+			MaxConnsPerHost:     10,
+			IdleConnTimeout:     time.Duration(90) * time.Second,
+		}
+		if proxyUrl != nil {
+			tr.Proxy = http.ProxyURL(proxyUrl)
+		}
+		client.httpClient = &http.Client{
+			Timeout:   time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			Transport: tr,
+		}
+	case TYPE_WS:
+		randv := rand.Intn(len(b.RequestParams.Urls)) % len(b.RequestParams.Urls)
+		url := b.RequestParams.Urls[randv]
+		if c, _, err := websocket.DefaultDialer.Dial(url, b.RequestParams.Headers); err != nil {
+			verbosePrint(VERBOSE_ERROR, "Websocket err: %s\n", err.Error())
+			return nil
+		} else {
+			client.wsClient = c
+		}
+	}
+
+	return client
+}
+
+func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err error) {
 	var urlBytes, bodyBytes bytes.Buffer
+
+	randv := rand.Intn(len(b.RequestParams.Urls)) % len(b.RequestParams.Urls)
+	url := b.RequestParams.Urls[randv]
 
 	if b.urlTemplate != nil && len(url) > 0 {
 		b.urlTemplate.Execute(&urlBytes, nil)
@@ -601,17 +610,71 @@ func (b *StressWorker) getRequest(url string) *http.Request {
 	}
 
 	if !checkURL(urlBytes.String()) {
-		return nil
+		err = errors.New("Check url error")
+		return
 	}
 
 	verbosePrint(VERBOSE_TRACE, "Request url: %s\n", urlBytes.String())
 	verbosePrint(VERBOSE_TRACE, "Request body: %s\n", bodyBytes.String())
-	req, err := http.NewRequest(b.RequestParams.RequestMethod, urlBytes.String(), strings.NewReader(bodyBytes.String()))
-	if err != nil {
-		return nil
+
+	switch b.RequestParams.RequestHttpType {
+	case TYPE_HTTP1, TYPE_HTTP2:
+		if client.httpClient == nil {
+			err = errors.New("Init http client error")
+			return
+		}
+		req, reqErr := http.NewRequest(b.RequestParams.RequestMethod, urlBytes.String(), strings.NewReader(bodyBytes.String()))
+		if reqErr != nil || req == nil {
+			err = errors.New("Request err: " + err.Error())
+			return
+		}
+		req.Header = b.RequestParams.Headers
+		resp, respErr := client.httpClient.Do(req)
+		err = respErr
+		if respErr == nil {
+			size = resp.ContentLength
+			code = resp.StatusCode
+			defer resp.Body.Close()
+			if n, _ := fastRead(resp.Body); size <= 0 {
+				size = n
+			}
+		}
+	case TYPE_WS:
+		if client.wsClient == nil {
+			err = errors.New("Init ws client error")
+			return
+		}
+		if err = client.wsClient.WriteMessage(websocket.TextMessage, bodyBytes.Bytes()); err != nil {
+			return
+		}
+		if _, message, readErr := client.wsClient.ReadMessage(); readErr != nil {
+			err = readErr
+			return
+		} else {
+			size = int64(len(message))
+			code = http.StatusOK
+		}
+	default:
+		// TODO:
 	}
-	req.Header = b.RequestParams.Headers
-	return req
+
+	return
+}
+
+func (b *StressWorker) closeClient(client *StressClient) {
+	switch b.RequestParams.RequestHttpType {
+	case TYPE_HTTP1, TYPE_HTTP2:
+		client.httpClient.CloseIdleConnections()
+	case TYPE_WS:
+		client.wsClient.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	default:
+		// TODO:
+	}
+}
+
+type StressClient struct {
+	httpClient *http.Client
+	wsClient   *websocket.Conn
 }
 
 func (b *StressWorker) collectReport() {
@@ -912,15 +975,15 @@ Options:
 	-H  Custom HTTP header. You can specify as many as needed by repeating the flag.
 		for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
 		but "Host: ***", replace that with -host.
-	-http  Support HTTP/1 HTTP/2, default HTTP/1.
+	-http  Support http1, http2, ws, wss, default http1.
 	-body  Request body, default empty.
 	-a  Basic authentication, username:password.
 	-x  HTTP Proxy address as host:port.
 	-disable-compression  Disable compression.
 	-disable-keepalive    Disable keep-alive, prevents re-use of TCP
 						connections between different HTTP requests.
-	-cpus                 Number of used cpu cores.
-						(default for current machine is %d cores).
+	-cpus       Number of used cpu cores.
+				(default for current machine is %d cores).
 	-url 		Request single url.
 	-verbose 	Print detail logs, default 3(0:TRACE, 1:DEBUG, 2:INFO, 3:ERROR).
 	-url-file 	Read url list from file and random stress test.
@@ -998,7 +1061,7 @@ func main() {
 	}
 
 	switch strings.ToLower(*httpType) {
-	case TYPE_HTTP1, TYPE_HTTP2:
+	case TYPE_HTTP1, TYPE_HTTP2, TYPE_WS:
 		params.RequestHttpType = strings.ToLower(*httpType)
 	default:
 		usageAndExit("Not support -http: " + *httpType)

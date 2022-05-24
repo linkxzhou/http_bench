@@ -9,7 +9,7 @@
 - [x] 支持函数
 - [ ] 支持变量
 - [ ] HTTP/3 压测
-- [ ] Websocket 压测
+- [x] Websocket 压测
 - [x] UI Metrics
 
 ![avatar](./demo.png)
@@ -70,7 +70,7 @@ Latency distribution:
 -H  请求发起的HTTP的头部信息，例如：-H "Accept: text/html" -H "Content-Type: application/xml"
 -body  HTTP发起POST请求的body数据
 -a  HTTP的鉴权请求, 例如：http://username:password@xxx/
--http  支持HTTP/1和HTTP/2, 默认HTTP/1
+-http  支持http1,http2,ws和wss, 默认http1
 -x  HTTP的代理IP和端口
 -disable-compression  不启用压缩
 -disable-keepalive    不开启keepalive

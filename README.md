@@ -11,7 +11,7 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [x] Support functions
 - [ ] Support variable
 - [ ] HTTP/3 stress
-- [ ] Websocket stress
+- [x] Websocket stress
 - [x] Show UI Metrics
 
 ![avatar](./demo.png)
@@ -75,14 +75,14 @@ Latency distribution:
 -H  Custom HTTP header. You can specify as many as needed by repeating the flag.
   for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
   but "Host: ***", replace that with -host.
--http  Support HTTP/1 HTTP/2, default HTTP/1.
+-http  Support http1, http2, ws, wss, default http1.
 -body  Request body, default empty.
 -a  Basic authentication, username:password.
 -x  HTTP Proxy address as host:port.
 -disable-compression  Disable compression.
 -disable-keepalive    Disable keep-alive, prevents re-use of TCP
           connections between different HTTP requests.
--cpus                 Number of used cpu cores.
+-cpus     Number of used cpu cores.
           (default for current machine is %d cores).
 -url 		Request single url.
 -verbose 	Print detail logs, default 2(0:TRACE, 1:DEBUG, 2:INFO ~ ERROR).
