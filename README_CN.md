@@ -1,4 +1,4 @@
-## HTTP(HTTP/1,HTTP/2)压测工具，支持单机和分布式
+## HTTP(HTTP/1, HTTP/2, Websocket)压测工具，支持单机和分布式
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
