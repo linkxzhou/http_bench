@@ -80,7 +80,7 @@ Latency distribution:
 -url-file   读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
 -body-file  从文件中读取请求的body数据
 -listen 分布式压测任务机器监听IP:PORT，例如： "127.0.0.1:12710".
--web 监听端口，浏览器发起压测和查看QPS曲线.
+-webui 监听端口，浏览器发起压测和查看QPS曲线.
 -W  分布式压测执行任务的机器列表，例如： -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 ```
 
@@ -114,7 +114,7 @@ Latency distribution:
 浏览器发起压测:
 ```
 (1) 第一步:
-./http_bench -web 127.0.0.1:12345 -verbose 1
+./http_bench -webui 127.0.0.1:12345 -verbose 1
 
 (2) 第二步:
 在浏览器打开地址(http://127.0.0.1:12345)

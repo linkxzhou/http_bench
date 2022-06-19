@@ -5,10 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-    <!-- 引入样式 -->
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
-    <!-- 引入组件库 -->
     <script src="https://unpkg.com/element-ui/lib/index.js"></script>
 </head>
 
@@ -16,38 +14,38 @@
     <div id="container" style="height: 70%"></div>
     <div id="app" style="margin: 20px;">
         <el-row>
-            <el-button type="primary" :loading="g_running" @click="submitStart">压测</el-button>
-            <el-button type="danger" @click="submitStop">停止</el-button>
+            <el-button type="primary" :loading="g_running" @click="submitStart">Stress Start</el-button>
+            <el-button type="danger" @click="submitStop">Stress Stop</el-button>
         </el-row>
-        <el-input placeholder="time_metrics" v-model="time_metrics" style="margin: 4px 0;">
-            <template slot="prepend">time_metrics</template>
+        <el-input placeholder="Metrics Duration, default 5000ms" v-model="time_metrics" style="margin: 4px 0;">
+            <template slot="prepend">Metrics Duration</template>
         </el-input>
-        <el-input placeholder="request_method" v-model="request_method" style="margin: 4px 0;">
-            <template slot="prepend">request_method</template>
+        <el-input placeholder="GET, POST, PUT, DELETE, HEAD, OPTIONS" v-model="request_method" style="margin: 4px 0;">
+            <template slot="prepend">Request method</template>
         </el-input>
-        <el-input placeholder="request_body" v-model="request_body" style="margin: 4px 0;">
-            <template slot="prepend">request_body</template>
+        <el-input placeholder="body" v-model="request_body" style="margin: 4px 0;">
+            <template slot="prepend">Request body</template>
         </el-input>
-        <el-input placeholder="request_httptype" v-model="request_httptype" style="margin: 4px 0;">
-            <template slot="prepend">request_httptype</template>
+        <el-input placeholder="http1, http2, ws, wss, default http1" v-model="request_httptype" style="margin: 4px 0;">
+            <template slot="prepend">Request httptype</template>
         </el-input>
         <el-input placeholder="n" v-model="n" style="margin: 4px 0;">
-            <template slot="prepend">n</template>
+            <template slot="prepend">N</template>
         </el-input>
         <el-input placeholder="c" v-model="c" style="margin: 4px 0;">
-            <template slot="prepend">c</template>
+            <template slot="prepend">C</template>
         </el-input>
         <el-input placeholder="duration" v-model="duration" style="margin: 4px 0;">
-            <template slot="prepend">duration</template>
+            <template slot="prepend">Duration</template>
         </el-input>
         <el-input placeholder="timeout" v-model="timeout" style="margin: 4px 0;">
-            <template slot="prepend">timeout</template>
+            <template slot="prepend">Timeout</template>
         </el-input>
         <el-input placeholder="qps" v-model="qps" style="margin: 4px 0;">
-            <template slot="prepend">qps</template>
+            <template slot="prepend">QPS</template>
         </el-input>
-        <el-input placeholder="urls" v-model="urls" style="margin: 4px 0;">
-            <template slot="prepend">urls</template>
+        <el-input placeholder="split urls with ;" v-model="urls" style="margin: 4px 0;">
+            <template slot="prepend">Urls</template>
         </el-input>
     </div>
     <script type="text/javascript">
@@ -71,6 +69,7 @@
             }
             return fmt;
         }
+        var contentType = { 'Content-Type': 'application/json;charset=utf-8' };
         var dom = document.getElementById('container');
         var stressChart = echarts.init(dom, 'dark', {
             renderer: 'canvas',
@@ -129,29 +128,40 @@
                         request_method: this.request_method,
                         request_body: this.request_body,
                         request_httptype: this.request_httptype,
-                        n: this.n,
-                        c: this.c,
-                        duration: this.duration,
-                        timeout: this.timeout,
-                        qps: this.qps,
-                        disable_compression: this.disable_compression,
-                        disable_keepalives: this.disable_keepalives,
+                        n: parseInt(this.n),
+                        c: parseInt(this.c),
+                        duration: parseInt(this.duration),
+                        timeout: parseInt(this.timeout),
+                        qps: parseInt(this.qps),
+                        disable_compression: this.disable_compression || this.disable_compression == "true" ? true : false,
+                        disable_keepalives: this.disable_keepalives || this.disable_keepalives == "true" ? true : false,
                         auth_username: this.auth_username,
                         auth_password: this.auth_password,
                         urls: this.urls.split(/;/),
                     };
                     fetch('/api', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                        headers: contentType,
                         body: JSON.stringify(request_data)
-                    }).then(response => response.json());
+                    }).then(response => response.json().then(data => {
+                            if (data.err_code != 0) {
+                                this.$message({
+                                    showClose: true,
+                                    message: 'error：' + data.err_msg,
+                                    type: 'error',
+                                    duration: 5000,
+                                });
+                            }
+                        })
+                    )
+                    this.g_running = true;
                     let time_list = [], data_list = [], lats_total = 0;
                     let time_metrics = this.time_metrics > 0 ? this.time_metrics: 5000;
                     this.g_interval = setInterval(function () {
                         request_data.cmd = 2;
                         fetch('/api', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                            headers: contentType,
                             body: JSON.stringify(request_data)
                         }).then(response => response.json()).then(data => {
                             if (data && data.lats_total && (data.lats_total - lats_total) >= 0) {
@@ -162,7 +172,6 @@
                             }
                         })
                     }, time_metrics);
-                    this.g_running = true;
                 },
                 submitStop: function(e) {
                     this.g_running = false;
@@ -173,7 +182,7 @@
                     };
                     fetch('/api', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                        headers: contentType,
                         body: JSON.stringify(request_data)
                     });
                 }

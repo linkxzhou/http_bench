@@ -863,17 +863,23 @@ func execStress(params StressParameters, stressTestPtr **StressWorker) *StressRe
 func handleWorker(w http.ResponseWriter, r *http.Request) {
 	if reqStr, err := ioutil.ReadAll(r.Body); err == nil {
 		var params StressParameters
+		var result *StressResult
 		if err := json.Unmarshal(reqStr, &params); err != nil {
 			fmt.Fprintf(os.Stderr, "Unmarshal body err: %s\n", err.Error())
+			result = &StressResult{
+				ErrCode: -1,
+				ErrMsg:  err.Error(),
+			}
 		} else {
 			verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
 			var stressWorker *StressWorker
-			if result := execStress(params, &stressWorker); result != nil {
-				if wbody, err := result.marshal(); err != nil {
-					verbosePrint(VERBOSE_ERROR, "Marshal result: %v\n", err)
-				} else {
-					w.Write(wbody)
-				}
+			result = execStress(params, &stressWorker)
+		}
+		if result != nil {
+			if wbody, err := result.marshal(); err != nil {
+				verbosePrint(VERBOSE_ERROR, "Marshal result: %v\n", err)
+			} else {
+				w.Write(wbody)
 			}
 		}
 	}
@@ -925,7 +931,7 @@ var (
 	urlstr  = flag.String("url", "", "")
 	verbose = flag.Int("verbose", 3, "")
 	listen  = flag.String("listen", "", "")
-	web     = flag.String("web", "", "")
+	webui   = flag.String("webui", "", "")
 
 	urlFile           = flag.String("url-file", "", "")
 	bodyFile          = flag.String("body-file", "", "")
@@ -975,7 +981,7 @@ Options:
 	-url-file 	Read url list from file and random stress test.
 	-body-file  Request body from file.
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
-	-web 		Listen web IP:PORT and operate stress params on browser. 
+	-webui 		Listen webui IP:PORT and operate stress params on browser. 
 	-W  Running distributed stress test worker mechine list.
 				for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 
@@ -1107,13 +1113,13 @@ func main() {
 		if err := mainServer.ListenAndServe(); err != nil {
 			fmt.Fprintf(os.Stderr, "ListenAndServe err: %s\n", err.Error())
 		}
-	} else if len(*web) > 0 {
+	} else if len(*webui) > 0 {
 		mux := http.NewServeMux()
 		mux.Handle("/", http.FileServer(http.Dir("./")))
 		mux.HandleFunc("/api", handleWorker)
-		fmt.Fprintf(os.Stdout, "Web listen %s\n", *web)
+		fmt.Fprintf(os.Stdout, "Web UI listen %s\n", *webui)
 		mainServer = &http.Server{
-			Addr:    *web,
+			Addr:    *webui,
 			Handler: mux,
 		}
 		if err := mainServer.ListenAndServe(); err != nil {
