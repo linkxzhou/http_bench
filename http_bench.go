@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"runtime"
 	"runtime/debug"
-	"runtime/pprof"
 	"sort"
 	"strconv"
 	"strings"
@@ -90,8 +89,7 @@ const (
 )
 
 var (
-	// for functions
-	fnSrc = rand.NewSource(time.Now().UnixNano())
+	fnSrc = rand.NewSource(time.Now().UnixNano()) // for functions
 	fnMap = template.FuncMap{
 		"intSum":       intSum,
 		"random":       random,
@@ -349,39 +347,23 @@ func (result *StressResult) combine(resultList ...StressResult) {
 }
 
 type StressParameters struct {
-	// Sequence
-	SequenceId int64 `json:"sequence_id"`
-	// Commands
-	Cmd int `json:"cmd"`
-	// Request Method.
-	RequestMethod string `json:"request_method"`
-	// Request Body.
-	RequestBody string `json:"request_body"`
-	// Request HTTP Type
-	RequestHttpType string `json:"request_httptype"`
-	// N is the total number of requests to make.
-	N int `json:"n"`
-	// C is the concurrency level, the number of concurrent workers to run.
-	C int `json:"c"`
-	// D is the duration for stress test
-	Duration int64 `json:"duration"`
-	// Timeout in ms.
-	Timeout int `json:"timeout"`
-	// Qps is the rate limit.
-	Qps int `json:"qps"`
-	// DisableCompression is an option to disable compression in response
-	DisableCompression bool `json:"disable_compression"`
-	// DisableKeepAlives is an option to prevents re-use of TCP connections between different HTTP requests
-	DisableKeepAlives bool `json:"disable_keepalives"`
-	// Basic authentication, username:password.
-	AuthUsername string `json:"auth_username"`
-	AuthPassword string `json:"auth_password"`
-	// Custom HTTP header.
-	Headers map[string][]string `json:"headers"`
-	Urls    []string            `json:"urls"`
-	// Output represents the output type. If "csv" is provided, the
-	// output will be dumped as a csv stream.
-	Output string `json:"output"`
+	SequenceId         int64               `json:"sequence_id"`         // Sequence
+	Cmd                int                 `json:"cmd"`                 // Commands
+	RequestMethod      string              `json:"request_method"`      // Request Method.
+	RequestBody        string              `json:"request_body"`        // Request Body.
+	RequestHttpType    string              `json:"request_httptype"`    // Request HTTP Type
+	N                  int                 `json:"n"`                   // N is the total number of requests to make.
+	C                  int                 `json:"c"`                   // C is the concurrency level, the number of concurrent workers to run.
+	Duration           int64               `json:"duration"`            // D is the duration for stress test
+	Timeout            int                 `json:"timeout"`             // Timeout in ms.
+	Qps                int                 `json:"qps"`                 // Qps is the rate limit.
+	DisableCompression bool                `json:"disable_compression"` // DisableCompression is an option to disable compression in response
+	DisableKeepAlives  bool                `json:"disable_keepalives"`  // DisableKeepAlives is an option to prevents re-use of TCP connections between different HTTP requests
+	AuthUsername       string              `json:"auth_username"`       // Basic authentication, username:password.
+	AuthPassword       string              `json:"auth_password"`
+	Headers            map[string][]string `json:"headers"` // Custom HTTP header.
+	Urls               []string            `json:"urls"`
+	Output             string              `json:"output"` // Output represents the output type. If "csv" is provided, the output will be dumped as a csv stream.
 }
 
 func (p *StressParameters) String() string {
@@ -401,14 +383,12 @@ type (
 	}
 
 	StressWorker struct {
-		RequestParams *StressParameters
-		results       chan *result
-		resultList    []StressResult
-		currentResult StressResult
-
-		totalTime time.Duration
-		// Wait some task finish
-		wg                        sync.WaitGroup
+		RequestParams             *StressParameters
+		results                   chan *result
+		resultList                []StressResult
+		currentResult             StressResult
+		totalTime                 time.Duration
+		wg                        sync.WaitGroup // Wait some task finish
 		bodyTemplate, urlTemplate *template.Template
 	}
 )
@@ -1110,29 +1090,6 @@ func main() {
 
 	var mainServer *http.Server
 	_, mainCancel := context.WithCancel(context.Background())
-
-	if getEnv("BENCH_PROFILE") == "1" {
-		file, err := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
-		if err == nil {
-			fmt.Fprintf(os.Stdout, "== StartCPUProfile ==\n")
-			pprof.StartCPUProfile(file)
-			defer func() {
-				pprof.StopCPUProfile()
-				file.Close()
-				fmt.Fprintf(os.Stdout, "== StopCPUProfile ==\n")
-			}()
-
-			osSignal := make(chan os.Signal)
-			signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
-			go func() {
-				<-osSignal
-				if mainServer != nil {
-					mainServer.Shutdown(context.Background())
-				}
-				mainCancel()
-			}()
-		}
-	}
 
 	// decrease gc profile
 	if getEnv("BENCH_GC") == "1" {

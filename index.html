@@ -1,105 +1,75 @@
 <!DOCTYPE html>
 <html lang="zh-CN" style="height: 100%">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
 </head>
+
 <body style="height: 100%; margin: 0">
     <div id="container" style="height: 70%"></div>
-    <div>
-        <div class="form-group form-inline" style="margin: 5px;">
-            <label for="requestForm" style="margin-left: 5px;">Input Request:</label>
-            <button type="button" class="btn btn-success" onclick="submitStart()" style="margin-left: 5px;">Start</button>
-            <button type="button" class="btn btn-danger" onclick="submitStop()" style="margin-left: 5px;">Stop</button>
-        </div>
-        <div class="form-group form-inline" style="margin: 5px;">
-            <label for="requestForm" style="margin-left: 5px;">Time Metrics:</label>
-            <input type="text" class="form-control" id="timeMetrics" aria-describedby="Time Metrics" style="margin-left: 5px;" value="1000" />
-        </div>
-        <div class="form-group">
-            <textarea class="form-control" id="requestForm" rows="10">
-{
-        "request_method": "GET",
-        "request_body": "",
-        "request_httptype": "http1",
-        "n": 0,
-        "c": 1,
-        "duration": 1000,
-        "timeout": 3000,
-        "qps": 0,
-        "disable_compression": false,
-        "disable_keepalives": false,
-        "auth_username": "",
-        "auth_password": "",
-        "headers": null,
-        "urls": ["http://9.134.13.199:8000?data=1"]
-}</textarea>
-        </div>
+    <div id="app" style="margin: 20px;">
+        <el-row>
+            <el-button type="primary" :loading="g_running" @click="submitStart">压测</el-button>
+            <el-button type="danger" @click="submitStop">停止</el-button>
+        </el-row>
+        <el-input placeholder="time_metrics" v-model="time_metrics" style="margin: 4px 0;">
+            <template slot="prepend">time_metrics</template>
+        </el-input>
+        <el-input placeholder="request_method" v-model="request_method" style="margin: 4px 0;">
+            <template slot="prepend">request_method</template>
+        </el-input>
+        <el-input placeholder="request_body" v-model="request_body" style="margin: 4px 0;">
+            <template slot="prepend">request_body</template>
+        </el-input>
+        <el-input placeholder="request_httptype" v-model="request_httptype" style="margin: 4px 0;">
+            <template slot="prepend">request_httptype</template>
+        </el-input>
+        <el-input placeholder="n" v-model="n" style="margin: 4px 0;">
+            <template slot="prepend">n</template>
+        </el-input>
+        <el-input placeholder="c" v-model="c" style="margin: 4px 0;">
+            <template slot="prepend">c</template>
+        </el-input>
+        <el-input placeholder="duration" v-model="duration" style="margin: 4px 0;">
+            <template slot="prepend">duration</template>
+        </el-input>
+        <el-input placeholder="timeout" v-model="timeout" style="margin: 4px 0;">
+            <template slot="prepend">timeout</template>
+        </el-input>
+        <el-input placeholder="qps" v-model="qps" style="margin: 4px 0;">
+            <template slot="prepend">qps</template>
+        </el-input>
+        <el-input placeholder="urls" v-model="urls" style="margin: 4px 0;">
+            <template slot="prepend">urls</template>
+        </el-input>
     </div>
     <script type="text/javascript">
-        Date.prototype.format = function(fmt) { 
-            var o = { 
-                "M+" : this.getMonth()+1,
-                "d+" : this.getDate(),
-                "h+" : this.getHours(),
-                "m+" : this.getMinutes(),
-                "s+" : this.getSeconds(),
-                "q+" : Math.floor((this.getMonth()+3)/3),
-                "S"  : this.getMilliseconds()
-            }; 
-            if(/(y+)/.test(fmt)) {
-                fmt=fmt.replace(RegExp.$1, (this.getFullYear()+"").substr(4 - RegExp.$1.length)); 
+        Date.prototype.format = function (fmt) {
+            var o = {
+                "M+": this.getMonth() + 1,
+                "d+": this.getDate(),
+                "h+": this.getHours(),
+                "m+": this.getMinutes(),
+                "s+": this.getSeconds(),
+                "q+": Math.floor((this.getMonth() + 3) / 3),
+                "S": this.getMilliseconds()
+            };
+            if (/(y+)/.test(fmt)) {
+                fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
             }
-            for(var k in o) {
-                if(new RegExp("("+ k +")").test(fmt)){
-                    fmt = fmt.replace(RegExp.$1, (RegExp.$1.length==1) ? (o[k]) : (("00"+ o[k]).substr((""+ o[k]).length)));
+            for (var k in o) {
+                if (new RegExp("(" + k + ")").test(fmt)) {
+                    fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
                 }
             }
-            return fmt; 
-        }
-        var seqid = Math.floor(Math.random() * 1000000) + 1;
-        var interval;
-        function submitStart(e) {
-            seqid = seqid + 1;
-            var requestData = JSON.parse(document.getElementById("requestForm").value);
-            var timeMetrics = parseInt(document.getElementById("timeMetrics").value);
-            timeMetrics = timeMetrics ? timeMetrics : 5000;
-            requestData.cmd = 0;
-            requestData.sequence_id = seqid;
-            fetch('/api', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json;charset=utf-8'},
-                body: JSON.stringify(requestData)
-            }).then(response => response.json());
-            var timeList = [], dataList = [], latsTotal = 0;
-            interval = setInterval(function() {
-                requestData.cmd = 2;
-                fetch('/api', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json;charset=utf-8'},
-                    body: JSON.stringify(requestData)
-                }).then(response => response.json()).then(data => {
-                    if (data && data.lats_total && (data.lats_total - latsTotal) >= 0) {
-                        timeList.push(new Date().format("hh:mm:ss"));
-                        dataList.push((data.lats_total - latsTotal)*1000/timeMetrics);
-                        metricsLoad(timeList, dataList);
-                        latsTotal = data.lats_total;
-                    }
-                })
-            }, timeMetrics)
-        }
-        function submitStop(e) {
-            clearInterval(interval);
-            var requestData = JSON.parse(document.getElementById("requestForm").value);
-            requestData.cmd = 1;
-            requestData.sequence_id = seqid;
-            fetch('/api', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json;charset=utf-8'},
-                body: JSON.stringify(requestData)
-            });
+            return fmt;
         }
         var dom = document.getElementById('container');
         var stressChart = echarts.init(dom, 'dark', {
@@ -129,6 +99,87 @@
         }
         metricsLoad([new Date().format("hh:mm:ss")], [0])
         window.addEventListener('resize', stressChart.resize);
+
+        new Vue({
+            el: '#app',
+            data: {
+                time_metrics: 1000,
+                request_method: "GET",
+                request_body: "",
+                request_httptype: "http1",
+                n: 0,
+                c: 1,
+                duration: 1000,
+                timeout: 3000,
+                qps: 0,
+                disable_compression: false,
+                disable_keepalives: false,
+                auth_username: "",
+                auth_password: "",
+                urls: "http://127.0.0.1:8000?data=1",
+                g_running: false,
+                g_seqid: Math.floor(Math.random() * 1000000) + 1,
+                g_interval: undefined,
+            },
+            methods: {
+                submitStart: function(e) {
+                    let request_data = {
+                        cmd: 0,
+                        sequence_id: this.g_seqid,
+                        request_method: this.request_method,
+                        request_body: this.request_body,
+                        request_httptype: this.request_httptype,
+                        n: this.n,
+                        c: this.c,
+                        duration: this.duration,
+                        timeout: this.timeout,
+                        qps: this.qps,
+                        disable_compression: this.disable_compression,
+                        disable_keepalives: this.disable_keepalives,
+                        auth_username: this.auth_username,
+                        auth_password: this.auth_password,
+                        urls: this.urls.split(/;/),
+                    };
+                    fetch('/api', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                        body: JSON.stringify(request_data)
+                    }).then(response => response.json());
+                    let time_list = [], data_list = [], lats_total = 0;
+                    let time_metrics = this.time_metrics > 0 ? this.time_metrics: 5000;
+                    this.g_interval = setInterval(function () {
+                        request_data.cmd = 2;
+                        fetch('/api', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                            body: JSON.stringify(request_data)
+                        }).then(response => response.json()).then(data => {
+                            if (data && data.lats_total && (data.lats_total - lats_total) >= 0) {
+                                time_list.push(new Date().format("hh:mm:ss"));
+                                data_list.push((data.lats_total - lats_total) * 1000 / time_metrics);
+                                metricsLoad(time_list, data_list);
+                                lats_total = data.lats_total;
+                            }
+                        })
+                    }, time_metrics);
+                    this.g_running = true;
+                },
+                submitStop: function(e) {
+                    this.g_running = false;
+                    if (this.g_interval) clearInterval(this.g_interval);
+                    let request_data = {
+                        cmd: 1, // stop
+                        sequence_id: this.g_seqid,
+                    };
+                    fetch('/api', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                        body: JSON.stringify(request_data)
+                    });
+                }
+            }
+        })
     </script>
 </body>
+
 </html>
