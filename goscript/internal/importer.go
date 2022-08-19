@@ -6,17 +6,17 @@ import (
 	"go/constant"
 	"go/token"
 	"go/types"
-	"reflect"
 	"strings"
+	"sync"
 
-	"github.com/modern-go/concurrent"
+	"github.com/goccy/go-reflect"
+
 	"golang.org/x/tools/go/ssa"
 )
 
 type Any = interface{}
-type Logger = func(fmt string, a ...Any)
 
-var externalType *concurrent.Map = concurrent.NewMap()
+var cacheType sync.Map
 
 func LoadPackage(path, name string, objects ...*ExternalObject) {
 	packages[path] = &ExternalPackage{
@@ -32,15 +32,15 @@ func LoadPackage(path, name string, objects ...*ExternalObject) {
 	}
 }
 
-func GetExternalType(t types.Type) reflect.Type {
-	if v, ok := externalType.Load(t); ok {
+func GetCacheType(t types.Type) reflect.Type {
+	if v, ok := cacheType.Load(t); ok {
 		return v.(reflect.Type)
 	}
 	return nil
 }
 
-func SetExternalType(t types.Type, rType reflect.Type) {
-	externalType.Store(t, rType)
+func SetCacheType(t types.Type, rType reflect.Type) {
+	cacheType.Store(t, rType)
 }
 
 type Importer struct {
@@ -223,7 +223,7 @@ func (p *Importer) typeOf(t reflect.Type, _ *types.Package) (ttype types.Type) {
 	if t.Name() != "" {
 		namedType = p.parseNameType(t)
 		p.addMethod(t, namedType, pkg)
-		SetExternalType(namedType, t)
+		SetCacheType(namedType, t)
 	}
 
 	switch t.Kind() {

@@ -9,10 +9,11 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [x] HTTP/2 stress
 - [x] Distributed stress
 - [x] Support functions
-- [ ] Support variable
+- [x] Support variable
 - [ ] HTTP/3 stress
 - [x] Websocket stress
-- [x] UI Metrics
+- [x] Dashboard
+- [ ] Run script(xx.gs)
 
 ![avatar](./demo.png)
 
@@ -89,7 +90,8 @@ Latency distribution:
 -url-file 	Read url list from file and random stress test.
 -body-file  Request body from file.
 -listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
--webui Listen webui IP:PORT and operate stress test on browser(see qps).
+-dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
+-script 	Run golang script to print and control request. e.g. "./script.gs".
 -W  Running distributed stress test worker mechine list.
       for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711". 
 ```
@@ -124,7 +126,7 @@ Example distributed stress test(print detail info "-verbose 1"):
 Example stress test on browser:
 ```
 (1) First step:
-./http_bench -webui "127.0.0.1:12345" -verbose 1
+./http_bench -dashboard "127.0.0.1:12345" -verbose 1
 
 (2) Second step:
 Open url(http://127.0.0.1:12345) on browser

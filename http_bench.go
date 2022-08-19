@@ -351,6 +351,7 @@ type StressParameters struct {
 	Cmd                int                 `json:"cmd"`                 // Commands
 	RequestMethod      string              `json:"request_method"`      // Request Method.
 	RequestBody        string              `json:"request_body"`        // Request Body.
+	RequestScriptBody  string              `json:"request_script_body"` // Request Script Body.
 	RequestHttpType    string              `json:"request_httptype"`    // Request HTTP Type
 	N                  int                 `json:"n"`                   // N is the total number of requests to make.
 	C                  int                 `json:"c"`                   // C is the concurrency level, the number of concurrent workers to run.
@@ -928,13 +929,14 @@ var (
 	disableKeepAlives  = flag.Bool("disable-keepalive", false, "")
 	proxyAddr          = flag.String("x", "", "")
 
-	urlstr  = flag.String("url", "", "")
-	verbose = flag.Int("verbose", 3, "")
-	listen  = flag.String("listen", "", "")
-	webui   = flag.String("webui", "", "")
+	urlstr    = flag.String("url", "", "")
+	verbose   = flag.Int("verbose", 3, "")
+	listen    = flag.String("listen", "", "")
+	dashboard = flag.String("dashboard", "", "")
 
 	urlFile           = flag.String("url-file", "", "")
 	bodyFile          = flag.String("body-file", "", "")
+	scriptFile        = flag.String("script", "", "")
 	requestWorkerList = func(paramsJson []byte, stressTest *StressWorker) []StressResult {
 		var wg sync.WaitGroup
 		var stressResult []StressResult
@@ -981,7 +983,8 @@ Options:
 	-url-file 	Read url list from file and random stress test.
 	-body-file  Request body from file.
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
-	-webui 		Listen webui IP:PORT and operate stress params on browser. 
+	-dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
+	-script 	Run golang script to print and control request. e.g. "./script.gs".
 	-W  Running distributed stress test worker mechine list.
 				for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 
@@ -1052,6 +1055,16 @@ func main() {
 		}
 	}
 
+	if *scriptFile != "" {
+		if scriptBody, err := parseFile(*scriptFile, nil); err != nil {
+			usageAndExit(*scriptFile + " file read error(" + err.Error() + ").")
+		} else {
+			if len(scriptBody) > 0 {
+				params.RequestScriptBody = scriptBody[0]
+			}
+		}
+	}
+
 	switch strings.ToLower(*httpType) {
 	case TYPE_HTTP1, TYPE_HTTP2, TYPE_WS:
 		params.RequestHttpType = strings.ToLower(*httpType)
@@ -1113,13 +1126,13 @@ func main() {
 		if err := mainServer.ListenAndServe(); err != nil {
 			fmt.Fprintf(os.Stderr, "ListenAndServe err: %s\n", err.Error())
 		}
-	} else if len(*webui) > 0 {
+	} else if len(*dashboard) > 0 {
 		mux := http.NewServeMux()
 		mux.Handle("/", http.FileServer(http.Dir("./")))
 		mux.HandleFunc("/api", handleWorker)
-		fmt.Fprintf(os.Stdout, "Web UI listen %s\n", *webui)
+		fmt.Fprintf(os.Stdout, "Dashboard listen %s\n", *dashboard)
 		mainServer = &http.Server{
-			Addr:    *webui,
+			Addr:    *dashboard,
 			Handler: mux,
 		}
 		if err := mainServer.ListenAndServe(); err != nil {

@@ -1,9 +1,11 @@
 package internal
 
 import (
+	"container/list"
 	_ "fmt"
-	"reflect"
 	"strings"
+
+	"github.com/goccy/go-reflect"
 
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
@@ -182,4 +184,46 @@ func valueWrap(p *Importer, v *ssa.Value) {
 		}
 		return
 	}
+}
+
+type ValueSlab struct {
+	slab    map[int]*list.List
+	slabTop map[int]int
+}
+
+func (v *ValueSlab) Init() {
+	v.slab = make(map[int]*list.List, 4)
+	v.slabTop = make(map[int]int, 4)
+}
+
+func (v *ValueSlab) Get(size int) []Value {
+	if v.slab == nil {
+		v.Init()
+	}
+	if p, ok := v.slab[size]; !ok || p == nil {
+		v.slab[size] = list.New()
+		v.slabTop[size] = 0
+	}
+	p := v.slab[size]
+	pTop := v.slabTop[size]
+	if p.Len() > pTop {
+		lv := p.Front()
+		v.slabTop[size]++
+		return lv.Value.([]Value)
+	} else {
+		pv := make([]Value, size)
+		p.PushBack(pv)
+		v.slabTop[size]++
+		return pv
+	}
+}
+
+func (v *ValueSlab) PutAll() bool {
+	if v.slab == nil {
+		return false
+	}
+	for i, _ := range v.slabTop {
+		v.slabTop[i] = 0
+	}
+	return true
 }

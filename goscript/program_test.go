@@ -6,66 +6,66 @@ import (
 	"runtime/pprof"
 	"testing"
 
+	"github.com/goccy/go-reflect"
+
+	lua2 "github.com/Shopify/go-lua"
 	"github.com/linkxzhou/http_bench/goscript"
+	lua "github.com/yuin/gopher-lua"
 )
 
-// // TestImportGofun 测试将gofun编译成的库导入到其他gofun程序中
-// func TestImportGofun(t *testing.T) {
-// 	sources := `
-// 	package test
+func TestImport(t *testing.T) {
+	sources := `
+	package test
 
-// 	import "pkg1"
-// 	import "pkg2"
+	import "pkg1"
+	import "pkg2"
 
-// 	var A = "1"
-// 	func test() string {
-// 		return A + pkg1.F() + pkg2.S
-// 	}
-// 	`
+	var A = "1"
+	func test() string {
+		return A + pkg1.F() + pkg2.S
+	}
+	`
 
-// 	pkg1 := `
-// package pkg1
-// func F() string {
-// 	return "hello"
-// }
-// `
+	pkg1 := `
+package pkg1
+func F() string {
+	return "hello"
+}
+`
 
-// 	pkg2 := `
-// package pkg2
-// const S = "world"
-// func F() string {
-// 	return "world"
-// }
-// `
-// 	p1, err := BuildProgram("pkg1", pkg1)
-// 	if err != nil {
-// 		t.Error(err)
-// 		return
-// 	}
-// 	p2, err := BuildProgram("pkg2", pkg2)
-// 	if err != nil {
-// 		t.Error(err)
-// 		return
-// 	}
+	pkg2 := `
+package pkg2
+const S = "world"
+func F() string {
+	return "world"
+}
+`
+	p1, err := goscript.BuildProgram("pkg1", pkg1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	p2, err := goscript.BuildProgram("pkg2", pkg2)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	p, err := goscript.BuildProgram("main", sources, p1.MainPkg, p2.MainPkg)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	out, err := p.Run("test")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	expected := "1helloworld"
+	if !reflect.DeepEqual(out, expected) {
+		t.Errorf("Expected %#v got %#v.", expected, out)
+	}
+}
 
-// 	p, err := BuildProgram("main", sources, p1.mainPkg, p2.mainPkg)
-// 	if err != nil {
-// 		t.Error(err)
-// 		return
-// 	}
-
-// 	out, err := p.Run("test")
-// 	if err != nil {
-// 		t.Error(err)
-// 		return
-// 	}
-// 	expected := "1helloworld"
-// 	if !reflect.DeepEqual(out, expected) {
-// 		t.Errorf("Expected %#v got %#v.", expected, out)
-// 	}
-// }
-
-// BenchmarkFib 递归计算斐波那契数列，测试gofun的执行性能
 // func BenchmarkFib(b *testing.B) {
 // 	b.StopTimer()
 // 	b.ReportAllocs()
@@ -104,13 +104,10 @@ import (
 // 	pprof.StopCPUProfile()
 // }
 
-const fibCycle = 5
+const fibCycle = 32
 const fibN = 1
 
-// TestFib1 递归计算斐波那契数列，测试gofun的执行性能
-func TestFib1(t *testing.T) {
-	f, err := os.Create("pprof.out")
-	_ = pprof.StartCPUProfile(f)
+func TestFib0(t *testing.T) {
 	sources := `
 package test
 
@@ -130,10 +127,37 @@ func test(i int) int {
 		return
 	}
 	for i := 0; i < fibN; i++ {
-		r, _ := interpreter.Run("test", fibCycle)
+		r, _ := interpreter.Run("test", 10)
 		fmt.Println("r: ", r)
 	}
-	pprof.StopCPUProfile()
+}
+
+func TestFib1(t *testing.T) {
+	f, err := os.Create("pprof.out")
+	sources := `
+package test
+
+func fib(i int) int {
+	if i < 2 {
+		return i
+	}
+	return fib(i - 1) + fib(i - 2)
+}
+
+func test(i int) int {
+	return fib(i)
+}
+	`
+	interpreter, err := goscript.BuildProgram("test", sources)
+	if err != nil {
+		return
+	}
+	for i := 0; i < fibN; i++ {
+		_ = pprof.StartCPUProfile(f)
+		r, _ := interpreter.Run("test", fibCycle)
+		pprof.StopCPUProfile()
+		fmt.Println("r: ", r)
+	}
 }
 
 func fib(i int) int {
@@ -143,7 +167,6 @@ func fib(i int) int {
 	return fib(i-1) + fib(i-2)
 }
 
-// TestFib 递归计算斐波那契数列，测试gofun的执行性能
 func TestFib2(t *testing.T) {
 	for i := 0; i < fibN; i++ {
 		r := fib(fibCycle)
@@ -151,27 +174,37 @@ func TestFib2(t *testing.T) {
 	}
 }
 
-// // TestTimeout 测试函数超时后能否强制终止执行
-// func TestTimeout(t *testing.T) {
-// 	sources := `
-// package main
+func TestFibLua1(t *testing.T) {
+	L := lua.NewState()
+	defer L.Close()
 
-// import "time"
+	for i := 0; i < fibN; i++ {
+		if err := L.DoString(`local function Fibonacci_1(n)
+		if n == 1 or n == 2 then
+			return 1
+		else
+			return Fibonacci_1(n - 1) + Fibonacci_1(n - 2)
+		end
+	end
+	print(Fibonacci_1(` + fmt.Sprintf("%d", fibCycle) + `))`); err != nil {
+			panic(err)
+		}
+	}
+}
 
-// func test() string {
-// 	for {
-// 		go func() {
-// 			for {
-// 				time.Sleep(1 * time.Second)
-// 			}
-// 		}()
-// 	    time.Sleep(2 * time.Second)
-// 	}
-// 	return "unreachable"
-// }
-// 	`
-// 	_, err := goscript.Run(sources, "test")
-// 	if err == nil || !strings.Contains(err.Error(), "context deadline exceeded") {
-// 		t.Errorf("Expected timeout got %#v.", err)
-// 	}
-// }
+func TestFibLua2(t *testing.T) {
+	L := lua2.NewState()
+	lua2.OpenLibraries(L)
+	for i := 0; i < fibN; i++ {
+		if err := lua2.DoString(L, `local function Fibonacci_1(n)
+		if n == 1 or n == 2 then
+			return 1
+		else
+			return Fibonacci_1(n - 1) + Fibonacci_1(n - 2)
+		end
+	end
+	print(Fibonacci_1(`+fmt.Sprintf("%d", fibCycle)+`))`); err != nil {
+			panic(err)
+		}
+	}
+}

@@ -8,7 +8,6 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
-	"os"
 
 	"github.com/linkxzhou/http_bench/goscript/internal"
 
@@ -17,7 +16,7 @@ import (
 )
 
 type Program struct {
-	mainPkg   *ssa.Package
+	MainPkg   *ssa.Package
 	globals   map[ssa.Value]*internal.Value
 	importPkg []string
 }
@@ -84,7 +83,6 @@ func autoImport(f *ast.File) []string {
 
 func BuildProgram(fname, sourceCode string, packages ...*ssa.Package) (*Program, error) {
 	fset := token.NewFileSet()
-	// ParseFile {fname}.go
 	f, err := parser.ParseFile(fset, fname+".go", sourceCode, parser.AllErrors)
 	if err != nil {
 		return nil, err
@@ -96,26 +94,26 @@ func BuildProgram(fname, sourceCode string, packages ...*ssa.Package) (*Program,
 
 	packageImporter := internal.NewImporter(packages...)
 	mode := ssa.SanityCheckFunctions | ssa.BareInits
-	mainPkg, _, err := ssautil.BuildPackage(&types.Config{Importer: packageImporter}, fset, pkg, files, mode)
+	MainPkg, _, err := ssautil.BuildPackage(&types.Config{Importer: packageImporter}, fset, pkg, files, mode)
 	if err != nil {
 		return nil, err
 	}
 	program := &Program{
-		mainPkg:   mainPkg,
+		MainPkg:   MainPkg,
 		globals:   make(map[ssa.Value]*internal.Value),
 		importPkg: importPkg,
 	}
-	internal.ExternalValueWrap(packageImporter, mainPkg)
+	internal.ExternalValueWrap(packageImporter, MainPkg)
 	program.initGlobal()
 	context := newCallContext()
-	fr := &frame{program: program, context: context}
-	if init := mainPkg.Func("init"); init != nil {
+	state := &State{program: program, context: context}
+	if init := MainPkg.Func("init"); init != nil {
 		for _, pkg := range packages {
 			if dependInit := pkg.Func("init"); dependInit != nil {
-				callSSA(fr, dependInit, nil, nil)
+				callSSA(state, dependInit, nil, nil)
 			}
 		}
-		callSSA(fr, init, nil, nil)
+		callSSA(state, init, nil, nil)
 	}
 	context.cancelFunc()
 	return program, nil
@@ -133,22 +131,19 @@ func (p *Program) RunWithContext(funcName string, params ...interface{}) (result
 		}
 	}()
 	ctx = newCallContext()
-	mainFn := p.mainPkg.Func(funcName)
+	mainFn := p.MainPkg.Func(funcName)
 	if mainFn == nil {
 		return nil, nil, errors.New("function not found")
-	}
-	if debugging {
-		mainFn.WriteTo(os.Stdout)
 	}
 	args := make([]internal.Value, len(params))
 	for i := range args {
 		args[i] = internal.ValueOf(params[i])
 	}
-	fr := &frame{
+	state := &State{
 		program: p,
 		context: ctx,
 	}
-	if ret := callSSA(fr, mainFn, args, nil); ret != nil {
+	if ret := callSSA(state, mainFn, args, nil); ret != nil {
 		result = ret.Interface()
 	}
 	ctx.cancelFunc()
@@ -156,7 +151,7 @@ func (p *Program) RunWithContext(funcName string, params ...interface{}) (result
 }
 
 func (p *Program) initGlobal() {
-	for _, v := range p.mainPkg.Members {
+	for _, v := range p.MainPkg.Members {
 		if g, ok := v.(*ssa.Global); ok {
 			global := zero(g.Type().(*types.Pointer).Elem()).Elem()
 			p.globals[g] = &global
@@ -165,7 +160,7 @@ func (p *Program) initGlobal() {
 }
 
 func (p *Program) SetGlobalValue(name string, val interface{}) error {
-	v := p.mainPkg.Members[name]
+	v := p.MainPkg.Members[name]
 	if g, ok := v.(*ssa.Global); ok {
 		global := internal.ValueOf(val)
 		p.globals[g] = &global
@@ -175,5 +170,5 @@ func (p *Program) SetGlobalValue(name string, val interface{}) error {
 }
 
 func (p *Program) Package() *ssa.Package {
-	return p.mainPkg
+	return p.MainPkg
 }

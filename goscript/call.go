@@ -2,18 +2,353 @@ package goscript
 
 import (
 	"fmt"
+	"go/constant"
 	"go/token"
 	"go/types"
-	"reflect"
 	"strings"
+	"sync/atomic"
 	"time"
 
+	"github.com/goccy/go-reflect"
 	"github.com/linkxzhou/http_bench/goscript/internal"
-
 	"golang.org/x/tools/go/ssa"
 )
 
-var debugging = false
+// upop 一元表达式求值
+func unop(instr *ssa.UnOp, x internal.Value) internal.Value {
+	if instr.Op == token.MUL {
+		return internal.ValueOf(x.Elem().Interface())
+	}
+	var result interface{}
+	switch x.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch instr.Op {
+		case token.SUB:
+			result = -x.Int()
+		case token.XOR:
+			result = ^x.Int()
+		default:
+			panic(fmt.Sprintf("invalid unary op %s %T", instr.Op, x))
+		}
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		switch instr.Op {
+		case token.SUB:
+			result = -x.Uint()
+		case token.XOR:
+			result = ^x.Uint()
+		default:
+			panic(fmt.Sprintf("invalid unary op %s %T", instr.Op, x))
+		}
+	case reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
+		switch instr.Op {
+		case token.SUB:
+			result = -x.Float()
+		default:
+			panic(fmt.Sprintf("invalid unary op %s %T", instr.Op, x))
+		}
+	case reflect.Bool:
+		switch instr.Op {
+		case token.NOT:
+			result = !x.Bool()
+		default:
+			panic(fmt.Sprintf("invalid unary op %s %T", instr.Op, x))
+		}
+	case reflect.Chan: // recv
+		v, ok := x.RValue().Recv()
+		if !ok {
+			v = reflect.Zero(x.Type().Elem())
+		}
+		if instr.CommaOk {
+			return internal.ValueOf([]internal.Value{internal.RValue{Value: v}, internal.ValueOf(ok)})
+		}
+		return internal.RValue{Value: v}
+	}
+	return conv(result, instr.Type())
+}
+
+// constValue 常量表达式求值
+func constValue(c *ssa.Const) internal.Value {
+	if c.IsNil() {
+		return zero(c.Type()).Elem() // typed nil
+	}
+	var val interface{}
+	t := c.Type().Underlying().(*types.Basic)
+	switch t.Kind() {
+	case types.Bool, types.UntypedBool:
+		val = constant.BoolVal(c.Value)
+	case types.Int, types.UntypedInt, types.Int8, types.Int16, types.Int32, types.UntypedRune, types.Int64:
+		val = c.Int64()
+	case types.Uint, types.Uint8, types.Uint16, types.Uint32, types.Uint64, types.Uintptr:
+		val = c.Uint64()
+	case types.Float32, types.Float64, types.UntypedFloat:
+		val = c.Float64()
+	case types.Complex64, types.Complex128, types.UntypedComplex:
+		val = c.Complex128()
+	case types.String, types.UntypedString:
+		if c.Value.Kind() == constant.String {
+			val = constant.StringVal(c.Value)
+		} else {
+			val = string(rune(c.Int64()))
+		}
+	default:
+		panic(fmt.Sprintf("constValue: %s", c))
+	}
+	return conv(val, c.Type())
+}
+
+// binop 二元表达式求值
+// nolint:gocognit,gocyclo,funlen
+func binop(instr *ssa.BinOp, x, y internal.Value) internal.Value {
+	var result interface{}
+	switch instr.Op {
+	case token.ADD: // +
+		switch x.Kind() {
+		case reflect.String:
+			result = x.String() + y.String()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() + y.Int()
+		case reflect.Float32, reflect.Float64:
+			result = x.Float() + y.Float()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() + y.Uint()
+		}
+
+	case token.SUB: // -
+		switch x.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() - y.Int()
+		case reflect.Float32, reflect.Float64:
+			result = x.Float() - y.Float()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() - y.Uint()
+		}
+
+	case token.MUL: // *
+		switch x.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() * y.Int()
+		case reflect.Float32, reflect.Float64:
+			result = x.Float() * y.Float()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() * y.Uint()
+		}
+
+	case token.QUO: // /
+		switch x.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() / y.Int()
+		case reflect.Float32, reflect.Float64:
+			result = x.Float() / y.Float()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() / y.Uint()
+		}
+
+	case token.REM: // %
+		switch x.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() % y.Int()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() % y.Uint()
+		}
+
+	case token.AND: // &
+		switch x.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() & y.Int()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() & y.Uint()
+		}
+
+	case token.OR: // |
+		switch x.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() | y.Int()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() | y.Uint()
+		}
+
+	case token.XOR: // ^
+		switch x.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() ^ y.Int()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() ^ y.Uint()
+		}
+
+	case token.AND_NOT: // &^
+		switch x.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() &^ y.Int()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() &^ y.Uint()
+		}
+
+	case token.SHL: // <<
+		switch x.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() << y.Uint()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() << y.Uint()
+		}
+
+	case token.SHR: // >>
+		switch x.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() >> y.Uint()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() >> y.Uint()
+		}
+
+	case token.LSS: // <
+		switch x.Kind() {
+		case reflect.String:
+			result = x.String() < y.String()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() < y.Int()
+		case reflect.Float32, reflect.Float64:
+			result = x.Float() < y.Float()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() < y.Uint()
+		}
+
+	case token.LEQ: // <=
+		switch x.Kind() {
+		case reflect.String:
+			result = x.String() <= y.String()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() <= y.Int()
+		case reflect.Float32, reflect.Float64:
+			result = x.Float() <= y.Float()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() <= y.Uint()
+		}
+
+	case token.EQL: // ==
+		if x.IsNil() || y.IsNil() {
+			result = x.IsNil() && y.IsNil()
+		} else {
+			result = x.Interface() == y.Interface()
+		}
+
+	case token.NEQ: // !=
+		if x.IsNil() || y.IsNil() {
+			result = x.IsNil() != y.IsNil()
+		} else {
+			result = x.Interface() != y.Interface()
+		}
+
+	case token.GTR: // >
+		switch x.Kind() {
+		case reflect.String:
+			result = x.String() > y.String()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() > y.Int()
+		case reflect.Float32, reflect.Float64:
+			result = x.Float() > y.Float()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() > y.Uint()
+		}
+
+	case token.GEQ: // >=
+		switch x.Kind() {
+		case reflect.String:
+			result = x.String() >= y.String()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result = x.Int() >= y.Int()
+		case reflect.Float32, reflect.Float64:
+			result = x.Float() >= y.Float()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			result = x.Uint() >= y.Uint()
+		}
+	}
+
+	return conv(result, instr.Type())
+}
+
+// goCall go语句执行
+func goCall(state *State, instr *ssa.CallCommon) {
+	if instr.Signature().Recv() != nil {
+		recv := state.get(instr.Args[0])
+		if recv.RValue().NumMethod() > 0 { // external method
+			args := state.GetValue(len(instr.Args) - 1)
+			for i := range args {
+				args[i] = state.get(instr.Args[i+1])
+			}
+			go callExternal(recv.RValue().MethodByName(instr.Value.Name()), args)
+			return
+		}
+	}
+
+	args := state.GetValue(len(instr.Args))
+	for i, arg := range instr.Args {
+		args[i] = state.get(arg)
+	}
+
+	atomic.AddInt32(&state.context.goroutines, 1)
+
+	go func(caller *State, fn ssa.Value, args []internal.Value) {
+		defer func() {
+			// 启动协程前添加recover语句，避免协程panic影响其他协程
+			if re := recover(); re != nil {
+				caller.context.outBuffer.WriteString(fmt.Sprintf("goroutine panic: %v", re))
+			}
+			atomic.AddInt32(&caller.context.goroutines, -1)
+		}()
+		call(caller, instr.Pos(), fn, args)
+	}(state, instr.Value, args)
+}
+
+// callOp 函数调用语句执行
+func callOp(state *State, instr *ssa.CallCommon) internal.Value {
+	if instr.Signature().Recv() == nil {
+		// call func
+		args := state.GetValue(len(instr.Args))
+		for i, arg := range instr.Args {
+			args[i] = state.get(arg)
+		}
+		return call(state, instr.Pos(), instr.Value, args)
+	}
+
+	// invoke Method
+	if instr.IsInvoke() {
+		recv := state.get(instr.Value)
+		args := state.GetValue(len(instr.Args))
+		for i := range args {
+			args[i] = state.get(instr.Args[i])
+		}
+		return callExternal(recv.RValue().MethodByName(instr.Method.Name()), args)
+	}
+
+	args := state.GetValue(len(instr.Args))
+	for i, arg := range instr.Args {
+		args[i] = state.get(arg)
+	}
+	if args[0].Type().NumMethod() == 0 {
+		return call(state, instr.Pos(), instr.Value, args)
+	}
+	return callExternal(args[0].RValue().MethodByName(instr.Value.Name()), args[1:])
+}
+
+// call 函数调用
+func call(state *State, callpos token.Pos, fn interface{}, args []internal.Value) internal.Value {
+	switch fun := fn.(type) {
+	case *ssa.Function:
+		if fun == nil {
+			panic("call of nil function") // nil of func type
+		}
+		return callSSA(state, fun, args, nil)
+	case *ssa.Builtin:
+		return callBuiltin(state, callpos, fun, args)
+	case *internal.ExternalValue:
+		return callExternal(fun.Object.Value, args)
+	case ssa.Value:
+		p := state.env[fun]
+		f := p.Interface()
+		return call(state, callpos, f, args)
+	default:
+		return callExternal(reflect.ValueOf(fun), args)
+	}
+}
 
 func callExternal(fn reflect.Value, args []internal.Value) internal.Value {
 	fnType := fn.Type()
@@ -37,32 +372,35 @@ func callExternal(fn reflect.Value, args []internal.Value) internal.Value {
 	return internal.Package(out)
 }
 
-func callSSA(caller *frame, fn *ssa.Function, args []internal.Value, env []*internal.Value) internal.Value {
-	fr := caller.newChild(fn)
-	defer framePool.Put(fr)
+func callSSA(caller *State, fn *ssa.Function, args []internal.Value, env []internal.Value) internal.Value {
+	state := caller.newChild(fn)
+	defer func() {
+		state.PutValueAll()
+		statePool.Put(state)
+	}()
 	if len(fn.Blocks) > 0 {
-		fr.block = fn.Blocks[0]
+		state.block = fn.Blocks[0]
 	}
 	for i, l := range fn.Locals {
-		fr.locals[i] = zero(deref(l.Type()))
-		fr.env[l] = &fr.locals[i]
+		state.locals[i] = zero(deref(l.Type()))
+		state.env[l] = state.locals[i]
 	}
 	for i, p := range fn.Params {
-		fr.env[p] = &args[i]
+		state.env[p] = args[i]
 	}
 	for i, fv := range fn.FreeVars {
-		fr.env[fv] = env[i]
+		state.env[fv] = env[i]
 	}
-	if fr.block != nil {
-		runFrame(fr)
+	if state.block != nil {
+		ssaStack(state)
 	}
 	for i := range fn.Locals {
-		fr.locals[i] = nil
+		state.locals[i] = nil
 	}
-	return fr.result
+	return state.result
 }
 
-func callBuiltin(caller *frame, callPos token.Pos, fn *ssa.Builtin, args []internal.Value) internal.Value {
+func callBuiltin(caller *State, callPos token.Pos, fn *ssa.Builtin, args []internal.Value) internal.Value {
 	switch fn.Name() {
 	case "append":
 		if args[1].RValue().IsNil() {
@@ -91,7 +429,7 @@ func callBuiltin(caller *frame, callPos token.Pos, fn *ssa.Builtin, args []inter
 		for i, arg := range args {
 			s[i] = fmt.Sprint(arg.Interface())
 		}
-		pos := caller.program.mainPkg.Prog.Fset.Position(callPos)
+		pos := caller.program.MainPkg.Prog.Fset.Position(callPos)
 		buf.WriteString(fmt.Sprintf("[%s %s:%d] %s\n",
 			time.Now().Format("15:04:05"),
 			pos.Filename, pos.Line,
@@ -116,154 +454,4 @@ func callBuiltin(caller *frame, callPos token.Pos, fn *ssa.Builtin, args []inter
 		return internal.ValueOf(recover())
 	}
 	panic("unknown built-in: " + fn.Name())
-}
-
-// deref 解引用，若typ为指针类型，返回其指向的类型，否则返回原类型。
-func deref(typ types.Type) types.Type {
-	if p, ok := typ.Underlying().(*types.Pointer); ok {
-		return p.Elem()
-	}
-	return typ
-}
-
-// zero 返回指定类型的零值
-func zero(t types.Type) internal.Value {
-	v := reflect.New(typeChange(t))
-	return internal.RValue{Value: v}
-}
-
-// runFrame 在栈帧上执行程序
-func runFrame(fr *frame) {
-	var instr ssa.Instruction
-
-	defer func() {
-		if fr.block == nil {
-			return // normal return
-		}
-		fr.panicking = true
-		fr.panic = fmt.Errorf("panic: %s: %v", fr.program.mainPkg.Prog.Fset.Position(instr.Pos()).String(), recover())
-		fr.runDefers()
-		fr.block = fr.fn.Recover
-	}()
-
-	for {
-		for _, instr = range fr.block.Instrs {
-			fmt.Println("instr: ", instr.String(), reflect.TypeOf(instr))
-			c := visitInstr(fr, instr)
-
-			// TODO:
-			// if !debugging {
-			// 	if err := fr.context.Err(); err != nil {
-			// 		panic(err)
-			// 	}
-			// }
-
-			switch c {
-			case _Return:
-				return
-			case _NEXT:
-				// no-op
-			case _JUMP:
-				break
-			}
-		}
-	}
-}
-
-// 下一条执行指令的状态
-type nextInstr int
-
-const (
-	_NEXT   nextInstr = iota // 继续执行下一条语句
-	_Return                  // 函数返回
-	_JUMP                    // 跳转到另一个block
-)
-
-// visitInstr 执行一条ssa.Instruction语句，返回值nextInstr用于指示下一条语句的位置
-func visitInstr(fr *frame, instr ssa.Instruction) nextInstr {
-	c := _NEXT
-	switch instr := instr.(type) {
-	case *ssa.DebugRef:
-		// no-op
-	case *ssa.Alloc:
-		c = runAlloc(fr, instr)
-	case *ssa.UnOp:
-		c = runUnOp(fr, instr)
-	case *ssa.BinOp:
-		c = runBinOp(fr, instr)
-	case *ssa.MakeInterface:
-		c = runMakeInterface(fr, instr)
-	case *ssa.Return:
-		c = runReturn(fr, instr)
-	case *ssa.IndexAddr:
-		c = runIndexAddr(fr, instr)
-	case *ssa.Field:
-		c = runField(fr, instr)
-	case *ssa.FieldAddr:
-		c = runFieldAddr(fr, instr)
-	case *ssa.Store:
-		c = runStore(fr, instr)
-	case *ssa.Slice:
-		c = runSlice(fr, instr)
-	case *ssa.Call:
-		c = runCall(fr, instr)
-	case *ssa.MakeSlice:
-		c = runMakeSlice(fr, instr)
-	case *ssa.MakeMap:
-		c = runMakeMap(fr, instr)
-	case *ssa.MapUpdate:
-		c = runMapUpdate(fr, instr)
-	case *ssa.Lookup:
-		c = runLookup(fr, instr)
-	case *ssa.Extract:
-		c = runExtract(fr, instr)
-	case *ssa.If:
-		c = runIf(fr, instr)
-	case *ssa.Jump:
-		c = runJump(fr, instr)
-	case *ssa.Phi:
-		c = runPhi(fr, instr)
-	case *ssa.Convert:
-		c = runConvert(fr, instr)
-	case *ssa.Range:
-		c = runRange(fr, instr)
-	case *ssa.Next:
-		c = runNext(fr, instr)
-	case *ssa.ChangeType:
-		c = runChangeType(fr, instr)
-	case *ssa.ChangeInterface:
-		c = runChangeInterface(fr, instr)
-	case *ssa.MakeClosure:
-		c = runMakeClosure(fr, instr)
-	case *ssa.Defer:
-		c = runDefer(fr, instr)
-	case *ssa.RunDefers:
-		c = runRunDefers(fr, instr)
-	case *ssa.MakeChan:
-		c = runMakeChan(fr, instr)
-	case *ssa.Send:
-		c = runSend(fr, instr)
-	case *ssa.TypeAssert:
-		c = runTypeAssert(fr, instr)
-	case *ssa.Go:
-		c = runGo(fr, instr)
-	case *ssa.Panic:
-		c = runPanic(fr, instr)
-	case *ssa.Select:
-		c = runSelect(fr, instr)
-	default:
-		panic(fmt.Sprintf("unexpected instruction: %T", instr))
-	}
-
-	if debugging {
-		fmt.Printf("run %s: \t%s \t%T", fr.program.mainPkg.Prog.Fset.Position(instr.Pos()), instr.String(), instr)
-		if val, ok := instr.(ssa.Value); ok {
-			v := *fr.env[val]
-			if v != nil && v.IsValid() {
-				fmt.Printf("\t\t\t%#v", v.Interface()) // debugging
-			}
-		}
-	}
-
-	return c
 }

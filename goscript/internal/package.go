@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"reflect"
+	"github.com/goccy/go-reflect"
 )
 
 func AddPackage(path string, name string, objects ...*ExternalObject) {

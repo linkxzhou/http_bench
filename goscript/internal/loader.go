@@ -2,7 +2,8 @@ package internal
 
 import (
 	"go/ast"
-	"reflect"
+
+	"github.com/goccy/go-reflect"
 )
 
 type BasicKind int
