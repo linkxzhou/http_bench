@@ -3,3 +3,4 @@ http_bench
 test/echo
 arch.drawio
 ./goscript/pprof.out
+*/**/.DS_Store
