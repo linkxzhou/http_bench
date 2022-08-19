@@ -4,3 +4,4 @@ test/echo
 arch.drawio
 ./goscript/pprof.out
 */**/.DS_Store
+./goscript/readme.md
