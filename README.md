@@ -12,8 +12,7 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [x] Support variable
 - [ ] HTTP/3 stress
 - [x] Websocket stress
-- [x] Dashboard
-- [ ] Run script(xx.gs)
+- [ ] Dashboard
 
 ![avatar](./demo.png)
 
@@ -81,19 +80,17 @@ Latency distribution:
 -a  Basic authentication, username:password.
 -x  HTTP Proxy address as host:port.
 -disable-compression  Disable compression.
--disable-keepalive    Disable keep-alive, prevents re-use of TCP
-          connections between different HTTP requests.
--cpus     Number of used cpu cores.
-          (default for current machine is %d cores).
+-disable-keepalive    Disable keep-alive, prevents re-use of TCP connections between different HTTP requests.
+-cpus     Number of used cpu cores. (default for current machine is %d cores).
 -url 		Request single url.
 -verbose 	Print detail logs, default 2(0:TRACE, 1:DEBUG, 2:INFO ~ ERROR).
 -url-file 	Read url list from file and random stress test.
 -body-file  Request body from file.
 -listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
 -dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
--script 	Run golang script to print and control request. e.g. "./script.gs".
 -W  Running distributed stress test worker mechine list.
       for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711". 
+-example 	Print some stress test examples (default false).
 ```
 
 Example stress test for url(print detail info "-verbose 1"):

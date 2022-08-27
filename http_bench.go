@@ -101,7 +101,10 @@ var (
 		"escape":       escape,
 		"getEnv":       getEnv,
 	}
-	fnUUID = uuidStr()
+	fnUUID            = uuidStr()
+	ErrInitWsClient   = errors.New("init ws client error")
+	ErrInitHttpClient = errors.New("init http client error")
+	ErrUrl            = errors.New("check url error")
 )
 
 func randomString(n int) string {
@@ -593,7 +596,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 	}
 
 	if !checkURL(urlBytes.String()) {
-		err = errors.New("Check url error")
+		err = ErrUrl
 		return
 	}
 
@@ -603,7 +606,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 	switch b.RequestParams.RequestHttpType {
 	case TYPE_HTTP1, TYPE_HTTP2:
 		if client.httpClient == nil {
-			err = errors.New("Init http client error")
+			err = ErrInitHttpClient
 			return
 		}
 		req, reqErr := http.NewRequest(b.RequestParams.RequestMethod, urlBytes.String(), strings.NewReader(bodyBytes.String()))
@@ -624,7 +627,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 		}
 	case TYPE_WS:
 		if client.wsClient == nil {
-			err = errors.New("Init ws client error")
+			err = ErrInitWsClient
 			return
 		}
 		if err = client.wsClient.WriteMessage(websocket.TextMessage, bodyBytes.Bytes()); err != nil {
@@ -916,12 +919,13 @@ var (
 
 	output = flag.String("o", "", "") // Output type
 
-	c        = flag.Int("c", 50, "")               // Number of requests to run concurrently
-	n        = flag.Int("n", 0, "")                // Number of requests to run
-	q        = flag.Int("q", 0, "")                // Rate limit, in seconds (QPS)
-	d        = flag.String("d", "10s", "")         // Duration for stress test
-	t        = flag.Int("t", 3000, "")             // Timeout in ms
-	httpType = flag.String("http", TYPE_HTTP1, "") // HTTP Version
+	c            = flag.Int("c", 50, "")               // Number of requests to run concurrently
+	n            = flag.Int("n", 0, "")                // Number of requests to run
+	q            = flag.Int("q", 0, "")                // Rate limit, in seconds (QPS)
+	d            = flag.String("d", "10s", "")         // Duration for stress test
+	t            = flag.Int("t", 3000, "")             // Timeout in ms
+	httpType     = flag.String("http", TYPE_HTTP1, "") // HTTP Version
+	printExample = flag.Bool("example", false, "")
 
 	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
 
@@ -969,38 +973,47 @@ Options:
 	-H  Custom HTTP header. You can specify as many as needed by repeating the flag.
 		for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
 		but "Host: ***", replace that with -host.
-	-http  Support http1, http2, ws, wss, default http1.
+	-http  Support http1, http2, ws, wss (default http1).
 	-body  Request body, default empty.
 	-a  Basic authentication, username:password.
 	-x  HTTP Proxy address as host:port.
 	-disable-compression  Disable compression.
-	-disable-keepalive    Disable keep-alive, prevents re-use of TCP
-						connections between different HTTP requests.
-	-cpus       Number of used cpu cores.
-				(default for current machine is %d cores).
+	-disable-keepalive    Disable keep-alive, prevents re-use of TCP connections between different HTTP requests.
+	-cpus		Number of used cpu cores. (default for current machine is %d cores).
 	-url 		Request single url.
 	-verbose 	Print detail logs, default 3(0:TRACE, 1:DEBUG, 2:INFO, 3:ERROR).
 	-url-file 	Read url list from file and random stress test.
 	-body-file  Request body from file.
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
 	-dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
-	-script 	Run golang script to print and control request. e.g. "./script.gs".
 	-W  Running distributed stress test worker mechine list.
 				for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
-
-Example stress test:
+	-example 	Print some stress test examples (default false).
+`
+var examples = `
+1.Example stress test:
 	./http_bench -n 1000 -c 10 -t 3000 -m GET -url "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1" -url-file urls.txt
+	./http_bench -d 10s -c 10 -m POST -body "{}" -url-file urls.txt
 
-Example distributed stress test:
+2.Example http2 test:
+	./http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1/test1" -body "{}"
+
+3.Example dashboard test:
+	./http_bench -dashboard "127.0.0.1:12345" -verbose 1
+
+4.Example Support Function and Variable test:
+	./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
+
+5.Example distributed stress test:
 	(1) ./http_bench -listen "127.0.0.1:12710" -verbose 1
 	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose 1 -W "127.0.0.1:12710"
 `
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprint(os.Stderr, fmt.Sprintf(usage, runtime.NumCPU()))
+		fmt.Println(fmt.Sprintf(usage, runtime.NumCPU()))
 	}
 
 	var params StressParameters
@@ -1015,6 +1028,11 @@ func main() {
 		}
 		os.Args = flag.Args()[0:]
 		flag.Parse()
+	}
+
+	if *printExample {
+		fmt.Println(examples)
+		return
 	}
 
 	runtime.GOMAXPROCS(*cpus)

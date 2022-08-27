@@ -7,11 +7,11 @@
 - [x] HTTP/2 压测
 - [x] 分布式压测
 - [x] 支持函数
-- [ ] 支持变量
+- [x] 支持变量
 - [ ] HTTP/3 压测
 - [x] Websocket 压测
 - [x] Dashboard
-- [x] 支持脚本语言
+- [ ] 支持脚本语言
 
 ![avatar](./demo.png)
 
@@ -82,8 +82,8 @@ Latency distribution:
 -body-file  从文件中读取请求的body数据
 -listen 分布式压测任务机器监听IP:PORT，例如： "127.0.0.1:12710".
 -dashboard 监听端口，浏览器发起压测和查看QPS曲线.
--script 	 运行类似golang脚本控制输出和请求等参数，"./script.gs".
 -W  分布式压测执行任务的机器列表，例如： -W "127.0.0.1:12710" -W "127.0.0.1:12711".
+-example 	打印样例信息.
 ```
 
 执行压测样例(使用"-verbose 1"打印详细日志):
