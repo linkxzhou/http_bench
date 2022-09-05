@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -30,6 +31,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/lucas-clemente/quic-go/http3"
 	"golang.org/x/net/http2"
 )
 
@@ -101,7 +103,8 @@ var (
 		"escape":       escape,
 		"getEnv":       getEnv,
 	}
-	fnUUID            = uuidStr()
+	fnUUID = uuidStr()
+
 	ErrInitWsClient   = errors.New("init ws client error")
 	ErrInitHttpClient = errors.New("init http client error")
 	ErrUrl            = errors.New("check url error")
@@ -478,11 +481,6 @@ func (b *StressWorker) runWorkers() {
 		fmt.Printf("Running %d connections, @ %s\n", b.RequestParams.C, b.RequestParams.Urls[0])
 	}
 
-	if b.RequestParams.RequestHttpType == TYPE_HTTP3 { // TODO: not support http3
-		fmt.Fprintf(os.Stderr, "Not support %s\n", TYPE_HTTP3)
-		return
-	}
-
 	var (
 		start            = time.Now()
 		wg               sync.WaitGroup
@@ -528,6 +526,16 @@ func (b *StressWorker) runWorkers() {
 func (b *StressWorker) getClient() *StressClient {
 	client := &StressClient{}
 	switch b.RequestParams.RequestHttpType {
+	case TYPE_HTTP3:
+		client.httpClient = &http.Client{
+			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			Transport: &http3.RoundTripper{
+				TLSClientConfig: &tls.Config{
+					RootCAs:            http3Pool,
+					InsecureSkipVerify: true,
+				},
+			},
+		}
 	case TYPE_HTTP2:
 		client.httpClient = &http.Client{
 			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
@@ -604,7 +612,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 	verbosePrint(VERBOSE_TRACE, "Request body: %s\n", bodyBytes.String())
 
 	switch b.RequestParams.RequestHttpType {
-	case TYPE_HTTP1, TYPE_HTTP2:
+	case TYPE_HTTP1, TYPE_HTTP2, TYPE_HTTP3:
 		if client.httpClient == nil {
 			err = ErrInitHttpClient
 			return
@@ -641,7 +649,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 			code = http.StatusOK
 		}
 	default:
-		// TODO: add http3
+		// pass
 	}
 
 	return
@@ -649,7 +657,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 
 func (b *StressWorker) closeClient(client *StressClient) {
 	switch b.RequestParams.RequestHttpType {
-	case TYPE_HTTP1, TYPE_HTTP2:
+	case TYPE_HTTP1, TYPE_HTTP2, TYPE_HTTP3:
 		if client.httpClient != nil {
 			client.httpClient.CloseIdleConnections()
 		}
@@ -956,6 +964,8 @@ var (
 		wg.Wait()
 		return stressResult
 	}
+
+	http3Pool *x509.CertPool
 )
 
 var usage = `Usage: http_bench [options...] <url>
@@ -1086,6 +1096,13 @@ func main() {
 	switch strings.ToLower(*httpType) {
 	case TYPE_HTTP1, TYPE_HTTP2, TYPE_WS:
 		params.RequestHttpType = strings.ToLower(*httpType)
+	case TYPE_HTTP3:
+		params.RequestHttpType = strings.ToLower(*httpType)
+		var err error
+		http3Pool, err = x509.SystemCertPool()
+		if err != nil {
+			panic(TYPE_HTTP3 + " err: " + err.Error())
+		}
 	default:
 		usageAndExit("Not support -http: " + *httpType)
 	}

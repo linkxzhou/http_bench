@@ -13,11 +13,7 @@ const (
 )
 
 func TestEchoHTTP2(t *testing.T) {
-	listen := "0.0.0.0:18091"
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`This is ` + NAME2 + ` Echo Server`))
-	})
+	listen := "0.0.0.0:18092"
 	srv := &http.Server{
 		Addr: listen,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,4 +26,4 @@ func TestEchoHTTP2(t *testing.T) {
 	}
 }
 
-// curl -i -XPUT --http2 https://127.0.0.1:19090 -k -d hello
+// curl -i -XPUT --http2 https://127.0.0.1:18092 -k -d hello

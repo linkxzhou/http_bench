@@ -12,7 +12,7 @@ const (
 )
 
 func TestEchoHTTP1(t *testing.T) {
-	listen := "0.0.0.0:18090"
+	listen := "0.0.0.0:18091"
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`This is ` + NAME1 + ` Echo Server`))
@@ -22,3 +22,5 @@ func TestEchoHTTP1(t *testing.T) {
 		fmt.Fprintf(os.Stderr, NAME1+" ListenAndServe err: %s\n", err.Error())
 	}
 }
+
+// curl -i -XPUT http://127.0.0.1:18091 -k -d hello

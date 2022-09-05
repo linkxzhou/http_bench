@@ -11,13 +11,13 @@ import (
 )
 
 const (
-	NAME3 = "WS"
+	NAMEWS = "WS"
 )
 
 var upgrader = websocket.Upgrader{} // use default options
 
 func TestEchoWS(t *testing.T) {
-	listen := "0.0.0.0:18092"
+	listen := "0.0.0.0:18094"
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		c, err := upgrader.Upgrade(w, r, nil)
@@ -29,7 +29,7 @@ func TestEchoWS(t *testing.T) {
 		for {
 			mt, message, err := c.ReadMessage()
 			if err != nil {
-				log.Println(NAME3+" read:", err)
+				log.Println(NAMEWS+" read:", err)
 				break
 			}
 			if message != nil {
@@ -37,13 +37,13 @@ func TestEchoWS(t *testing.T) {
 			}
 			err = c.WriteMessage(mt, message)
 			if err != nil {
-				log.Println(NAME3+" write:", err)
+				log.Println(NAMEWS+" write:", err)
 				break
 			}
 		}
 	})
-	fmt.Fprintf(os.Stdout, NAME3+" Server listen %s\n", listen)
+	fmt.Fprintf(os.Stdout, NAMEWS+" Server listen %s\n", listen)
 	if err := http.ListenAndServe(listen, mux); err != nil {
-		fmt.Fprintf(os.Stderr, NAME3+" ListenAndServe err: %s\n", err.Error())
+		fmt.Fprintf(os.Stderr, NAMEWS+" ListenAndServe err: %s\n", err.Error())
 	}
 }

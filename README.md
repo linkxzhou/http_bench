@@ -12,7 +12,7 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [x] Support variable
 - [ ] HTTP/3 stress
 - [x] Websocket stress
-- [ ] Dashboard
+- [x] Dashboard
 
 ![avatar](./demo.png)
 

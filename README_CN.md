@@ -11,7 +11,6 @@
 - [ ] HTTP/3 压测
 - [x] Websocket 压测
 - [x] Dashboard
-- [ ] 支持脚本语言
 
 ![avatar](./demo.png)
 
