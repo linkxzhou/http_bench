@@ -5,11 +5,11 @@
 
 - [x] HTTP/1 压测
 - [x] HTTP/2 压测
+- [x] HTTP/3 压测
+- [x] Websocket 压测
 - [x] 分布式压测
 - [x] 支持函数
 - [x] 支持变量
-- [x] HTTP/3 压测
-- [x] Websocket 压测
 - [x] Dashboard
 
 ![avatar](./demo.png)
