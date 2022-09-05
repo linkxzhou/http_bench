@@ -8,7 +8,7 @@
 - [x] 分布式压测
 - [x] 支持函数
 - [x] 支持变量
-- [ ] HTTP/3 压测
+- [x] HTTP/3 压测
 - [x] Websocket 压测
 - [x] Dashboard
 
@@ -70,7 +70,7 @@ Latency distribution:
 -H  请求发起的HTTP的头部信息，例如：-H "Accept: text/html" -H "Content-Type: application/xml"
 -body  HTTP发起POST请求的body数据
 -a  HTTP的鉴权请求, 例如：http://username:password@xxx/
--http  支持http1,http2,ws和wss, 默认http1
+-http  支持http1, http2, http3, ws和wss, 默认http1
 -x  HTTP的代理IP和端口
 -disable-compression  不启用压缩
 -disable-keepalive    不开启keepalive
@@ -100,6 +100,11 @@ Latency distribution:
 执行压测，使用http/2:
 ```
 ./http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1/test1" -body "{}"
+```
+
+执行压测，使用http/3:
+```
+./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
 分布式压测样例(使用"-verbose 1"打印详细日志):

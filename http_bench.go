@@ -1010,10 +1010,13 @@ var examples = `
 2.Example http2 test:
 	./http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1/test1" -body "{}"
 
-3.Example dashboard test:
+3.Example http3 test:
+	./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
+
+4.Example dashboard test:
 	./http_bench -dashboard "127.0.0.1:12345" -verbose 1
 
-4.Example Support Function and Variable test:
+5.Example Support Function and Variable test:
 	./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
 
 5.Example distributed stress test:

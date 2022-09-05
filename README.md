@@ -10,7 +10,7 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [x] Distributed stress
 - [x] Support functions
 - [x] Support variable
-- [ ] HTTP/3 stress
+- [x] HTTP/3 stress
 - [x] Websocket stress
 - [x] Dashboard
 
@@ -75,7 +75,7 @@ Latency distribution:
 -H  Custom HTTP header. You can specify as many as needed by repeating the flag.
   for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
   but "Host: ***", replace that with -host.
--http  Support http1, http2, ws, wss, default http1.
+-http  Support http1, http2, http3, ws, wss, default http1.
 -body  Request body, default empty.
 -a  Basic authentication, username:password.
 -x  HTTP Proxy address as host:port.
@@ -108,6 +108,11 @@ Example stress test for file(print detail info "-verbose 1"):
 Example stress test for http/2:
 ```
 ./http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1/test1" -body "{}"
+```
+
+Example stress test for http/3:
+```
+./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
 Example distributed stress test(print detail info "-verbose 1"):
