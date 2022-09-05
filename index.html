@@ -145,6 +145,8 @@
                         body: JSON.stringify(request_data)
                     }).then(response => response.json().then(data => {
                             if (data.err_code != 0) {
+                                this.g_running = false;
+                                if (this.g_interval) clearInterval(this.g_interval);
                                 this.$message({
                                     showClose: true,
                                     message: 'error：' + data.err_msg,

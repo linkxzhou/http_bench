@@ -396,6 +396,7 @@ type (
 		currentResult             StressResult
 		totalTime                 time.Duration
 		wg                        sync.WaitGroup // Wait some task finish
+		err                       error
 		bodyTemplate, urlTemplate *template.Template
 	}
 )
@@ -409,8 +410,11 @@ func (b *StressWorker) Start() {
 }
 
 // Stop stop stress worker and wait coroutine finish
-func (b *StressWorker) Stop(wait bool) {
+func (b *StressWorker) Stop(wait bool, err error) {
 	b.RequestParams.Cmd = CMD_STOP
+	if err != nil {
+		b.err = err
+	}
 	if wait {
 		b.wg.Wait()
 	}
@@ -461,7 +465,8 @@ func (b *StressWorker) runWorker(n int, client *StressClient) {
 		var t = time.Now()
 
 		if code, size, err := b.doClient(client); err != nil {
-			b.Stop(false)
+			verbosePrint(VERBOSE_ERROR, "err: %v\n", err)
+			b.Stop(false, err)
 			break
 		} else {
 			b.results <- &result{
@@ -518,7 +523,7 @@ func (b *StressWorker) runWorkers() {
 	}
 
 	wg.Wait()
-	b.Stop(false)
+	b.Stop(false, nil)
 	b.totalTime = time.Now().Sub(start)
 	close(b.results)
 }
@@ -702,7 +707,7 @@ func (b *StressWorker) collectReport() {
 				b.currentResult.result(res)
 			case <-timeTicker.C:
 				verbosePrint(VERBOSE_INFO, "Time ticker upcoming, duration: %ds\n", b.RequestParams.Duration)
-				b.Stop(false) // Time ticker exec Stop commands
+				b.Stop(false, nil) // Time ticker exec Stop commands
 			}
 		}
 	}()
@@ -854,7 +859,7 @@ func execStress(params StressParameters, stressTestPtr **StressWorker) *StressRe
 			jsonBody, _ := json.Marshal(params)
 			requestWorkerList(jsonBody, stressTest)
 		}
-		stressTest.Stop(true)
+		stressTest.Stop(true, nil)
 		stressList.Delete(params.SequenceId)
 	case CMD_METRICS:
 		if len(workerList) > 0 {
@@ -868,6 +873,10 @@ func execStress(params StressParameters, stressTestPtr **StressWorker) *StressRe
 		} else {
 			stressResult = &stressTest.currentResult
 		}
+	}
+	if stressTest.err != nil {
+		stressResult.ErrCode = -1
+		stressResult.ErrMsg = stressTest.err.Error()
 	}
 	return stressResult
 }
@@ -1196,7 +1205,7 @@ func main() {
 			params.Cmd = CMD_STOP
 			jsonBody, _ := json.Marshal(params)
 			requestWorkerList(jsonBody, stressTest)
-			stressTest.Stop(true) // Recv stop signal and Stop commands
+			stressTest.Stop(true, nil) // Recv stop signal and Stop commands
 			mainCancel()
 		}()
 
