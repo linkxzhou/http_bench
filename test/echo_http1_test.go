@@ -13,6 +13,9 @@ const (
 
 func TestEchoHTTP1(t *testing.T) {
 	listen := "0.0.0.0:18091"
+	if len(os.Args) > 0 {
+		listen = os.Args[len(os.Args)-1]
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`This is ` + NAME1 + ` Echo Server`))

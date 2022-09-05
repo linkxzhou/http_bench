@@ -18,6 +18,9 @@ var upgrader = websocket.Upgrader{} // use default options
 
 func TestEchoWS(t *testing.T) {
 	listen := "0.0.0.0:18094"
+	if len(os.Args) > 0 {
+		listen = os.Args[len(os.Args)-1]
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		c, err := upgrader.Upgrade(w, r, nil)

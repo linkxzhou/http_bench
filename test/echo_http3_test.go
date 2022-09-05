@@ -17,6 +17,9 @@ const (
 
 func TestEchoHTTP3(t *testing.T) {
 	listen := "0.0.0.0:18093"
+	if len(os.Args) > 0 {
+		listen = os.Args[len(os.Args)-1]
+	}
 	srv := &http3.Server{
 		Addr: listen,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
