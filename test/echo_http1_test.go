@@ -13,7 +13,7 @@ const (
 
 func TestEchoHTTP1(t *testing.T) {
 	listen := "0.0.0.0:18091"
-	if len(os.Args) > 4 {
+	if len(os.Args) > 5 {
 		listen = os.Args[len(os.Args)-1]
 	}
 	mux := http.NewServeMux()

@@ -17,7 +17,7 @@ const (
 
 func TestEchoHTTP3(t *testing.T) {
 	listen := "0.0.0.0:18093"
-	if len(os.Args) > 4 {
+	if len(os.Args) > 5 {
 		listen = os.Args[len(os.Args)-1]
 	}
 	srv := &http3.Server{

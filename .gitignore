@@ -6,3 +6,4 @@ arch.drawio
 */**/.DS_Store
 ./goscript/readme.md
 .DS_Store
+*/**/nohup.out
