@@ -1028,7 +1028,7 @@ var examples = `
 5.Example Support Function and Variable test:
 	./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
 
-5.Example distributed stress test:
+6.Example distributed stress test:
 	(1) ./http_bench -listen "127.0.0.1:12710" -verbose 1
 	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose 1 -W "127.0.0.1:12710"
 `
