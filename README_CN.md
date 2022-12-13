@@ -11,6 +11,7 @@
 - [x] 支持函数
 - [x] 支持变量
 - [x] Dashboard
+- [ ] 阶梯压力测试
 
 ![avatar](./demo.png)
 

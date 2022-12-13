@@ -1,18 +1,19 @@
-## a HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket) stress test tool, support single and distributed.
+## a HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket) stress testing tool, support single and distributed.
 
 http_bench is a tiny program that sends some load to a web application, support single and distributed mechine, http/1, http/2 and http/3.
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
 
-- [x] HTTP/1 stress
-- [x] HTTP/2 stress
-- [x] HTTP/3 stress
-- [x] Websocket stress
-- [x] Distributed stress
+- [x] HTTP/1 stress testing
+- [x] HTTP/2 stress testing
+- [x] HTTP/3 stress testing
+- [x] Websocket stress testing
+- [x] Distributed stress testing
 - [x] Support functions
-- [x] Support variable
+- [x] Support variable 
 - [x] Dashboard
+- [ ] Stepping stress testing
 
 ![avatar](./demo.png)
 
