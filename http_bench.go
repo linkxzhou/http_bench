@@ -441,13 +441,8 @@ func (b *StressWorker) Wait() *StressResult {
 	return &(b.resultList[0])
 }
 
-func (b *StressWorker) runWorker(n int, client *StressClient) {
-	var throttle <-chan time.Time
+func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
 	var runCounts int = 0
-
-	if b.RequestParams.Qps > 0 {
-		throttle = time.Tick(time.Duration(1e6/(b.RequestParams.Qps)) * time.Microsecond)
-	}
 
 	// random set seed
 	rand.Seed(time.Now().UnixNano())
@@ -458,8 +453,8 @@ func (b *StressWorker) runWorker(n int, client *StressClient) {
 		}
 		runCounts++
 
-		if b.RequestParams.Qps > 0 {
-			<-throttle
+		if sleep > 0 {
+			time.Sleep(time.Duration(sleep) * time.Microsecond)
 		}
 
 		var t = time.Now()
@@ -517,7 +512,8 @@ func (b *StressWorker) runWorkers() {
 			}()
 
 			if client != nil {
-				b.runWorker(b.RequestParams.N/b.RequestParams.C, client)
+				sleep := 1e6 / (b.RequestParams.Qps * b.RequestParams.C) // sleep XXus send request
+				b.runWorker(b.RequestParams.N/b.RequestParams.C, sleep, client)
 			}
 		}()
 	}
