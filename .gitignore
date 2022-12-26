@@ -7,3 +7,4 @@ arch.drawio
 ./goscript/readme.md
 .DS_Store
 */**/nohup.out
+./vscode
