@@ -121,7 +121,7 @@
                 g_interval: undefined,
             },
             methods: {
-                submitStart: function(e) {
+                submitStart: function (e) {
                     let request_data = {
                         cmd: 0,
                         sequence_id: this.g_seqid,
@@ -144,21 +144,21 @@
                         headers: contentType,
                         body: JSON.stringify(request_data)
                     }).then(response => response.json().then(data => {
-                            if (data.err_code != 0) {
-                                this.g_running = false;
-                                if (this.g_interval) clearInterval(this.g_interval);
-                                this.$message({
-                                    showClose: true,
-                                    message: 'error：' + data.err_msg,
-                                    type: 'error',
-                                    duration: 5000,
-                                });
-                            }
-                        })
+                        if (data.err_code != 0) {
+                            this.g_running = false;
+                            if (this.g_interval) clearInterval(this.g_interval);
+                            this.$message({
+                                showClose: true,
+                                message: 'error：' + data.err_msg,
+                                type: 'error',
+                                duration: 5000,
+                            });
+                        }
+                    })
                     )
                     this.g_running = true;
                     let time_list = [], data_list = [], lats_total = 0;
-                    let time_metrics = this.time_metrics > 0 ? this.time_metrics: 5000;
+                    let time_metrics = this.time_metrics > 0 ? this.time_metrics : 5000;
                     this.g_interval = setInterval(function () {
                         request_data.cmd = 2;
                         fetch('/api', {
@@ -175,7 +175,7 @@
                         })
                     }, time_metrics);
                 },
-                submitStop: function(e) {
+                submitStop: function (e) {
                     this.g_running = false;
                     if (this.g_interval) clearInterval(this.g_interval);
                     let request_data = {

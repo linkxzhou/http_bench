@@ -110,14 +110,14 @@ var (
 	ErrUrl            = errors.New("check url error")
 )
 
-func randomString(n int) string {
+func randomN(n int, letter string) string {
 	b := make([]byte, n)
 	for i, cache, remain := n-1, fnSrc.Int63(), letterIdxMax; i >= 0; {
 		if remain == 0 {
 			cache, remain = fnSrc.Int63(), letterIdxMax
 		}
-		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
-			b[i] = letterBytes[idx]
+		if idx := int(cache & letterIdxMask); idx < len(letter) {
+			b[i] = letter[idx]
 			i--
 		}
 		cache >>= letterIdxBits
@@ -126,20 +126,12 @@ func randomString(n int) string {
 	return string(b)
 }
 
+func randomString(n int) string {
+	return randomN(n, letterBytes)
+}
+
 func randomNum(n int) string {
-	b := make([]byte, n)
-	for i, cache, remain := n-1, fnSrc.Int63(), letterIdxMax; i >= 0; {
-		if remain == 0 {
-			cache, remain = fnSrc.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < len(letterNumBytes) {
-			b[i] = letterNumBytes[idx]
-			i--
-		}
-		cache >>= letterIdxBits
-		remain--
-	}
-	return string(b)
+	return randomN(n, letterNumBytes)
 }
 
 func UUID() string {
@@ -235,8 +227,6 @@ func (result *StressResult) print() {
 			fmt.Printf("  Total data:\t%4.3f KB\n", float64(result.SizeTotal)/1024)
 		} else if result.SizeTotal > 0 {
 			fmt.Printf("  Total data:\t%4.3f bytes\n", float64(result.SizeTotal))
-		} else {
-			// pass
 		}
 		fmt.Printf("  Size/request:\t%d bytes\n", result.SizeTotal/result.LatsTotal)
 		result.printStatusCodes()
@@ -512,7 +502,10 @@ func (b *StressWorker) runWorkers() {
 			}()
 
 			if client != nil {
-				sleep := 1e6 / (b.RequestParams.Qps * b.RequestParams.C) // sleep XXus send request
+				sleep := 0
+				if b.RequestParams.Qps > 0 {
+					sleep = 1e6 / (b.RequestParams.Qps * b.RequestParams.C) // sleep XXus send request
+				}
 				b.runWorker(b.RequestParams.N/b.RequestParams.C, sleep, client)
 			}
 		}()
@@ -779,7 +772,6 @@ func parseFile(fileName string, delimiter []rune) ([]string, error) {
 			}
 		}
 	}
-
 	return contentList, nil
 }
 
@@ -820,7 +812,6 @@ func parseTime(timeStr string) int64 {
 	if err != nil || t <= 0 {
 		usageAndExit("Duration parse err: " + err.Error())
 	}
-
 	return multi * t
 }
 
@@ -995,10 +986,10 @@ Options:
 	-disable-compression  Disable compression.
 	-disable-keepalive    Disable keep-alive, prevents re-use of TCP connections between different HTTP requests.
 	-cpus		Number of used cpu cores. (default for current machine is %d cores).
-	-url 		Request single url.
+	-url		Request single url.
 	-verbose 	Print detail logs, default 3(0:TRACE, 1:DEBUG, 2:INFO, 3:ERROR).
 	-url-file 	Read url list from file and random stress test.
-	-body-file  Request body from file.
+	-body-file	Request body from file.
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
 	-dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
 	-W  Running distributed stress test worker mechine list.
