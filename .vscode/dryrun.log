@@ -1,6 +1,0 @@
-make --dry-run --always-make --keep-going --print-directory
-make: Entering directory `/Volumes/D/github/http_bench'
-make: Leaving directory `/Volumes/D/github/http_bench'
- 
-make: *** No targets specified and no makefile found.  Stop.
-
