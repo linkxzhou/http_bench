@@ -986,8 +986,7 @@ Options:
 	-body-file	Request body from file.
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
 	-dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
-	-W  Running distributed stress test worker mechine list.
-				for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
+	-W  Running distributed stress test worker mechine list. for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 	-example 	Print some stress test examples (default false).
 `
 var examples = `
@@ -1053,7 +1052,7 @@ func main() {
 	}
 
 	var requestUrls []string
-	if *urlFile == "" {
+	if *urlFile == "" && len(*urlstr) > 0 {
 		requestUrls = append(requestUrls, *urlstr)
 	} else {
 		var err error
