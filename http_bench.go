@@ -360,7 +360,7 @@ type StressParameters struct {
 	AuthUsername       string              `json:"auth_username"`       // Basic authentication, username:password.
 	AuthPassword       string              `json:"auth_password"`
 	Headers            map[string][]string `json:"headers"` // Custom HTTP header.
-	Urls               []string            `json:"urls"`
+	Url                string              `json:"url"`
 	Output             string              `json:"output"` // Output represents the output type. If "csv" is provided, the output will be dumped as a csv stream.
 }
 
@@ -467,11 +467,7 @@ func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
 }
 
 func (b *StressWorker) runWorkers() {
-	if len(b.RequestParams.Urls) > 1 {
-		fmt.Printf("Running %d connections, @ random urls.txt\n", b.RequestParams.C)
-	} else {
-		fmt.Printf("Running %d connections, @ %s\n", b.RequestParams.C, b.RequestParams.Urls[0])
-	}
+	fmt.Printf("Running %d connections, @ %s\n", b.RequestParams.C, b.RequestParams.Url)
 
 	var (
 		wg               sync.WaitGroup
@@ -481,7 +477,7 @@ func (b *StressWorker) runWorkers() {
 		urlTemplateName  = fmt.Sprintf("URL-%d", b.RequestParams.SequenceId)
 	)
 
-	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Urls[0]); err != nil {
+	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Url); err != nil {
 		verbosePrint(VERBOSE_ERROR, "Parse urls function err: "+err.Error()+"\n")
 	}
 
@@ -568,9 +564,7 @@ func (b *StressWorker) getClient() *StressClient {
 			Transport: tr,
 		}
 	case TYPE_WS:
-		randv := rand.Intn(len(b.RequestParams.Urls)) % len(b.RequestParams.Urls)
-		url := b.RequestParams.Urls[randv]
-		if c, _, err := websocket.DefaultDialer.Dial(url, b.RequestParams.Headers); err != nil {
+		if c, _, err := websocket.DefaultDialer.Dial(b.RequestParams.Url, b.RequestParams.Headers); err != nil {
 			verbosePrint(VERBOSE_ERROR, "Websocket err: %s\n", err.Error())
 			return nil
 		} else {
@@ -583,9 +577,7 @@ func (b *StressWorker) getClient() *StressClient {
 
 func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err error) {
 	var urlBytes, bodyBytes bytes.Buffer
-
-	randv := rand.Intn(len(b.RequestParams.Urls)) % len(b.RequestParams.Urls)
-	url := b.RequestParams.Urls[randv]
+	var url = b.RequestParams.Url
 
 	if b.urlTemplate != nil && len(url) > 0 {
 		b.urlTemplate.Execute(&urlBytes, nil)
@@ -1060,11 +1052,12 @@ func main() {
 		usageAndExit("n cannot be less than c.")
 	}
 
+	var requestUrls []string
 	if *urlFile == "" {
-		params.Urls = append(params.Urls, *urlstr)
+		requestUrls = append(requestUrls, *urlstr)
 	} else {
 		var err error
-		if params.Urls, err = parseFile(*urlFile, []rune{'\r', '\n', ' '}); err != nil {
+		if requestUrls, err = parseFile(*urlFile, []rune{'\r', '\n', ' '}); err != nil {
 			usageAndExit(*urlFile + " file read error(" + err.Error() + ").")
 		}
 	}
@@ -1175,32 +1168,35 @@ func main() {
 			fmt.Fprintf(os.Stderr, "ListenAndServe err: %s\n", err.Error())
 		}
 	} else {
-		if len(params.Urls) <= 0 || len(params.Urls[0]) <= 0 {
+		if len(requestUrls) <= 0 {
 			usageAndExit("url or url-file empty.")
 		}
 
-		params.SequenceId = time.Now().Unix()
-		params.Cmd = CMD_START
-		verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
-		stopSignal = make(chan os.Signal)
-		signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
+		for _, url := range requestUrls {
+			params.Url = url
+			params.SequenceId = time.Now().Unix()
+			params.Cmd = CMD_START
+			verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
+			stopSignal = make(chan os.Signal)
+			signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
 
-		var stressTest *StressWorker
-		var stressResult *StressResult
+			var stressTest *StressWorker
+			var stressResult *StressResult
 
-		go func() {
-			<-stopSignal
-			verbosePrint(VERBOSE_INFO, "Recv stop signal\n")
-			params.Cmd = CMD_STOP
-			jsonBody, _ := json.Marshal(params)
-			requestWorkerList(jsonBody, stressTest)
-			stressTest.Stop(true, nil) // Recv stop signal and Stop commands
-			mainCancel()
-		}()
+			go func() {
+				<-stopSignal
+				verbosePrint(VERBOSE_INFO, "Recv stop signal\n")
+				params.Cmd = CMD_STOP
+				jsonBody, _ := json.Marshal(params)
+				requestWorkerList(jsonBody, stressTest)
+				stressTest.Stop(true, nil) // Recv stop signal and Stop commands
+				mainCancel()
+			}()
 
-		if stressResult = execStress(params, &stressTest); stressResult != nil {
-			close(stopSignal)
-			stressResult.print()
+			if stressResult = execStress(params, &stressTest); stressResult != nil {
+				close(stopSignal)
+				stressResult.print()
+			}
 		}
 	}
 }
