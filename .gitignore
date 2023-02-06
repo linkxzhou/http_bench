@@ -1,6 +1,7 @@
 http_bench
 *.pprof
 test/echo
+test/nohup.*
 arch.drawio
 ./goscript/pprof.out
 */**/.DS_Store

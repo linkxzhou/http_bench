@@ -167,6 +167,8 @@ const (
 	INT_MIN = ^INT_MAX
 )
 
+var resultRdMutex sync.RWMutex
+
 type flagSlice []string
 
 func (h *flagSlice) String() string {
@@ -194,12 +196,11 @@ type StressResult struct {
 	SizeTotal      int64            `json:"size_total"`
 	Duration       int64            `json:"duration"`
 	Output         string           `json:"output"`
-	rdLock         sync.RWMutex     `json:"-"`
 }
 
 func (result *StressResult) print() {
-	result.rdLock.RLock()
-	defer result.rdLock.RUnlock()
+	resultRdMutex.RLock()
+	defer resultRdMutex.RUnlock()
 
 	switch result.Output {
 	case "csv":
@@ -243,7 +244,7 @@ func (result *StressResult) printLatencies() {
 	pctls := []int{10, 25, 50, 75, 90, 95, 99}
 	data := make([]string, len(pctls))
 	durationLats := make([]string, 0)
-	for duration, _ := range result.Lats {
+	for duration := range result.Lats {
 		durationLats = append(durationLats, duration)
 	}
 	sort.Strings(durationLats)
@@ -278,15 +279,15 @@ func (result *StressResult) printErrors() {
 }
 
 func (result *StressResult) marshal() ([]byte, error) {
-	result.rdLock.RLock()
-	defer result.rdLock.RUnlock()
+	resultRdMutex.RLock()
+	defer resultRdMutex.RUnlock()
 
 	return json.Marshal(result)
 }
 
 func (result *StressResult) result(res *result) {
-	result.rdLock.Lock()
-	defer result.rdLock.Unlock()
+	resultRdMutex.Lock()
+	defer resultRdMutex.Unlock()
 
 	if res.err != nil {
 		result.ErrorDist[res.err.Error()]++
@@ -309,8 +310,8 @@ func (result *StressResult) result(res *result) {
 }
 
 func (result *StressResult) combine(resultList ...StressResult) {
-	result.rdLock.RLock()
-	defer result.rdLock.RUnlock()
+	resultRdMutex.RLock()
+	defer resultRdMutex.RUnlock()
 
 	for _, v := range resultList {
 		if result.Slowest < v.Slowest {
@@ -405,6 +406,7 @@ func (b *StressWorker) Stop(wait bool, err error) {
 	if err != nil {
 		b.err = err
 	}
+
 	if wait {
 		b.wg.Wait()
 	}
@@ -472,9 +474,9 @@ func (b *StressWorker) runWorkers() {
 	}
 
 	var (
-		start            = time.Now()
 		wg               sync.WaitGroup
 		err              error
+		start            = time.Now()
 		bodyTemplateName = fmt.Sprintf("BODY-%d", b.RequestParams.SequenceId)
 		urlTemplateName  = fmt.Sprintf("URL-%d", b.RequestParams.SequenceId)
 	)
