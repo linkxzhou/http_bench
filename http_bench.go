@@ -145,26 +145,22 @@ func getEnv(key string) string {
 // ========================= function end =========================
 
 const (
-	CMD_START int = iota
-	CMD_STOP
-	CMD_METRICS
+	kCmdStart int = iota
+	kCmdStop
+	kCmdMetrics
+	kScaleNum = 10000
 
-	SCALE_NUM = 10000
+	kTypeHttp1 = "http1"
+	kTypeHttp2 = "http2"
+	kTypeHttp3 = "http3"
+	kTypeWs    = "ws"
+	kIntMax    = int(^uint(0) >> 1)
+	kIntMin    = ^kIntMax
 
-	HTTPTR_NUM = 20
-
-	TYPE_HTTP1 = "http1"
-	TYPE_HTTP2 = "http2"
-	TYPE_HTTP3 = "http3"
-	TYPE_WS    = "ws"
-
-	VERBOSE_TRACE = 0
-	VERBOSE_DEBUG = 1
-	VERBOSE_INFO  = 2
-	VERBOSE_ERROR = 3
-
-	INT_MAX = int(^uint(0) >> 1)
-	INT_MIN = ^INT_MAX
+	V_TRACE = 0
+	V_DEBUG = 1
+	V_INFO  = 2
+	V_ERROR = 3
 )
 
 var resultRdMutex sync.RWMutex
@@ -206,7 +202,7 @@ func (result *StressResult) print() {
 	case "csv":
 		fmt.Printf("Duration,Count\n")
 		for duration, val := range result.Lats {
-			fmt.Printf("%s,%d\n", duration, val/SCALE_NUM)
+			fmt.Printf("%s,%d", duration, val/kScaleNum)
 		}
 		return
 	default:
@@ -214,12 +210,12 @@ func (result *StressResult) print() {
 	}
 
 	if len(result.Lats) > 0 {
-		fmt.Printf("\nSummary:\n")
-		fmt.Printf("  Total:\t%4.3f secs\n", float32(result.Duration)/SCALE_NUM)
-		fmt.Printf("  Slowest:\t%4.3f secs\n", float32(result.Slowest)/SCALE_NUM)
-		fmt.Printf("  Fastest:\t%4.3f secs\n", float32(result.Fastest)/SCALE_NUM)
-		fmt.Printf("  Average:\t%4.3f secs\n", float32(result.Average)/SCALE_NUM)
-		fmt.Printf("  Requests/sec:\t%4.3f\n", float32(result.Rps)/SCALE_NUM)
+		fmt.Printf("Summary:\n")
+		fmt.Printf("  Total:\t%4.3f secs\n", float32(result.Duration)/kScaleNum)
+		fmt.Printf("  Slowest:\t%4.3f secs\n", float32(result.Slowest)/kScaleNum)
+		fmt.Printf("  Fastest:\t%4.3f secs\n", float32(result.Fastest)/kScaleNum)
+		fmt.Printf("  Average:\t%4.3f secs\n", float32(result.Average)/kScaleNum)
+		fmt.Printf("  Requests/sec:\t%4.3f\n", float32(result.Rps)/kScaleNum)
 		if result.SizeTotal > 1073741824 {
 			fmt.Printf("  Total data:\t%4.3f GB\n", float64(result.SizeTotal)/1073741824)
 		} else if result.SizeTotal > 1048576 {
@@ -274,7 +270,7 @@ func (result *StressResult) printStatusCodes() {
 func (result *StressResult) printErrors() {
 	fmt.Printf("\nError distribution:\n")
 	for err, num := range result.ErrorDist {
-		fmt.Printf("  [%d]\t%s\n", num, err)
+		fmt.Printf("  [%d]\t%s", num, err)
 	}
 }
 
@@ -293,7 +289,7 @@ func (result *StressResult) result(res *result) {
 		result.ErrorDist[res.err.Error()]++
 	} else {
 		result.Lats[fmt.Sprintf("%4.3f", res.duration.Seconds())]++
-		duration := int64(res.duration.Seconds() * SCALE_NUM)
+		duration := int64(res.duration.Seconds() * kScaleNum)
 		result.LatsTotal++
 		if result.Slowest < duration {
 			result.Slowest = duration
@@ -335,7 +331,7 @@ func (result *StressResult) combine(resultList ...StressResult) {
 	}
 
 	if result.Duration > 0 {
-		result.Rps = int64((result.LatsTotal * SCALE_NUM * SCALE_NUM) / result.Duration)
+		result.Rps = int64((result.LatsTotal * kScaleNum * kScaleNum) / result.Duration)
 	}
 
 	if result.LatsTotal > 0 {
@@ -397,23 +393,22 @@ func (b *StressWorker) Start() {
 	b.resultList = make([]StressResult, 0)
 	b.collectReport()
 	b.runWorkers()
-	verbosePrint(VERBOSE_INFO, "Worker finished and wait result\n")
+	verbosePrint(V_INFO, "worker finished and wait result")
 }
 
 // Stop stop stress worker and wait coroutine finish
 func (b *StressWorker) Stop(wait bool, err error) {
-	b.RequestParams.Cmd = CMD_STOP
+	b.RequestParams.Cmd = kCmdStop
 	if err != nil {
 		b.err = err
 	}
-
 	if wait {
 		b.wg.Wait()
 	}
 }
 
 func (b *StressWorker) IsStop() bool {
-	return b.RequestParams.Cmd == CMD_STOP
+	return b.RequestParams.Cmd == kCmdStop
 }
 
 func (b *StressWorker) Append(result ...StressResult) {
@@ -422,37 +417,32 @@ func (b *StressWorker) Append(result ...StressResult) {
 
 func (b *StressWorker) Wait() *StressResult {
 	b.wg.Wait()
-
 	if len(b.resultList) <= 0 {
-		fmt.Fprintf(os.Stderr, "Internal err: stress test result empty")
+		fmt.Fprintf(os.Stderr, "internal err: stress test result empty")
 		return nil
 	}
-
 	b.resultList[0].combine(b.resultList[1:]...)
-	verbosePrint(VERBOSE_DEBUG, "resultList len: %d\n", len(b.resultList))
+	verbosePrint(V_DEBUG, "result length = %d", len(b.resultList))
 	return &(b.resultList[0])
 }
 
 func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
 	var runCounts int = 0
-
 	// random set seed
 	rand.Seed(time.Now().UnixNano())
-
 	for !b.IsStop() {
 		if n > 0 && runCounts > n {
 			break
 		}
-		runCounts++
 
+		runCounts++
 		if sleep > 0 {
 			time.Sleep(time.Duration(sleep) * time.Microsecond)
 		}
 
 		var t = time.Now()
-
 		if code, size, err := b.doClient(client); err != nil {
-			verbosePrint(VERBOSE_ERROR, "err: %v\n", err)
+			verbosePrint(V_ERROR, "err: %v", err)
 			b.Stop(false, err)
 			break
 		} else {
@@ -467,8 +457,7 @@ func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
 }
 
 func (b *StressWorker) runWorkers() {
-	fmt.Printf("Running %d connections, @ %s\n", b.RequestParams.C, b.RequestParams.Url)
-
+	fmt.Printf("running %d connections, @ %s\n", b.RequestParams.C, b.RequestParams.Url)
 	var (
 		wg               sync.WaitGroup
 		err              error
@@ -478,14 +467,13 @@ func (b *StressWorker) runWorkers() {
 	)
 
 	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Url); err != nil {
-		verbosePrint(VERBOSE_ERROR, "Parse urls function err: "+err.Error()+"\n")
+		verbosePrint(V_ERROR, "parse urls function err: "+err.Error()+"")
 	}
-
 	if b.bodyTemplate, err = template.New(bodyTemplateName).Funcs(fnMap).Parse(b.RequestParams.RequestBody); err != nil {
-		verbosePrint(VERBOSE_ERROR, "Parse request body function err: "+err.Error()+"\n")
+		verbosePrint(V_ERROR, "parse request body function err: "+err.Error()+"")
 	}
 
-	// Ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
+	// ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
 	for i := 0; i < b.RequestParams.C && !(b.IsStop()); i++ {
 		wg.Add(1)
 		go func() {
@@ -495,7 +483,7 @@ func (b *StressWorker) runWorkers() {
 				b.closeClient(client)
 				wg.Done()
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "Internal err: %v\n", r)
+					fmt.Fprintf(os.Stderr, "internal err: %v", r)
 				}
 			}()
 
@@ -518,7 +506,7 @@ func (b *StressWorker) runWorkers() {
 func (b *StressWorker) getClient() *StressClient {
 	client := &StressClient{}
 	switch b.RequestParams.RequestHttpType {
-	case TYPE_HTTP3:
+	case kTypeHttp3:
 		client.httpClient = &http.Client{
 			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
 			Transport: &http3.RoundTripper{
@@ -528,7 +516,7 @@ func (b *StressWorker) getClient() *StressClient {
 				},
 			},
 		}
-	case TYPE_HTTP2:
+	case kTypeHttp2:
 		client.httpClient = &http.Client{
 			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
 			Transport: &http2.Transport{
@@ -538,7 +526,7 @@ func (b *StressWorker) getClient() *StressClient {
 				DisableCompression: b.RequestParams.DisableCompression,
 			},
 		}
-	case TYPE_HTTP1:
+	case kTypeHttp1:
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
@@ -563,9 +551,9 @@ func (b *StressWorker) getClient() *StressClient {
 			Timeout:   time.Duration(b.RequestParams.Timeout) * time.Millisecond,
 			Transport: tr,
 		}
-	case TYPE_WS:
+	case kTypeWs:
 		if c, _, err := websocket.DefaultDialer.Dial(b.RequestParams.Url, b.RequestParams.Headers); err != nil {
-			verbosePrint(VERBOSE_ERROR, "Websocket err: %s\n", err.Error())
+			verbosePrint(V_ERROR, "websocket err: %s", err.Error())
 			return nil
 		} else {
 			client.wsClient = c
@@ -596,18 +584,18 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 		return
 	}
 
-	verbosePrint(VERBOSE_TRACE, "Request url: %s\n", urlBytes.String())
-	verbosePrint(VERBOSE_TRACE, "Request body: %s\n", bodyBytes.String())
+	verbosePrint(V_TRACE, "request url: %s", urlBytes.String())
+	verbosePrint(V_TRACE, "request body: %s", bodyBytes.String())
 
 	switch b.RequestParams.RequestHttpType {
-	case TYPE_HTTP1, TYPE_HTTP2, TYPE_HTTP3:
+	case kTypeHttp1, kTypeHttp2, kTypeHttp3:
 		if client.httpClient == nil {
 			err = ErrInitHttpClient
 			return
 		}
 		req, reqErr := http.NewRequest(b.RequestParams.RequestMethod, urlBytes.String(), strings.NewReader(bodyBytes.String()))
 		if reqErr != nil || req == nil {
-			err = errors.New("Request err: " + err.Error())
+			err = errors.New("request err: " + err.Error())
 			return
 		}
 		req.Header = b.RequestParams.Headers
@@ -621,7 +609,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 				size = n
 			}
 		}
-	case TYPE_WS:
+	case kTypeWs:
 		if client.wsClient == nil {
 			err = ErrInitWsClient
 			return
@@ -645,11 +633,11 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 
 func (b *StressWorker) closeClient(client *StressClient) {
 	switch b.RequestParams.RequestHttpType {
-	case TYPE_HTTP1, TYPE_HTTP2, TYPE_HTTP3:
+	case kTypeHttp1, kTypeHttp2, kTypeHttp3:
 		if client.httpClient != nil {
 			client.httpClient.CloseIdleConnections()
 		}
-	case TYPE_WS:
+	case kTypeWs:
 		if client.wsClient != nil {
 			client.wsClient.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 		}
@@ -676,20 +664,20 @@ func (b *StressWorker) collectReport() {
 			ErrorDist:      make(map[string]int, 0),
 			StatusCodeDist: make(map[int]int, 0),
 			Lats:           make(map[string]int64, 0),
-			Slowest:        int64(INT_MIN),
-			Fastest:        int64(INT_MAX),
+			Slowest:        int64(kIntMin),
+			Fastest:        int64(kIntMax),
 		}
 		for {
 			select {
 			case res, ok := <-b.results:
 				if !ok {
-					b.currentResult.Duration = int64(b.totalTime.Seconds() * SCALE_NUM)
+					b.currentResult.Duration = int64(b.totalTime.Seconds() * kScaleNum)
 					b.resultList = append(b.resultList, b.currentResult)
 					return
 				}
 				b.currentResult.result(res)
 			case <-timeTicker.C:
-				verbosePrint(VERBOSE_INFO, "Time ticker upcoming, duration: %ds\n", b.RequestParams.Duration)
+				verbosePrint(V_INFO, "time ticker upcoming, duration: %ds", b.RequestParams.Duration)
 				b.Stop(false, nil) // Time ticker exec Stop commands
 			}
 		}
@@ -698,10 +686,10 @@ func (b *StressWorker) collectReport() {
 
 func usageAndExit(msg string) {
 	if msg != "" {
-		fmt.Fprintf(os.Stderr, msg+"\n\n")
+		fmt.Fprintf(os.Stderr, msg+"")
 	}
 	flag.Usage()
-	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "")
 	os.Exit(1)
 }
 
@@ -731,7 +719,7 @@ func parseInputWithRegexp(input, regx string) ([]string, error) {
 
 func checkURL(url string) bool {
 	if _, err := gourl.ParseRequestURI(url); err != nil {
-		fmt.Fprintln(os.Stderr, "Parse URL err: ", err.Error())
+		fmt.Fprintln(os.Stderr, "parse URL err: ", err.Error())
 		return false
 	}
 	return true
@@ -773,23 +761,21 @@ func verbosePrint(level int, vfmt string, args ...interface{}) {
 	if *verbose > level {
 		return
 	}
-
 	switch level {
-	case VERBOSE_TRACE:
-		fmt.Printf("[VERBOSE TRACE] "+vfmt, args...)
-	case VERBOSE_DEBUG:
-		fmt.Printf("[VERBOSE DEBUG] "+vfmt, args...)
-	case VERBOSE_INFO:
-		fmt.Printf("[VERBOSE INFO] "+vfmt, args...)
+	case V_TRACE:
+		fmt.Printf("[VERBOSE TRACE] "+vfmt+"\n", args...)
+	case V_DEBUG:
+		fmt.Printf("[VERBOSE DEBUG] "+vfmt+"\n", args...)
+	case V_INFO:
+		fmt.Printf("[VERBOSE INFO] "+vfmt+"\n", args...)
 	default:
-		fmt.Printf("[VERBOSE ERROR] "+vfmt, args...)
+		fmt.Printf("[VERBOSE ERROR] "+vfmt+"\n", args...)
 	}
 }
 
 func parseTime(timeStr string) int64 {
-	var timeStrLen = len(timeStr) - 1
 	var multi int64 = 1
-	if timeStrLen > 0 {
+	if timeStrLen := len(timeStr) - 1; timeStrLen > 0 {
 		switch timeStr[timeStrLen] {
 		case 's':
 			timeStr = timeStr[:timeStrLen]
@@ -801,7 +787,6 @@ func parseTime(timeStr string) int64 {
 			multi = 3600
 		}
 	}
-
 	t, err := strconv.ParseInt(timeStr, 10, 64)
 	if err != nil || t <= 0 {
 		usageAndExit("Duration parse err: " + err.Error())
@@ -815,14 +800,12 @@ func execStress(params StressParameters, stressTestPtr **StressWorker) *StressRe
 	if v, ok := stressList.Load(params.SequenceId); ok && v != nil {
 		stressTest = v.(*StressWorker)
 	} else {
-		stressTest = &StressWorker{
-			RequestParams: &params,
-		}
+		stressTest = &StressWorker{RequestParams: &params}
 		stressList.Store(params.SequenceId, stressTest)
 	}
 	*stressTestPtr = stressTest
 	switch params.Cmd {
-	case CMD_START:
+	case kCmdStart:
 		if len(workerList) > 0 {
 			jsonBody, _ := json.Marshal(params)
 			resultList := requestWorkerList(jsonBody, stressTest)
@@ -835,14 +818,14 @@ func execStress(params StressParameters, stressTestPtr **StressWorker) *StressRe
 			stressResult.print()
 		}
 		stressList.Delete(params.SequenceId)
-	case CMD_STOP:
+	case kCmdStop:
 		if len(workerList) > 0 {
 			jsonBody, _ := json.Marshal(params)
 			requestWorkerList(jsonBody, stressTest)
 		}
 		stressTest.Stop(true, nil)
 		stressList.Delete(params.SequenceId)
-	case CMD_METRICS:
+	case kCmdMetrics:
 		if len(workerList) > 0 {
 			jsonBody, _ := json.Marshal(params)
 			if resultList := requestWorkerList(jsonBody, stressTest); len(resultList) > 0 {
@@ -867,19 +850,19 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 		var params StressParameters
 		var result *StressResult
 		if err := json.Unmarshal(reqStr, &params); err != nil {
-			fmt.Fprintf(os.Stderr, "Unmarshal body err: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "unmarshal body err: %s", err.Error())
 			result = &StressResult{
 				ErrCode: -1,
 				ErrMsg:  err.Error(),
 			}
 		} else {
-			verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
+			verbosePrint(V_DEBUG, "request params: %s", params.String())
 			var stressWorker *StressWorker
 			result = execStress(params, &stressWorker)
 		}
 		if result != nil {
 			if wbody, err := result.marshal(); err != nil {
-				verbosePrint(VERBOSE_ERROR, "Marshal result: %v\n", err)
+				verbosePrint(V_ERROR, "marshal result: %v", err)
 			} else {
 				w.Write(wbody)
 			}
@@ -888,10 +871,10 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 }
 
 func requestWorker(uri string, body []byte) (*StressResult, error) {
-	verbosePrint(VERBOSE_DEBUG, "Request body: %s\n", string(body))
+	verbosePrint(V_DEBUG, "Request body: %s", string(body))
 	resp, err := http.Post(uri, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "RequestWorker addr(%s), err: %s\n", uri, err.Error())
+		fmt.Fprintf(os.Stderr, "RequestWorker addr(%s), err: %s", uri, err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -922,7 +905,7 @@ var (
 	q            = flag.Int("q", 0, "")                // Rate limit, in seconds (QPS)
 	d            = flag.String("d", "10s", "")         // Duration for stress test
 	t            = flag.Int("t", 3000, "")             // Timeout in ms
-	httpType     = flag.String("http", TYPE_HTTP1, "") // HTTP Version
+	httpType     = flag.String("http", kTypeHttp1, "") // HTTP Version
 	printExample = flag.Bool("example", false, "")
 
 	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
@@ -986,7 +969,7 @@ Options:
 	-body-file	Request body from file.
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
 	-dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
-	-W  Running distributed stress test worker mechine list. for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
+	-W			Running distributed stress test worker mechine list. for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 	-example 	Print some stress test examples (default false).
 `
 var examples = `
@@ -1005,7 +988,7 @@ var examples = `
 4.Example dashboard test:
 	./http_bench -dashboard "127.0.0.1:12345" -verbose 1
 
-5.Example Support Function and Variable test:
+5.Example support function and variable test:
 	./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
 
 6.Example distributed stress test:
@@ -1020,6 +1003,7 @@ func main() {
 
 	var params StressParameters
 	var headerslice flagSlice
+
 	flag.Var(&headerslice, "H", "") // Custom HTTP header
 	flag.Var(&workerList, "W", "")  // Worker mechine
 	flag.Parse()
@@ -1087,17 +1071,16 @@ func main() {
 	}
 
 	switch strings.ToLower(*httpType) {
-	case TYPE_HTTP1, TYPE_HTTP2, TYPE_WS:
+	case kTypeHttp1, kTypeHttp2, kTypeWs:
 		params.RequestHttpType = strings.ToLower(*httpType)
-	case TYPE_HTTP3:
+	case kTypeHttp3:
 		params.RequestHttpType = strings.ToLower(*httpType)
 		var err error
-		http3Pool, err = x509.SystemCertPool()
-		if err != nil {
-			panic(TYPE_HTTP3 + " err: " + err.Error())
+		if http3Pool, err = x509.SystemCertPool(); err != nil {
+			panic(kTypeHttp3 + " err: " + err.Error())
 		}
 	default:
-		usageAndExit("Not support -http: " + *httpType)
+		usageAndExit("not support -http: " + *httpType)
 	}
 
 	// set any other additional repeatable headers
@@ -1122,7 +1105,7 @@ func main() {
 	}
 
 	if *output != "csv" && *output != "" {
-		usageAndExit("Invalid output type; only csv is supported.")
+		usageAndExit("invalid output type; only csv is supported.")
 	}
 
 	// set request timeout
@@ -1146,25 +1129,25 @@ func main() {
 	if len(*listen) > 0 {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", handleWorker)
-		fmt.Fprintf(os.Stdout, "Worker listen %s\n", *listen)
+		fmt.Fprintf(os.Stdout, "worker listen %s", *listen)
 		mainServer = &http.Server{
 			Addr:    *listen,
 			Handler: mux,
 		}
 		if err := mainServer.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, "ListenAndServe err: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "worker listen err: %s", err.Error())
 		}
 	} else if len(*dashboard) > 0 {
 		mux := http.NewServeMux()
 		mux.Handle("/", http.FileServer(http.Dir("./")))
 		mux.HandleFunc("/api", handleWorker)
-		fmt.Fprintf(os.Stdout, "Dashboard listen %s\n", *dashboard)
+		fmt.Fprintf(os.Stdout, "dashboard addr %s", *dashboard)
 		mainServer = &http.Server{
 			Addr:    *dashboard,
 			Handler: mux,
 		}
 		if err := mainServer.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, "ListenAndServe err: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "dashboard listen err: %s", err.Error())
 		}
 	} else {
 		if len(requestUrls) <= 0 {
@@ -1174,8 +1157,8 @@ func main() {
 		for _, url := range requestUrls {
 			params.Url = url
 			params.SequenceId = time.Now().Unix()
-			params.Cmd = CMD_START
-			verbosePrint(VERBOSE_DEBUG, "Request params: %s\n", params.String())
+			params.Cmd = kCmdStart
+			verbosePrint(V_DEBUG, "request params: %s", params.String())
 			stopSignal = make(chan os.Signal)
 			signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
 
@@ -1184,8 +1167,8 @@ func main() {
 
 			go func() {
 				<-stopSignal
-				verbosePrint(VERBOSE_INFO, "Recv stop signal\n")
-				params.Cmd = CMD_STOP
+				verbosePrint(V_INFO, "recv stop signal")
+				params.Cmd = kCmdStop
 				jsonBody, _ := json.Marshal(params)
 				requestWorkerList(jsonBody, stressTest)
 				stressTest.Stop(true, nil) // Recv stop signal and Stop commands

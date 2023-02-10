@@ -14,6 +14,7 @@ function kill_go_process() {
 }
 
 listen="127.0.0.1:18090"
+
 echo "================= single stress test http/1"
 # 1. start http1 server
 start_go_process echo_http1_test.go $listen
