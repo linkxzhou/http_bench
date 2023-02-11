@@ -1151,7 +1151,7 @@ func main() {
 		}
 	} else {
 		if len(requestUrls) <= 0 {
-			usageAndExit("url or url-file empty.\n")
+			usageAndExit("url or url-file empty.")
 		}
 
 		for _, url := range requestUrls {
