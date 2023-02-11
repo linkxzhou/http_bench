@@ -356,8 +356,8 @@ type StressParameters struct {
 	AuthUsername       string              `json:"auth_username"`       // Basic authentication, username:password.
 	AuthPassword       string              `json:"auth_password"`
 	Headers            map[string][]string `json:"headers"` // Custom HTTP header.
-	Url                string              `json:"url"`
-	Output             string              `json:"output"` // Output represents the output type. If "csv" is provided, the output will be dumped as a csv stream.
+	Url                string              `json:"url"`     // Request url.
+	Output             string              `json:"output"`  // Output represents the output type. If "csv" is provided, the output will be dumped as a csv stream.
 }
 
 func (p *StressParameters) String() string {
@@ -418,7 +418,7 @@ func (b *StressWorker) Append(result ...StressResult) {
 func (b *StressWorker) Wait() *StressResult {
 	b.wg.Wait()
 	if len(b.resultList) <= 0 {
-		fmt.Fprintf(os.Stderr, "internal err: stress test result empty")
+		fmt.Fprintf(os.Stderr, "internal err: stress test result empty\n")
 		return nil
 	}
 	b.resultList[0].combine(b.resultList[1:]...)
@@ -483,7 +483,7 @@ func (b *StressWorker) runWorkers() {
 				b.closeClient(client)
 				wg.Done()
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "internal err: %v", r)
+					fmt.Fprintf(os.Stderr, "internal err: %v\n", r)
 				}
 			}()
 
@@ -686,10 +686,10 @@ func (b *StressWorker) collectReport() {
 
 func usageAndExit(msg string) {
 	if msg != "" {
-		fmt.Fprintf(os.Stderr, msg+"")
+		fmt.Fprintf(os.Stderr, msg+"\n")
 	}
 	flag.Usage()
-	fmt.Fprintf(os.Stderr, "")
+	fmt.Fprintf(os.Stderr, "\n")
 	os.Exit(1)
 }
 
@@ -850,7 +850,7 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 		var params StressParameters
 		var result *StressResult
 		if err := json.Unmarshal(reqStr, &params); err != nil {
-			fmt.Fprintf(os.Stderr, "unmarshal body err: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "unmarshal body err: %s\n", err.Error())
 			result = &StressResult{
 				ErrCode: -1,
 				ErrMsg:  err.Error(),
@@ -874,7 +874,7 @@ func requestWorker(uri string, body []byte) (*StressResult, error) {
 	verbosePrint(V_DEBUG, "Request body: %s", string(body))
 	resp, err := http.Post(uri, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "RequestWorker addr(%s), err: %s", uri, err.Error())
+		fmt.Fprintf(os.Stderr, "RequestWorker addr(%s), err: %s\n", uri, err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -1038,7 +1038,7 @@ func main() {
 	var requestUrls []string
 	if *urlFile == "" && len(*urlstr) > 0 {
 		requestUrls = append(requestUrls, *urlstr)
-	} else {
+	} else if len(*urlFile) > 0 {
 		var err error
 		if requestUrls, err = parseFile(*urlFile, []rune{'\r', '\n', ' '}); err != nil {
 			usageAndExit(*urlFile + " file read error(" + err.Error() + ").")
@@ -1129,29 +1129,29 @@ func main() {
 	if len(*listen) > 0 {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", handleWorker)
-		fmt.Fprintf(os.Stdout, "worker listen %s", *listen)
+		fmt.Fprintf(os.Stdout, "worker listen %s\n", *listen)
 		mainServer = &http.Server{
 			Addr:    *listen,
 			Handler: mux,
 		}
 		if err := mainServer.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, "worker listen err: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "worker listen err: %s\n", err.Error())
 		}
 	} else if len(*dashboard) > 0 {
 		mux := http.NewServeMux()
 		mux.Handle("/", http.FileServer(http.Dir("./")))
 		mux.HandleFunc("/api", handleWorker)
-		fmt.Fprintf(os.Stdout, "dashboard addr %s", *dashboard)
+		fmt.Fprintf(os.Stdout, "dashboard addr %s\n", *dashboard)
 		mainServer = &http.Server{
 			Addr:    *dashboard,
 			Handler: mux,
 		}
 		if err := mainServer.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, "dashboard listen err: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "dashboard listen err: %s\n", err.Error())
 		}
 	} else {
 		if len(requestUrls) <= 0 {
-			usageAndExit("url or url-file empty.")
+			usageAndExit("url or url-file empty.\n")
 		}
 
 		for _, url := range requestUrls {

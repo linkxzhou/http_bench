@@ -1,7 +1,7 @@
 #!/bin/bash
 
-GO=go
-Duration=10
+GO=go # build go version
+Duration=5 # server test duration
 
 function start_go_process() {
     echo "start process --> "$1
@@ -52,10 +52,10 @@ kill_go_process echo_ws_test.go
 echo "[PASS] WS"
 
 echo "================= single stress test http/1 urls"
-# 1. start http1 server
+# 1. start http1 server for urls
 start_go_process echo_http1_test.go $listen
-# 2. start stress test
+# 2. start stress test for urls
 $GO run ../http_bench.go -c 1 -d ${Duration}s -http http1 -m GET -url-file test_urls.txt
-# 3. stop http1 server
+# 3. stop http1 server for urls
 kill_go_process echo_http1_test.go
-echo "[PASS] http/1"
+echo "[PASS] http/1 for urls"

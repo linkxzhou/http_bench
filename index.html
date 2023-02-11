@@ -44,8 +44,8 @@
         <el-input placeholder="qps" v-model="qps" style="margin: 4px 0;">
             <template slot="prepend">QPS</template>
         </el-input>
-        <el-input placeholder="split urls with ;" v-model="urls" style="margin: 4px 0;">
-            <template slot="prepend">Urls</template>
+        <el-input placeholder="request url" v-model="url" style="margin: 4px 0;">
+            <template slot="prepend">Url</template>
         </el-input>
     </div>
     <script type="text/javascript">
@@ -115,7 +115,7 @@
                 disable_keepalives: false,
                 auth_username: "",
                 auth_password: "",
-                urls: "http://127.0.0.1:8000?data=1",
+                url: "http://127.0.0.1:8000?data=1",
                 g_running: false,
                 g_seqid: Math.floor(Math.random() * 1000000) + 1,
                 g_interval: undefined,
@@ -137,7 +137,7 @@
                         disable_keepalives: this.disable_keepalives || this.disable_keepalives == "true" ? true : false,
                         auth_username: this.auth_username,
                         auth_password: this.auth_password,
-                        urls: this.urls.split(/;/),
+                        url: this.url,
                     };
                     fetch('/api', {
                         method: 'POST',
