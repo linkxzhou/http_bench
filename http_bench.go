@@ -154,6 +154,7 @@ const (
 	kTypeHttp2 = "http2"
 	kTypeHttp3 = "http3"
 	kTypeWs    = "ws"
+	kTypeGrpc  = "grpc" // TODO: next version to support
 	kIntMax    = int(^uint(0) >> 1)
 	kIntMin    = ^kIntMax
 
@@ -197,7 +198,6 @@ type StressResult struct {
 func (result *StressResult) print() {
 	resultRdMutex.RLock()
 	defer resultRdMutex.RUnlock()
-
 	switch result.Output {
 	case "csv":
 		fmt.Printf("Duration,Count\n")
@@ -208,7 +208,6 @@ func (result *StressResult) print() {
 	default:
 		// pass
 	}
-
 	if len(result.Lats) > 0 {
 		fmt.Printf("Summary:\n")
 		fmt.Printf("  Total:\t%4.3f secs\n", float32(result.Duration)/kScaleNum)
@@ -229,7 +228,6 @@ func (result *StressResult) print() {
 		result.printStatusCodes()
 		result.printLatencies()
 	}
-
 	if len(result.ErrorDist) > 0 {
 		result.printErrors()
 	}
@@ -277,7 +275,6 @@ func (result *StressResult) printErrors() {
 func (result *StressResult) marshal() ([]byte, error) {
 	resultRdMutex.RLock()
 	defer resultRdMutex.RUnlock()
-
 	return json.Marshal(result)
 }
 
