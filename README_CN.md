@@ -1,4 +1,9 @@
-## HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC)压测工具，支持单机和分布式
+## HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC)压测工具，并支持单机和分布式
+
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.17.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.17.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.18.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.18.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.19.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.19.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml)
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
