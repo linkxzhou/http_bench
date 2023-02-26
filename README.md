@@ -1,6 +1,5 @@
 ## a HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC) stress testing tool, and support single and distributed.
 
-[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.17.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.17.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.18.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.18.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.19.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.19.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml)
