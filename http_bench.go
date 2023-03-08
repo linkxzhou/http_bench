@@ -694,14 +694,14 @@ func fastRead(r io.Reader) (int64, error) {
 	n := int64(0)
 	b := make([]byte, 0, 512)
 	for {
-		n1, err := r.Read(b[0:cap(b)])
-		if err != nil {
+		if bsize, err := r.Read(b[0:cap(b)]); err != nil {
 			if err == io.EOF {
 				err = nil
 			}
 			return n, err
+		} else {
+			n += int64(bsize)
 		}
-		n += int64(n1)
 	}
 }
 
@@ -791,7 +791,7 @@ func parseTime(timeStr string) int64 {
 	return multi * t
 }
 
-func execStress(params StressParameters, stressTestPtr **StressWorker) *StressResult {
+func runStress(params StressParameters, stressTestPtr **StressWorker) *StressResult {
 	var stressResult *StressResult
 	var stressTest *StressWorker
 	if v, ok := stressList.Load(params.SequenceId); ok && v != nil {
@@ -855,7 +855,7 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 		} else {
 			verbosePrint(V_DEBUG, "request params: %s", params.String())
 			var stressWorker *StressWorker
-			result = execStress(params, &stressWorker)
+			result = runStress(params, &stressWorker)
 		}
 		if result != nil {
 			if wbody, err := result.marshal(); err != nil {
@@ -938,7 +938,8 @@ var (
 	http3Pool *x509.CertPool
 )
 
-var usage = `Usage: http_bench [options...] <url>
+const (
+	usage = `Usage: http_bench [options...] <url>
 Options:
 	-n  Number of requests to run.
 	-c  Number of requests to run concurrently. Total number of requests cannot
@@ -969,7 +970,8 @@ Options:
 	-W			Running distributed stress test worker mechine list. for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 	-example 	Print some stress test examples (default false).
 `
-var examples = `
+
+	examples = `
 1.Example stress test:
 	./http_bench -n 1000 -c 10 -t 3000 -m GET -url "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1"
@@ -992,6 +994,7 @@ var examples = `
 	(1) ./http_bench -listen "127.0.0.1:12710" -verbose 1
 	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose 1 -W "127.0.0.1:12710"
 `
+)
 
 func main() {
 	flag.Usage = func() {
@@ -1172,7 +1175,7 @@ func main() {
 				mainCancel()
 			}()
 
-			if stressResult = execStress(params, &stressTest); stressResult != nil {
+			if stressResult = runStress(params, &stressTest); stressResult != nil {
 				close(stopSignal)
 				stressResult.print()
 			}

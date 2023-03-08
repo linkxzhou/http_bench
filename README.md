@@ -148,9 +148,11 @@ Function:
   intSum number1 number2 number3 ...
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ intSum 1 2 3 4}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ intSum 1 2 3 4 }}" -verbose 0
 ```
 
@@ -160,9 +162,11 @@ Function:
   random min_value max_value 
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ random 1 100000}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ random 1 100000 }}" -verbose 0
 ```
 
@@ -172,9 +176,11 @@ Function:
   randomDate format(random date string: YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate \"YMD\"}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate \"YMD\" }}" -verbose 0
 ```
 
@@ -184,9 +190,11 @@ Function:
   randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
 ```
 
@@ -196,9 +204,11 @@ Function:
   randomNum count(random string: 0123456789)
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
 ```
 
@@ -208,9 +218,11 @@ Function:
   date format(YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss) 
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date \"YMD\" }}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date \"YMD\" }}" -verbose 0
 ```
 
@@ -220,9 +232,11 @@ Function:
   UUID 
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID }}" -verbose 0
 ```
 
@@ -232,8 +246,11 @@ Function:
   escape str(pipeline with other functions)
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
-== Body Request Example:
+
+Body Request Example:  
+
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID | escape }}" -verbose 0
 ```
