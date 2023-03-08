@@ -175,7 +175,7 @@ Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate \"YMD\" }}" -verbose 0
 ```
 
-**(4) 生成制定大小的随机字符串**  
+**(4) 生成指定大小的随机字符串**  
 ```
 Function: 
   randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
@@ -189,7 +189,7 @@ Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
 ```
 
-**(5) 生成制定大小的随机数字字符串**  
+**(5) 生成指定大小的随机数字字符串**  
 ```
 Function: 
   randomNum count(random string: 0123456789)
@@ -197,10 +197,10 @@ Function:
 Example:  
 
 Client Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomNum 10}}" -verbose 0
 
 Body Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 }}" -verbose 0
 ```
 
 **(6) 输出当前日期**  

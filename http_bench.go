@@ -17,7 +17,6 @@ import (
 	_ "net/http/pprof"
 	gourl "net/url"
 	"os"
-	"os/exec"
 	"os/signal"
 	"regexp"
 	"runtime"
@@ -61,14 +60,6 @@ func formatTime(now time.Time, fmt string) string {
 	}
 }
 
-func uuidStr() string {
-	if out, err := exec.Command("uuidgen").Output(); err != nil {
-		return randomString(10)
-	} else {
-		return string(out)
-	}
-}
-
 // YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss
 func date(fmt string) string {
 	return formatTime(time.Now(), fmt)
@@ -103,7 +94,7 @@ var (
 		"escape":       escape,
 		"getEnv":       getEnv,
 	}
-	fnUUID = uuidStr()
+	fnUUID = randomString(10)
 
 	ErrInitWsClient   = errors.New("init ws client error")
 	ErrInitHttpClient = errors.New("init http client error")
@@ -924,9 +915,9 @@ var (
 		var stressResult []StressResult
 		for _, v := range workerList {
 			wg.Add(1)
-			go func(addr string) {
+			go func(workerAddr string) {
 				defer wg.Done()
-				if result, err := requestWorker("http://"+addr+"/", paramsJson); err == nil {
+				if result, err := requestWorker("http://"+workerAddr+"/", paramsJson); err == nil {
 					stressResult = append(stressResult, *result)
 				}
 			}(v)
@@ -1040,7 +1031,7 @@ func main() {
 		requestUrls = append(requestUrls, *urlstr)
 	} else if len(*urlFile) > 0 {
 		var err error
-		if requestUrls, err = parseFile(*urlFile, []rune{'\r', '\n', ' '}); err != nil {
+		if requestUrls, err = parseFile(*urlFile, []rune{'\r', '\n'}); err != nil {
 			usageAndExit(*urlFile + " file read error(" + err.Error() + ").")
 		}
 	}
