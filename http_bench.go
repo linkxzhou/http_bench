@@ -29,10 +29,15 @@ import (
 	"text/template"
 	"time"
 
+	_ "embed"
+
 	"github.com/gorilla/websocket"
 	"github.com/quic-go/quic-go/http3"
 	"golang.org/x/net/http2"
 )
+
+//go:embed index.html
+var dashboardHtml string
 
 // ========================= function begin =========================
 // template functions
@@ -1130,7 +1135,9 @@ func main() {
 		}
 	} else if len(*dashboard) > 0 {
 		mux := http.NewServeMux()
-		mux.Handle("/", http.FileServer(http.Dir("./")))
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(dashboardHtml)) // export dashboard index.html
+		})
 		mux.HandleFunc("/api", handleWorker)
 		fmt.Fprintf(os.Stdout, "dashboard addr %s\n", *dashboard)
 		mainServer = &http.Server{
