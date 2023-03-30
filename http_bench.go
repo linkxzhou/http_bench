@@ -1013,7 +1013,7 @@ func main() {
 	}
 
 	if *printExample {
-		fmt.Println(examples)
+		fmt.Printf(examples + "\n")
 		return
 	}
 
