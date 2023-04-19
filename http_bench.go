@@ -100,7 +100,9 @@ var (
 		"getEnv":       getEnv,
 	}
 	fnUUID = randomString(10)
+)
 
+var (
 	ErrInitWsClient   = errors.New("init ws client error")
 	ErrInitHttpClient = errors.New("init http client error")
 	ErrUrl            = errors.New("check url error")
@@ -141,19 +143,21 @@ func getEnv(key string) string {
 // ========================= function end =========================
 
 const (
-	kCmdStart int = iota
-	kCmdStop
-	kCmdMetrics
-	kScaleNum = 10000
+	_kCmdStart int = iota
+	_kCmdStop
+	_kCmdMetrics
+	_kScaleNum = 10000
 
-	kTypeHttp1 = "http1"
-	kTypeHttp2 = "http2"
-	kTypeHttp3 = "http3"
-	kTypeWs    = "ws"
-	kTypeGrpc  = "grpc" // TODO: next version to support
-	kIntMax    = int(^uint(0) >> 1)
-	kIntMin    = ^kIntMax
+	_kTypeHttp1 = "http1"
+	_kTypeHttp2 = "http2"
+	_kTypeHttp3 = "http3"
+	_kTypeWs    = "ws"
+	_kTypeGrpc  = "grpc" // TODO: next version to support
+	_kIntMax    = int(^uint(0) >> 1)
+	_kIntMin    = ^_kIntMax
+)
 
+const (
 	V_TRACE = 0
 	V_DEBUG = 1
 	V_INFO  = 2
@@ -198,7 +202,7 @@ func (result *StressResult) print() {
 	case "csv":
 		fmt.Printf("Duration,Count\n")
 		for duration, val := range result.Lats {
-			fmt.Printf("%s,%d", duration, val/kScaleNum)
+			fmt.Printf("%s,%d", duration, val/_kScaleNum)
 		}
 		return
 	default:
@@ -206,11 +210,11 @@ func (result *StressResult) print() {
 	}
 	if len(result.Lats) > 0 {
 		fmt.Printf("Summary:\n")
-		fmt.Printf("  Total:\t%4.3f secs\n", float32(result.Duration)/kScaleNum)
-		fmt.Printf("  Slowest:\t%4.3f secs\n", float32(result.Slowest)/kScaleNum)
-		fmt.Printf("  Fastest:\t%4.3f secs\n", float32(result.Fastest)/kScaleNum)
-		fmt.Printf("  Average:\t%4.3f secs\n", float32(result.Average)/kScaleNum)
-		fmt.Printf("  Requests/sec:\t%4.3f\n", float32(result.Rps)/kScaleNum)
+		fmt.Printf("  Total:\t%4.3f secs\n", float32(result.Duration)/_kScaleNum)
+		fmt.Printf("  Slowest:\t%4.3f secs\n", float32(result.Slowest)/_kScaleNum)
+		fmt.Printf("  Fastest:\t%4.3f secs\n", float32(result.Fastest)/_kScaleNum)
+		fmt.Printf("  Average:\t%4.3f secs\n", float32(result.Average)/_kScaleNum)
+		fmt.Printf("  Requests/sec:\t%4.3f\n", float32(result.Rps)/_kScaleNum)
 		if result.SizeTotal > 1073741824 {
 			fmt.Printf("  Total data:\t%4.3f GB\n", float64(result.SizeTotal)/1073741824)
 		} else if result.SizeTotal > 1048576 {
@@ -282,7 +286,7 @@ func (result *StressResult) result(res *result) {
 		result.ErrorDist[res.err.Error()]++
 	} else {
 		result.Lats[fmt.Sprintf("%4.3f", res.duration.Seconds())]++
-		duration := int64(res.duration.Seconds() * kScaleNum)
+		duration := int64(res.duration.Seconds() * _kScaleNum)
 		result.LatsTotal++
 		if result.Slowest < duration {
 			result.Slowest = duration
@@ -324,7 +328,7 @@ func (result *StressResult) combine(resultList ...StressResult) {
 	}
 
 	if result.Duration > 0 {
-		result.Rps = int64((result.LatsTotal * kScaleNum * kScaleNum) / result.Duration)
+		result.Rps = int64((result.LatsTotal * _kScaleNum * _kScaleNum) / result.Duration)
 	}
 
 	if result.LatsTotal > 0 {
@@ -391,7 +395,7 @@ func (b *StressWorker) Start() {
 
 // Stop stop stress worker and wait coroutine finish
 func (b *StressWorker) Stop(wait bool, err error) {
-	b.RequestParams.Cmd = kCmdStop
+	b.RequestParams.Cmd = _kCmdStop
 	if err != nil {
 		b.err = err
 	}
@@ -401,7 +405,7 @@ func (b *StressWorker) Stop(wait bool, err error) {
 }
 
 func (b *StressWorker) IsStop() bool {
-	return b.RequestParams.Cmd == kCmdStop
+	return b.RequestParams.Cmd == _kCmdStop
 }
 
 func (b *StressWorker) Append(result ...StressResult) {
@@ -499,7 +503,7 @@ func (b *StressWorker) runWorkers() {
 func (b *StressWorker) getClient() *StressClient {
 	client := &StressClient{}
 	switch b.RequestParams.RequestHttpType {
-	case kTypeHttp3:
+	case _kTypeHttp3:
 		client.httpClient = &http.Client{
 			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
 			Transport: &http3.RoundTripper{
@@ -509,7 +513,7 @@ func (b *StressWorker) getClient() *StressClient {
 				},
 			},
 		}
-	case kTypeHttp2:
+	case _kTypeHttp2:
 		client.httpClient = &http.Client{
 			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
 			Transport: &http2.Transport{
@@ -519,7 +523,7 @@ func (b *StressWorker) getClient() *StressClient {
 				DisableCompression: b.RequestParams.DisableCompression,
 			},
 		}
-	case kTypeHttp1:
+	case _kTypeHttp1:
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
@@ -544,7 +548,7 @@ func (b *StressWorker) getClient() *StressClient {
 			Timeout:   time.Duration(b.RequestParams.Timeout) * time.Millisecond,
 			Transport: tr,
 		}
-	case kTypeWs:
+	case _kTypeWs:
 		if c, _, err := websocket.DefaultDialer.Dial(b.RequestParams.Url, b.RequestParams.Headers); err != nil {
 			verbosePrint(V_ERROR, "websocket err: %s", err.Error())
 			return nil
@@ -581,7 +585,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 	verbosePrint(V_TRACE, "request body: %s", bodyBytes.String())
 
 	switch b.RequestParams.RequestHttpType {
-	case kTypeHttp1, kTypeHttp2, kTypeHttp3:
+	case _kTypeHttp1, _kTypeHttp2, _kTypeHttp3:
 		if client.httpClient == nil {
 			err = ErrInitHttpClient
 			return
@@ -602,7 +606,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 				size = n
 			}
 		}
-	case kTypeWs:
+	case _kTypeWs:
 		if client.wsClient == nil {
 			err = ErrInitWsClient
 			return
@@ -626,11 +630,11 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 
 func (b *StressWorker) closeClient(client *StressClient) {
 	switch b.RequestParams.RequestHttpType {
-	case kTypeHttp1, kTypeHttp2, kTypeHttp3:
+	case _kTypeHttp1, _kTypeHttp2, _kTypeHttp3:
 		if client.httpClient != nil {
 			client.httpClient.CloseIdleConnections()
 		}
-	case kTypeWs:
+	case _kTypeWs:
 		if client.wsClient != nil {
 			client.wsClient.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 		}
@@ -657,14 +661,14 @@ func (b *StressWorker) collectReport() {
 			ErrorDist:      make(map[string]int, 0),
 			StatusCodeDist: make(map[int]int, 0),
 			Lats:           make(map[string]int64, 0),
-			Slowest:        int64(kIntMin),
-			Fastest:        int64(kIntMax),
+			Slowest:        int64(_kIntMin),
+			Fastest:        int64(_kIntMax),
 		}
 		for {
 			select {
 			case res, ok := <-b.results:
 				if !ok {
-					b.currentResult.Duration = int64(b.totalTime.Seconds() * kScaleNum)
+					b.currentResult.Duration = int64(b.totalTime.Seconds() * _kScaleNum)
 					b.resultList = append(b.resultList, b.currentResult)
 					return
 				}
@@ -798,7 +802,7 @@ func runStress(params StressParameters, stressTestPtr **StressWorker) *StressRes
 	}
 	*stressTestPtr = stressTest
 	switch params.Cmd {
-	case kCmdStart:
+	case _kCmdStart:
 		if len(workerList) > 0 {
 			jsonBody, _ := json.Marshal(params)
 			resultList := requestWorkerList(jsonBody, stressTest)
@@ -811,14 +815,14 @@ func runStress(params StressParameters, stressTestPtr **StressWorker) *StressRes
 			stressResult.print()
 		}
 		stressList.Delete(params.SequenceId)
-	case kCmdStop:
+	case _kCmdStop:
 		if len(workerList) > 0 {
 			jsonBody, _ := json.Marshal(params)
 			requestWorkerList(jsonBody, stressTest)
 		}
 		stressTest.Stop(true, nil)
 		stressList.Delete(params.SequenceId)
-	case kCmdMetrics:
+	case _kCmdMetrics:
 		if len(workerList) > 0 {
 			jsonBody, _ := json.Marshal(params)
 			if resultList := requestWorkerList(jsonBody, stressTest); len(resultList) > 0 {
@@ -893,12 +897,12 @@ var (
 
 	output = flag.String("o", "", "") // Output type
 
-	c            = flag.Int("c", 50, "")               // Number of requests to run concurrently
-	n            = flag.Int("n", 0, "")                // Number of requests to run
-	q            = flag.Int("q", 0, "")                // Rate limit, in seconds (QPS)
-	d            = flag.String("d", "10s", "")         // Duration for stress test
-	t            = flag.Int("t", 3000, "")             // Timeout in ms
-	httpType     = flag.String("http", kTypeHttp1, "") // HTTP Version
+	c            = flag.Int("c", 50, "")                // Number of requests to run concurrently
+	n            = flag.Int("n", 0, "")                 // Number of requests to run
+	q            = flag.Int("q", 0, "")                 // Rate limit, in seconds (QPS)
+	d            = flag.String("d", "10s", "")          // Duration for stress test
+	t            = flag.Int("t", 3000, "")              // Timeout in ms
+	httpType     = flag.String("http", _kTypeHttp1, "") // HTTP Version
 	printExample = flag.Bool("example", false, "")
 
 	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
@@ -963,7 +967,7 @@ Options:
 	-body-file	Request body from file.
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
 	-dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
-	-W			Running distributed stress test worker mechine list. for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
+	-w/W		Running distributed stress test worker mechine list. for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
 	-example 	Print some stress test examples (default false).
 `
 
@@ -1001,7 +1005,9 @@ func main() {
 	var headerslice flagSlice
 
 	flag.Var(&headerslice, "H", "") // Custom HTTP header
-	flag.Var(&workerList, "W", "")  // Worker mechine
+	// Worker mechine, support W/w
+	flag.Var(&workerList, "W", "")
+	flag.Var(&workerList, "w", "")
 	flag.Parse()
 
 	for flag.NArg() > 0 {
@@ -1067,13 +1073,13 @@ func main() {
 	}
 
 	switch strings.ToLower(*httpType) {
-	case kTypeHttp1, kTypeHttp2, kTypeWs:
+	case _kTypeHttp1, _kTypeHttp2, _kTypeWs:
 		params.RequestHttpType = strings.ToLower(*httpType)
-	case kTypeHttp3:
+	case _kTypeHttp3:
 		params.RequestHttpType = strings.ToLower(*httpType)
 		var err error
 		if http3Pool, err = x509.SystemCertPool(); err != nil {
-			panic(kTypeHttp3 + " err: " + err.Error())
+			panic(_kTypeHttp3 + " err: " + err.Error())
 		}
 	default:
 		usageAndExit("not support -http: " + *httpType)
@@ -1155,7 +1161,7 @@ func main() {
 		for _, url := range requestUrls {
 			params.Url = url
 			params.SequenceId = time.Now().Unix()
-			params.Cmd = kCmdStart
+			params.Cmd = _kCmdStart
 			verbosePrint(V_DEBUG, "request params: %s", params.String())
 			stopSignal = make(chan os.Signal)
 			signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
@@ -1166,7 +1172,7 @@ func main() {
 			go func() {
 				<-stopSignal
 				verbosePrint(V_INFO, "recv stop signal")
-				params.Cmd = kCmdStop
+				params.Cmd = _kCmdStop
 				jsonBody, _ := json.Marshal(params)
 				requestWorkerList(jsonBody, stressTest)
 				stressTest.Stop(true, nil) // Recv stop signal and Stop commands
