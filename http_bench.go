@@ -177,6 +177,7 @@ func (h *flagSlice) Set(value string) error {
 	return nil
 }
 
+// StressResult record result
 type StressResult struct {
 	ErrCode  int    `json:"err_code"`
 	ErrMsg   string `json:"err_msg"`
@@ -336,6 +337,7 @@ func (result *StressResult) combine(resultList ...StressResult) {
 	}
 }
 
+// StressParameters stress params for worker
 type StressParameters struct {
 	SequenceId         int64               `json:"sequence_id"`         // Sequence
 	Cmd                int                 `json:"cmd"`                 // Commands
@@ -967,7 +969,7 @@ Options:
 	-body-file	Request body from file.
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
 	-dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
-	-w/W		Running distributed stress test worker mechine list. for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711".
+	-w/W		Running distributed stress test worker mechine list. e.g. -w "127.0.0.1:12710" -W "127.0.0.1:12711".
 	-example 	Print some stress test examples (default false).
 `
 
