@@ -95,7 +95,7 @@ var (
 		"randomString": randomString,
 		"randomNum":    randomNum,
 		"date":         date,
-		"UUID":         UUID,
+		"UUID":         uuid,
 		"escape":       escape,
 		"getEnv":       getEnv,
 	}
@@ -132,7 +132,7 @@ func randomNum(n int) string {
 	return randomN(n, letterNumBytes)
 }
 
-func UUID() string {
+func uuid() string {
 	return fnUUID
 }
 
@@ -148,13 +148,14 @@ const (
 	_kCmdMetrics
 	_kScaleNum = 10000
 
-	_kTypeHttp1 = "http1"
-	_kTypeHttp2 = "http2"
-	_kTypeHttp3 = "http3"
-	_kTypeWs    = "ws"
-	_kTypeGrpc  = "grpc" // TODO: next version to support
-	_kIntMax    = int(^uint(0) >> 1)
-	_kIntMin    = ^_kIntMax
+	_kTypeHttp1       = "http1"
+	_kTypeHttp2       = "http2"
+	_kTypeHttp3       = "http3"
+	_kTypeWs          = "ws"
+	_kTypeGrpc        = "grpc" // TODO: next version to support
+	_kIntMax          = int(^uint(0) >> 1)
+	_kIntMin          = ^_kIntMax
+	_kContentTypeJSON = "application/json"
 )
 
 const (
@@ -431,7 +432,7 @@ func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
 	rand.Seed(time.Now().UnixNano())
 	for !b.IsStop() {
 		if n > 0 && runCounts > n {
-			break
+			return
 		}
 
 		runCounts++
@@ -440,17 +441,17 @@ func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
 		}
 
 		var t = time.Now()
-		if code, size, err := b.doClient(client); err != nil {
+		code, size, err := b.doClient(client)
+		if err != nil {
 			verbosePrint(V_ERROR, "err: %v", err)
 			b.Stop(false, err)
-			break
-		} else {
-			b.results <- &result{
-				statusCode:    code,
-				duration:      time.Now().Sub(t),
-				err:           err,
-				contentLength: size,
-			}
+			return
+		}
+		b.results <- &result{
+			statusCode:    code,
+			duration:      time.Now().Sub(t),
+			err:           err,
+			contentLength: size,
 		}
 	}
 }
@@ -468,6 +469,7 @@ func (b *StressWorker) runWorkers() {
 	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Url); err != nil {
 		verbosePrint(V_ERROR, "parse urls function err: "+err.Error()+"")
 	}
+
 	if b.bodyTemplate, err = template.New(bodyTemplateName).Funcs(fnMap).Parse(b.RequestParams.RequestBody); err != nil {
 		verbosePrint(V_ERROR, "parse request body function err: "+err.Error()+"")
 	}
@@ -599,7 +601,6 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 		}
 		req.Header = b.RequestParams.Headers
 		resp, respErr := client.httpClient.Do(req)
-		err = respErr
 		if respErr == nil {
 			size = resp.ContentLength
 			code = resp.StatusCode
@@ -608,6 +609,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 				size = n
 			}
 		}
+		err = respErr
 	case _kTypeWs:
 		if client.wsClient == nil {
 			err = ErrInitWsClient
@@ -616,13 +618,13 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 		if err = client.wsClient.WriteMessage(websocket.TextMessage, bodyBytes.Bytes()); err != nil {
 			return
 		}
-		if _, message, readErr := client.wsClient.ReadMessage(); readErr != nil {
+		_, message, readErr := client.wsClient.ReadMessage()
+		if readErr != nil {
 			err = readErr
 			return
-		} else {
-			size = int64(len(message))
-			code = http.StatusOK
 		}
+		size = int64(len(message))
+		code = http.StatusOK
 	default:
 		// pass
 	}
@@ -640,8 +642,6 @@ func (b *StressWorker) closeClient(client *StressClient) {
 		if client.wsClient != nil {
 			client.wsClient.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 		}
-	default:
-		// TODO: add http3
 	}
 }
 
@@ -695,8 +695,9 @@ func usageAndExit(msg string) {
 func fastRead(r io.Reader) (int64, error) {
 	n := int64(0)
 	b := make([]byte, 0, 512)
+	bSize := cap(b)
 	for {
-		if bsize, err := r.Read(b[0:cap(b)]); err != nil {
+		if bsize, err := r.Read(b[0:bSize]); err != nil {
 			if err == io.EOF {
 				err = nil
 			}
@@ -733,26 +734,28 @@ func parseFile(fileName string, delimiter []rune) ([]string, error) {
 
 	defer file.Close()
 
-	if content, err := ioutil.ReadAll(file); err != nil {
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
 		return contentList, err
-	} else {
-		if delimiter == nil {
-			return []string{string(content)}, nil
+	}
+
+	if delimiter == nil {
+		return []string{string(content)}, nil
+	}
+	lines := strings.FieldsFunc(string(content), func(r rune) bool {
+		for _, v := range delimiter {
+			if r == v {
+				return true
+			}
 		}
-		lines := strings.FieldsFunc(string(content), func(r rune) bool {
-			for _, v := range delimiter {
-				if r == v {
-					return true
-				}
-			}
-			return false
-		})
-		for _, line := range lines {
-			if len(line) > 0 {
-				contentList = append(contentList, line)
-			}
+		return false
+	})
+	for _, line := range lines {
+		if len(line) > 0 {
+			contentList = append(contentList, line)
 		}
 	}
+
 	return contentList, nil
 }
 
@@ -760,6 +763,7 @@ func verbosePrint(level int, vfmt string, args ...interface{}) {
 	if *verbose > level {
 		return
 	}
+
 	switch level {
 	case V_TRACE:
 		fmt.Printf("[VERBOSE TRACE] "+vfmt+"\n", args...)
@@ -786,22 +790,26 @@ func parseTime(timeStr string) int64 {
 			multi = 3600
 		}
 	}
+
 	t, err := strconv.ParseInt(timeStr, 10, 64)
 	if err != nil || t <= 0 {
 		usageAndExit("Duration parse err: " + err.Error())
 	}
+
 	return multi * t
 }
 
 func runStress(params StressParameters, stressTestPtr **StressWorker) *StressResult {
 	var stressResult *StressResult
 	var stressTest *StressWorker
+
 	if v, ok := stressList.Load(params.SequenceId); ok && v != nil {
 		stressTest = v.(*StressWorker)
 	} else {
 		stressTest = &StressWorker{RequestParams: &params}
 		stressList.Store(params.SequenceId, stressTest)
 	}
+
 	*stressTestPtr = stressTest
 	switch params.Cmd {
 	case _kCmdStart:
@@ -837,10 +845,12 @@ func runStress(params StressParameters, stressTestPtr **StressWorker) *StressRes
 			stressResult = &stressTest.currentResult
 		}
 	}
+
 	if stressTest.err != nil {
 		stressResult.ErrCode = -1
 		stressResult.ErrMsg = stressTest.err.Error()
 	}
+
 	return stressResult
 }
 
@@ -871,7 +881,7 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 
 func requestWorker(uri string, body []byte) (*StressResult, error) {
 	verbosePrint(V_DEBUG, "Request body: %s", string(body))
-	resp, err := http.Post(uri, "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post(uri, _kContentTypeJSON, bytes.NewBuffer(body))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "RequestWorker addr(%s), err: %s\n", uri, err.Error())
 		return nil, err
@@ -881,6 +891,10 @@ func requestWorker(uri string, body []byte) (*StressResult, error) {
 	respStr, _ := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(respStr, &result)
 	return &result, err
+}
+
+func joinUri(addr string) string {
+	return "http://" + addr + "/"
 }
 
 var (
@@ -928,7 +942,7 @@ var (
 			wg.Add(1)
 			go func(workerAddr string) {
 				defer wg.Done()
-				if result, err := requestWorker("http://"+workerAddr+"/", paramsJson); err == nil {
+				if result, err := requestWorker(joinUri(workerAddr), paramsJson); err == nil {
 					stressResult = append(stressResult, *result)
 				}
 			}(v)
