@@ -29,7 +29,7 @@ go get github.com/linkxzhou/http_bench
 ```
 git clone git@github.com:linkxzhou/http_bench.git
 cd http_bench
-go build http_bench.go
+go build .
 ```
 
 ### 架构

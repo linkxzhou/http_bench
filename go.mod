@@ -1,6 +1,6 @@
 module github.com/linkxzhou/http_bench
 
-go 1.14
+go 1.16
 
 require (
 	github.com/gorilla/websocket v1.5.0

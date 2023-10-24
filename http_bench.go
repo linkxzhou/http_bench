@@ -9,7 +9,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -18,11 +17,8 @@ import (
 	gourl "net/url"
 	"os"
 	"os/signal"
-	"regexp"
 	"runtime"
 	"runtime/debug"
-	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -39,133 +35,22 @@ import (
 //go:embed index.html
 var dashboardHtml string
 
-// ========================= function begin =========================
-// template functions
-func intSum(v ...int64) int64 {
-	var r int64
-	for _, r1 := range v {
-		r += int64(r1)
-	}
-	return r
-}
-
-func random(min, max int64) int64 {
-	rand.Seed(time.Now().UnixNano())
-	return rand.Int63n(max-min) + min
-}
-
-func formatTime(now time.Time, fmt string) string {
-	switch fmt {
-	case "YMD":
-		return now.Format("20060201")
-	case "HMS":
-		return now.Format("150405")
-	default:
-		return now.Format("20060201-150405")
-	}
-}
-
-// YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss
-func date(fmt string) string {
-	return formatTime(time.Now(), fmt)
-}
-
-func randomDate(fmt string) string {
-	return formatTime(time.Unix(rand.Int63n(time.Now().Unix()-94608000)+94608000, 0), fmt)
-}
-
-func escape(u string) string {
-	return gourl.QueryEscape(u)
-}
-
 const (
-	letterIdxBits  = 6                    // 6 bits to represent a letter index
-	letterIdxMask  = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax   = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
-	letterBytes    = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	letterNumBytes = "0123456789"
+	cmdStart int = iota
+	cmdStop
+	cmdMetrics
+
+	typeHttp1 = "http1"
+	typeHttp2 = "http2"
+	typeHttp3 = "http3"
+	typeWs    = "ws"
+	typeGrpc  = "grpc" // TODO: next version to support
+
+	vTRACE = 0
+	vDEBUG = 1
+	vINFO  = 2
+	vERROR = 3
 )
-
-var (
-	fnSrc = rand.NewSource(time.Now().UnixNano()) // for functions
-	fnMap = template.FuncMap{
-		"intSum":       intSum,
-		"random":       random,
-		"randomDate":   randomDate,
-		"randomString": randomString,
-		"randomNum":    randomNum,
-		"date":         date,
-		"UUID":         uuid,
-		"escape":       escape,
-		"getEnv":       getEnv,
-	}
-	fnUUID = randomString(10)
-)
-
-var (
-	ErrInitWsClient   = errors.New("init ws client error")
-	ErrInitHttpClient = errors.New("init http client error")
-	ErrUrl            = errors.New("check url error")
-)
-
-func randomN(n int, letter string) string {
-	b := make([]byte, n)
-	for i, cache, remain := n-1, fnSrc.Int63(), letterIdxMax; i >= 0; {
-		if remain == 0 {
-			cache, remain = fnSrc.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < len(letter) {
-			b[i] = letter[idx]
-			i--
-		}
-		cache >>= letterIdxBits
-		remain--
-	}
-	return string(b)
-}
-
-func randomString(n int) string {
-	return randomN(n, letterBytes)
-}
-
-func randomNum(n int) string {
-	return randomN(n, letterNumBytes)
-}
-
-func uuid() string {
-	return fnUUID
-}
-
-func getEnv(key string) string {
-	return os.Getenv(key)
-}
-
-// ========================= function end =========================
-
-const (
-	_kCmdStart int = iota
-	_kCmdStop
-	_kCmdMetrics
-	_kScaleNum = 10000
-
-	_kTypeHttp1       = "http1"
-	_kTypeHttp2       = "http2"
-	_kTypeHttp3       = "http3"
-	_kTypeWs          = "ws"
-	_kTypeGrpc        = "grpc" // TODO: next version to support
-	_kIntMax          = int(^uint(0) >> 1)
-	_kIntMin          = ^_kIntMax
-	_kContentTypeJSON = "application/json"
-)
-
-const (
-	V_TRACE = 0
-	V_DEBUG = 1
-	V_INFO  = 2
-	V_ERROR = 3
-)
-
-var resultRdMutex sync.RWMutex
 
 type flagSlice []string
 
@@ -176,166 +61,6 @@ func (h *flagSlice) String() string {
 func (h *flagSlice) Set(value string) error {
 	*h = append(*h, value)
 	return nil
-}
-
-// StressResult record result
-type StressResult struct {
-	ErrCode  int    `json:"err_code"`
-	ErrMsg   string `json:"err_msg"`
-	AvgTotal int64  `json:"avg_total"`
-	Fastest  int64  `json:"fastest"`
-	Slowest  int64  `json:"slowest"`
-	Average  int64  `json:"average"`
-	Rps      int64  `json:"rps"`
-
-	ErrorDist      map[string]int   `json:"error_dist"`
-	StatusCodeDist map[int]int      `json:"status_code_dist"`
-	Lats           map[string]int64 `json:"lats"`
-	LatsTotal      int64            `json:"lats_total"`
-	SizeTotal      int64            `json:"size_total"`
-	Duration       int64            `json:"duration"`
-	Output         string           `json:"output"`
-}
-
-func (result *StressResult) print() {
-	resultRdMutex.RLock()
-	defer resultRdMutex.RUnlock()
-	switch result.Output {
-	case "csv":
-		fmt.Printf("Duration,Count\n")
-		for duration, val := range result.Lats {
-			fmt.Printf("%s,%d", duration, val/_kScaleNum)
-		}
-		return
-	default:
-		// pass
-	}
-	if len(result.Lats) > 0 {
-		fmt.Printf("Summary:\n")
-		fmt.Printf("  Total:\t%4.3f secs\n", float32(result.Duration)/_kScaleNum)
-		fmt.Printf("  Slowest:\t%4.3f secs\n", float32(result.Slowest)/_kScaleNum)
-		fmt.Printf("  Fastest:\t%4.3f secs\n", float32(result.Fastest)/_kScaleNum)
-		fmt.Printf("  Average:\t%4.3f secs\n", float32(result.Average)/_kScaleNum)
-		fmt.Printf("  Requests/sec:\t%4.3f\n", float32(result.Rps)/_kScaleNum)
-		if result.SizeTotal > 1073741824 {
-			fmt.Printf("  Total data:\t%4.3f GB\n", float64(result.SizeTotal)/1073741824)
-		} else if result.SizeTotal > 1048576 {
-			fmt.Printf("  Total data:\t%4.3f MB\n", float64(result.SizeTotal)/1048576)
-		} else if result.SizeTotal > 1024 {
-			fmt.Printf("  Total data:\t%4.3f KB\n", float64(result.SizeTotal)/1024)
-		} else if result.SizeTotal > 0 {
-			fmt.Printf("  Total data:\t%4.3f bytes\n", float64(result.SizeTotal))
-		}
-		fmt.Printf("  Size/request:\t%d bytes\n", result.SizeTotal/result.LatsTotal)
-		result.printStatusCodes()
-		result.printLatencies()
-	}
-	if len(result.ErrorDist) > 0 {
-		result.printErrors()
-	}
-}
-
-// Print latency distribution.
-func (result *StressResult) printLatencies() {
-	pctls := []int{10, 25, 50, 75, 90, 95, 99}
-	data := make([]string, len(pctls))
-	durationLats := make([]string, 0)
-	for duration := range result.Lats {
-		durationLats = append(durationLats, duration)
-	}
-	sort.Strings(durationLats)
-	var j int = 0
-	var current int64 = 0
-	for i := 0; i < len(durationLats) && j < len(pctls); i++ {
-		current = current + result.Lats[durationLats[i]]
-		if int(current*100/result.LatsTotal) >= pctls[j] {
-			data[j] = durationLats[i]
-			j++
-		}
-	}
-	fmt.Printf("\nLatency distribution:\n")
-	for i := 0; i < len(pctls); i++ {
-		fmt.Printf("  %v%% in %s secs\n", pctls[i], data[i])
-	}
-}
-
-// Print status code distribution.
-func (result *StressResult) printStatusCodes() {
-	fmt.Printf("\nStatus code distribution:\n")
-	for code, num := range result.StatusCodeDist {
-		fmt.Printf("  [%d]\t%d responses\n", code, num)
-	}
-}
-
-func (result *StressResult) printErrors() {
-	fmt.Printf("\nError distribution:\n")
-	for err, num := range result.ErrorDist {
-		fmt.Printf("  [%d]\t%s", num, err)
-	}
-}
-
-func (result *StressResult) marshal() ([]byte, error) {
-	resultRdMutex.RLock()
-	defer resultRdMutex.RUnlock()
-	return json.Marshal(result)
-}
-
-func (result *StressResult) result(res *result) {
-	resultRdMutex.Lock()
-	defer resultRdMutex.Unlock()
-
-	if res.err != nil {
-		result.ErrorDist[res.err.Error()]++
-	} else {
-		result.Lats[fmt.Sprintf("%4.3f", res.duration.Seconds())]++
-		duration := int64(res.duration.Seconds() * _kScaleNum)
-		result.LatsTotal++
-		if result.Slowest < duration {
-			result.Slowest = duration
-		}
-		if result.Fastest > duration {
-			result.Fastest = duration
-		}
-		result.AvgTotal += duration
-		result.StatusCodeDist[res.statusCode]++
-		if res.contentLength > 0 {
-			result.SizeTotal += res.contentLength
-		}
-	}
-}
-
-func (result *StressResult) combine(resultList ...StressResult) {
-	resultRdMutex.RLock()
-	defer resultRdMutex.RUnlock()
-
-	for _, v := range resultList {
-		if result.Slowest < v.Slowest {
-			result.Slowest = v.Slowest
-		}
-		if result.Fastest > v.Fastest {
-			result.Fastest = v.Fastest
-		}
-		result.LatsTotal += v.LatsTotal
-		result.AvgTotal += v.AvgTotal
-		for code, c := range v.StatusCodeDist {
-			result.StatusCodeDist[code] += c
-		}
-		result.SizeTotal += v.SizeTotal
-		for code, c := range v.ErrorDist {
-			result.ErrorDist[code] += c
-		}
-		for lats, c := range v.Lats {
-			result.Lats[lats] += c
-		}
-	}
-
-	if result.Duration > 0 {
-		result.Rps = int64((result.LatsTotal * _kScaleNum * _kScaleNum) / result.Duration)
-	}
-
-	if result.LatsTotal > 0 {
-		result.Average = result.AvgTotal / result.LatsTotal
-	}
 }
 
 // StressParameters stress params for worker
@@ -393,12 +118,12 @@ func (b *StressWorker) Start() {
 	b.resultList = make([]StressResult, 0)
 	b.collectReport()
 	b.runWorkers()
-	verbosePrint(V_INFO, "worker finished and wait result")
+	verbosePrint(vINFO, "worker finished and wait result")
 }
 
 // Stop stop stress worker and wait coroutine finish
 func (b *StressWorker) Stop(wait bool, err error) {
-	b.RequestParams.Cmd = _kCmdStop
+	b.RequestParams.Cmd = cmdStop
 	if err != nil {
 		b.err = err
 	}
@@ -408,7 +133,7 @@ func (b *StressWorker) Stop(wait bool, err error) {
 }
 
 func (b *StressWorker) IsStop() bool {
-	return b.RequestParams.Cmd == _kCmdStop
+	return b.RequestParams.Cmd == cmdStop
 }
 
 func (b *StressWorker) Append(result ...StressResult) {
@@ -422,7 +147,7 @@ func (b *StressWorker) Wait() *StressResult {
 		return nil
 	}
 	b.resultList[0].combine(b.resultList[1:]...)
-	verbosePrint(V_DEBUG, "result length = %d", len(b.resultList))
+	verbosePrint(vDEBUG, "result length = %d", len(b.resultList))
 	return &(b.resultList[0])
 }
 
@@ -443,7 +168,7 @@ func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
 		var t = time.Now()
 		code, size, err := b.doClient(client)
 		if err != nil {
-			verbosePrint(V_ERROR, "err: %v", err)
+			verbosePrint(vERROR, "err: %v", err)
 			b.Stop(false, err)
 			return
 		}
@@ -467,11 +192,11 @@ func (b *StressWorker) runWorkers() {
 	)
 
 	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Url); err != nil {
-		verbosePrint(V_ERROR, "parse urls function err: "+err.Error()+"")
+		verbosePrint(vERROR, "parse urls function err: "+err.Error()+"")
 	}
 
 	if b.bodyTemplate, err = template.New(bodyTemplateName).Funcs(fnMap).Parse(b.RequestParams.RequestBody); err != nil {
-		verbosePrint(V_ERROR, "parse request body function err: "+err.Error()+"")
+		verbosePrint(vERROR, "parse request body function err: "+err.Error()+"")
 	}
 
 	// ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
@@ -507,7 +232,7 @@ func (b *StressWorker) runWorkers() {
 func (b *StressWorker) getClient() *StressClient {
 	client := &StressClient{}
 	switch b.RequestParams.RequestHttpType {
-	case _kTypeHttp3:
+	case typeHttp3:
 		client.httpClient = &http.Client{
 			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
 			Transport: &http3.RoundTripper{
@@ -517,7 +242,7 @@ func (b *StressWorker) getClient() *StressClient {
 				},
 			},
 		}
-	case _kTypeHttp2:
+	case typeHttp2:
 		client.httpClient = &http.Client{
 			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
 			Transport: &http2.Transport{
@@ -527,7 +252,7 @@ func (b *StressWorker) getClient() *StressClient {
 				DisableCompression: b.RequestParams.DisableCompression,
 			},
 		}
-	case _kTypeHttp1:
+	case typeHttp1:
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
@@ -552,9 +277,9 @@ func (b *StressWorker) getClient() *StressClient {
 			Timeout:   time.Duration(b.RequestParams.Timeout) * time.Millisecond,
 			Transport: tr,
 		}
-	case _kTypeWs:
+	case typeWs:
 		if c, _, err := websocket.DefaultDialer.Dial(b.RequestParams.Url, b.RequestParams.Headers); err != nil {
-			verbosePrint(V_ERROR, "websocket err: %s", err.Error())
+			verbosePrint(vERROR, "websocket err: %s", err.Error())
 			return nil
 		} else {
 			client.wsClient = c
@@ -585,11 +310,11 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 		return
 	}
 
-	verbosePrint(V_TRACE, "request url: %s", urlBytes.String())
-	verbosePrint(V_TRACE, "request body: %s", bodyBytes.String())
+	verbosePrint(vTRACE, "request url: %s", urlBytes.String())
+	verbosePrint(vTRACE, "request body: %s", bodyBytes.String())
 
 	switch b.RequestParams.RequestHttpType {
-	case _kTypeHttp1, _kTypeHttp2, _kTypeHttp3:
+	case typeHttp1, typeHttp2, typeHttp3:
 		if client.httpClient == nil {
 			err = ErrInitHttpClient
 			return
@@ -610,7 +335,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 			}
 		}
 		err = respErr
-	case _kTypeWs:
+	case typeWs:
 		if client.wsClient == nil {
 			err = ErrInitWsClient
 			return
@@ -634,11 +359,11 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 
 func (b *StressWorker) closeClient(client *StressClient) {
 	switch b.RequestParams.RequestHttpType {
-	case _kTypeHttp1, _kTypeHttp2, _kTypeHttp3:
+	case typeHttp1, typeHttp2, typeHttp3:
 		if client.httpClient != nil {
 			client.httpClient.CloseIdleConnections()
 		}
-	case _kTypeWs:
+	case typeWs:
 		if client.wsClient != nil {
 			client.wsClient.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 		}
@@ -663,20 +388,20 @@ func (b *StressWorker) collectReport() {
 			ErrorDist:      make(map[string]int, 0),
 			StatusCodeDist: make(map[int]int, 0),
 			Lats:           make(map[string]int64, 0),
-			Slowest:        int64(_kIntMin),
-			Fastest:        int64(_kIntMax),
+			Slowest:        int64(IntMin),
+			Fastest:        int64(IntMax),
 		}
 		for {
 			select {
 			case res, ok := <-b.results:
 				if !ok {
-					b.currentResult.Duration = int64(b.totalTime.Seconds() * _kScaleNum)
+					b.currentResult.Duration = int64(b.totalTime.Seconds() * scaleNum)
 					b.resultList = append(b.resultList, b.currentResult)
 					return
 				}
 				b.currentResult.result(res)
 			case <-timeTicker.C:
-				verbosePrint(V_INFO, "time ticker upcoming, duration: %ds", b.RequestParams.Duration)
+				verbosePrint(vINFO, "time ticker upcoming, duration: %ds", b.RequestParams.Duration)
 				b.Stop(false, nil) // Time ticker exec Stop commands
 			}
 		}
@@ -692,111 +417,21 @@ func usageAndExit(msg string) {
 	os.Exit(1)
 }
 
-func fastRead(r io.Reader) (int64, error) {
-	n := int64(0)
-	b := make([]byte, 0, 512)
-	bSize := cap(b)
-	for {
-		if bsize, err := r.Read(b[0:bSize]); err != nil {
-			if err == io.EOF {
-				err = nil
-			}
-			return n, err
-		} else {
-			n += int64(bsize)
-		}
-	}
-}
-
-func parseInputWithRegexp(input, regx string) ([]string, error) {
-	re := regexp.MustCompile(regx)
-	matches := re.FindStringSubmatch(input)
-	if len(matches) < 1 {
-		return nil, fmt.Errorf("could not parse the provided input; input = %v", input)
-	}
-	return matches, nil
-}
-
-func checkURL(url string) bool {
-	if _, err := gourl.ParseRequestURI(url); err != nil {
-		fmt.Fprintln(os.Stderr, "parse URL err: ", err.Error())
-		return false
-	}
-	return true
-}
-
-func parseFile(fileName string, delimiter []rune) ([]string, error) {
-	var contentList []string
-	file, err := os.Open(fileName)
-	if err != nil {
-		return contentList, err
-	}
-
-	defer file.Close()
-
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		return contentList, err
-	}
-
-	if delimiter == nil {
-		return []string{string(content)}, nil
-	}
-	lines := strings.FieldsFunc(string(content), func(r rune) bool {
-		for _, v := range delimiter {
-			if r == v {
-				return true
-			}
-		}
-		return false
-	})
-	for _, line := range lines {
-		if len(line) > 0 {
-			contentList = append(contentList, line)
-		}
-	}
-
-	return contentList, nil
-}
-
 func verbosePrint(level int, vfmt string, args ...interface{}) {
 	if *verbose > level {
 		return
 	}
 
 	switch level {
-	case V_TRACE:
-		fmt.Printf("[VERBOSE TRACE] "+vfmt+"\n", args...)
-	case V_DEBUG:
-		fmt.Printf("[VERBOSE DEBUG] "+vfmt+"\n", args...)
-	case V_INFO:
-		fmt.Printf("[VERBOSE INFO] "+vfmt+"\n", args...)
+	case vTRACE:
+		fmt.Printf("[TRACE] "+vfmt+"\n", args...)
+	case vDEBUG:
+		fmt.Printf("[DEBUG] "+vfmt+"\n", args...)
+	case vINFO:
+		fmt.Printf("[INFO] "+vfmt+"\n", args...)
 	default:
-		fmt.Printf("[VERBOSE ERROR] "+vfmt+"\n", args...)
+		fmt.Printf("[ERROR] "+vfmt+"\n", args...)
 	}
-}
-
-func parseTime(timeStr string) int64 {
-	var multi int64 = 1
-	if timeStrLen := len(timeStr) - 1; timeStrLen > 0 {
-		switch timeStr[timeStrLen] {
-		case 's':
-			timeStr = timeStr[:timeStrLen]
-		case 'm':
-			timeStr = timeStr[:timeStrLen]
-			multi = 60
-		case 'h':
-			timeStr = timeStr[:timeStrLen]
-			multi = 3600
-		}
-	}
-
-	t, err := strconv.ParseInt(timeStr, 10, 64)
-	if err != nil || t <= 0 {
-		usageAndExit("Duration parse err: " + err.Error())
-	}
-
-	return multi * t
 }
 
 func runStress(params StressParameters, stressTestPtr **StressWorker) *StressResult {
@@ -812,7 +447,7 @@ func runStress(params StressParameters, stressTestPtr **StressWorker) *StressRes
 
 	*stressTestPtr = stressTest
 	switch params.Cmd {
-	case _kCmdStart:
+	case cmdStart:
 		if len(workerList) > 0 {
 			jsonBody, _ := json.Marshal(params)
 			resultList := requestWorkerList(jsonBody, stressTest)
@@ -825,14 +460,14 @@ func runStress(params StressParameters, stressTestPtr **StressWorker) *StressRes
 			stressResult.print()
 		}
 		stressList.Delete(params.SequenceId)
-	case _kCmdStop:
+	case cmdStop:
 		if len(workerList) > 0 {
 			jsonBody, _ := json.Marshal(params)
 			requestWorkerList(jsonBody, stressTest)
 		}
 		stressTest.Stop(true, nil)
 		stressList.Delete(params.SequenceId)
-	case _kCmdMetrics:
+	case cmdMetrics:
 		if len(workerList) > 0 {
 			jsonBody, _ := json.Marshal(params)
 			if resultList := requestWorkerList(jsonBody, stressTest); len(resultList) > 0 {
@@ -865,13 +500,13 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 				ErrMsg:  err.Error(),
 			}
 		} else {
-			verbosePrint(V_DEBUG, "request params: %s", params.String())
+			verbosePrint(vDEBUG, "request params: %s", params.String())
 			var stressWorker *StressWorker
 			result = runStress(params, &stressWorker)
 		}
 		if result != nil {
 			if wbody, err := result.marshal(); err != nil {
-				verbosePrint(V_ERROR, "marshal result: %v", err)
+				verbosePrint(vERROR, "marshal result: %v", err)
 			} else {
 				w.Write(wbody)
 			}
@@ -880,8 +515,8 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 }
 
 func requestWorker(uri string, body []byte) (*StressResult, error) {
-	verbosePrint(V_DEBUG, "Request body: %s", string(body))
-	resp, err := http.Post(uri, _kContentTypeJSON, bytes.NewBuffer(body))
+	verbosePrint(vDEBUG, "Request body: %s", string(body))
+	resp, err := http.Post(uri, ContentTypeJSON, bytes.NewBuffer(body))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "RequestWorker addr(%s), err: %s\n", uri, err.Error())
 		return nil, err
@@ -893,7 +528,7 @@ func requestWorker(uri string, body []byte) (*StressResult, error) {
 	return &result, err
 }
 
-func joinUri(addr string) string {
+func joinHttpUri(addr string) string {
 	return "http://" + addr + "/"
 }
 
@@ -913,12 +548,12 @@ var (
 
 	output = flag.String("o", "", "") // Output type
 
-	c            = flag.Int("c", 50, "")                // Number of requests to run concurrently
-	n            = flag.Int("n", 0, "")                 // Number of requests to run
-	q            = flag.Int("q", 0, "")                 // Rate limit, in seconds (QPS)
-	d            = flag.String("d", "10s", "")          // Duration for stress test
-	t            = flag.Int("t", 3000, "")              // Timeout in ms
-	httpType     = flag.String("http", _kTypeHttp1, "") // HTTP Version
+	c            = flag.Int("c", 50, "")              // Number of requests to run concurrently
+	n            = flag.Int("n", 0, "")               // Number of requests to run
+	q            = flag.Int("q", 0, "")               // Rate limit, in seconds (QPS)
+	d            = flag.String("d", "10s", "")        // Duration for stress test
+	t            = flag.Int("t", 3000, "")            // Timeout in ms
+	httpType     = flag.String("http", typeHttp1, "") // HTTP Version
 	printExample = flag.Bool("example", false, "")
 
 	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
@@ -942,7 +577,7 @@ var (
 			wg.Add(1)
 			go func(workerAddr string) {
 				defer wg.Done()
-				if result, err := requestWorker(joinUri(workerAddr), paramsJson); err == nil {
+				if result, err := requestWorker(joinHttpUri(workerAddr), paramsJson); err == nil {
 					stressResult = append(stressResult, *result)
 				}
 			}(v)
@@ -1089,13 +724,13 @@ func main() {
 	}
 
 	switch strings.ToLower(*httpType) {
-	case _kTypeHttp1, _kTypeHttp2, _kTypeWs:
+	case typeHttp1, typeHttp2, typeWs:
 		params.RequestHttpType = strings.ToLower(*httpType)
-	case _kTypeHttp3:
+	case typeHttp3:
 		params.RequestHttpType = strings.ToLower(*httpType)
 		var err error
 		if http3Pool, err = x509.SystemCertPool(); err != nil {
-			panic(_kTypeHttp3 + " err: " + err.Error())
+			panic(typeHttp3 + " err: " + err.Error())
 		}
 	default:
 		usageAndExit("not support -http: " + *httpType)
@@ -1177,8 +812,8 @@ func main() {
 		for _, url := range requestUrls {
 			params.Url = url
 			params.SequenceId = time.Now().Unix()
-			params.Cmd = _kCmdStart
-			verbosePrint(V_DEBUG, "request params: %s", params.String())
+			params.Cmd = cmdStart
+			verbosePrint(vDEBUG, "request params: %s", params.String())
 			stopSignal = make(chan os.Signal)
 			signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
 
@@ -1187,8 +822,8 @@ func main() {
 
 			go func() {
 				<-stopSignal
-				verbosePrint(V_INFO, "recv stop signal")
-				params.Cmd = _kCmdStop
+				verbosePrint(vINFO, "recv stop signal")
+				params.Cmd = cmdStop
 				jsonBody, _ := json.Marshal(params)
 				requestWorkerList(jsonBody, stressTest)
 				stressTest.Stop(true, nil) // Recv stop signal and Stop commands
