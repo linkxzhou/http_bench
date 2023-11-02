@@ -1,9 +1,9 @@
-http://127.0.0.1:18090
-http://127.0.0.1:18090/user/1
-http://127.0.0.1:18090/todo?data={{ randomString 10 }}
-http://127.0.0.1:18090/todo/1?data={{ randomNum 10 }}
-http://127.0.0.1:18090/country?data={{ date "YMD" }}
-http://127.0.0.1:18090/country/1?data={{ UUID }}
-http://127.0.0.1:18090/language?data={{ UUID | escape }}
-http://127.0.0.1:18090/language/1?data={{ random 1 100000 }}
-http://127.0.0.1:18090/user?data={{ randomDate "YMD" }}
+http://127.0.0.1:18091
+http://127.0.0.1:18091/user/1
+http://127.0.0.1:18091/todo?data={{ randomString 10 }}
+http://127.0.0.1:18091/todo/1?data={{ randomNum 10 }}
+http://127.0.0.1:18091/country?data={{ date "YMD" }}
+http://127.0.0.1:18091/country/1?data={{ UUID }}
+http://127.0.0.1:18091/language?data={{ UUID | escape }}
+http://127.0.0.1:18091/language/1?data={{ random 1 100000 }}
+http://127.0.0.1:18091/user?data={{ randomDate "YMD" }}

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,12 +19,31 @@ const (
 	duration = 10
 )
 
-func startupHttpBench(cmd string, args []string) (string, error) {
-	cmder := exec.Command(cmd, args...)
-	cmder.Env = os.Environ()
-	cmder.Dir, _ = os.Getwd()
-	output, err := cmder.CombinedOutput()
+type command struct {
+	cmder *exec.Cmd
+}
+
+func (c *command) init(cmd string, args []string) {
+	c.cmder = exec.Command(cmd, args...)
+	c.cmder.Env = os.Environ()
+	c.cmder.Dir, _ = os.Getwd()
+}
+
+func (c *command) startup() (string, error) {
+	if c.cmder == nil {
+		return "", errors.New("invalid command")
+	}
+
+	output, err := c.cmder.CombinedOutput()
 	return string(output), err
+}
+
+func (c *command) stop() error {
+	if c.cmder == nil {
+		return errors.New("invalid command")
+	}
+
+	return c.cmder.Process.Kill()
 }
 
 func TestStressHTTP1(t *testing.T) {
@@ -55,17 +74,27 @@ func TestStressHTTP1(t *testing.T) {
 			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url http://%s/`, duration, name, listen),
 			isErr: false,
 		},
+		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url-file %s`, duration, name, `./test/urls.txt`),
+			isErr: false,
+		},
+		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s http://%s/`, duration, name, `./test/body.txt`, listen),
+			isErr: false,
+		},
 	} {
-		result, err := startupHttpBench(gopath, strings.Split(v.args, " "))
+		cmder := command{}
+		cmder.init(gopath, strings.Split(v.args, " "))
+		result, err := cmder.startup()
 		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
 			if !v.isErr {
-				t.Errorf("startupHttpBench error: %v, result: %v", err, result)
+				t.Errorf("startup error: %v, result: %v", err, result)
 			}
 		}
 		fmt.Println(name+" | result: ", result)
 	}
 
-	srv.Shutdown(context.TODO())
+	srv.Close()
 	wg.Wait()
 }
 
@@ -99,16 +128,18 @@ func TestStressHTTP2(t *testing.T) {
 			isErr: false,
 		},
 	} {
-		result, err := startupHttpBench(gopath, strings.Split(v.args, " "))
+		cmder := command{}
+		cmder.init(gopath, strings.Split(v.args, " "))
+		result, err := cmder.startup()
 		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
 			if !v.isErr {
-				t.Errorf("startupHttpBench error: %v, result: %v", err, result)
+				t.Errorf("startup error: %v, result: %v", err, result)
 			}
 		}
 		fmt.Println(name+" | result: ", result)
 	}
 
-	srv.Shutdown(context.TODO())
+	srv.Close()
 	wg.Wait()
 }
 
@@ -141,10 +172,12 @@ func TestStressHTTP3(t *testing.T) {
 			isErr: false,
 		},
 	} {
-		result, err := startupHttpBench(gopath, strings.Split(v.args, " "))
+		cmder := command{}
+		cmder.init(gopath, strings.Split(v.args, " "))
+		result, err := cmder.startup()
 		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
 			if !v.isErr {
-				t.Errorf("startupHttpBench error: %v, result: %v", err, result)
+				t.Errorf("startup error: %v, result: %v", err, result)
 			}
 		}
 		fmt.Println(name+" | result: ", result)
@@ -198,13 +231,85 @@ func TestStressWS(t *testing.T) {
 			isErr: false,
 		},
 	} {
-		result, err := startupHttpBench(gopath, strings.Split(v.args, " "))
+		cmder := command{}
+		cmder.init(gopath, strings.Split(v.args, " "))
+		result, err := cmder.startup()
 		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
 			if !v.isErr {
-				t.Errorf("startupHttpBench error: %v, result: %v", err, result)
+				t.Errorf("startup error: %v, result: %v", err, result)
 			}
 		}
 		fmt.Println(name+" | result: ", result)
+	}
+
+	srv.Close()
+	wg.Wait()
+}
+
+func TestStressHTTP1MultipleWorker(t *testing.T) {
+	name := "http1"
+	listen := "127.0.0.1:18091"
+
+	var wg sync.WaitGroup
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`This is ` + name + ` Echo Server`))
+	})
+	srv := &http.Server{Addr: listen, Handler: mux}
+
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		if err := srv.ListenAndServe(); err != nil {
+			fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
+		}
+		fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
+	}()
+
+	for _, v := range []struct {
+		args    string
+		workers []string
+		isErr   bool
+	}{
+		{
+			args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body "%s" -url http://%s/ -W %s -W %s`, duration, name, `{}`, listen, "127.0.0.1:12710", "127.0.0.1:12711"),
+			workers: []string{
+				fmt.Sprintf(`-listen %s`, "127.0.0.1:12710"),
+				fmt.Sprintf(`-listen %s`, "127.0.0.1:12711"),
+			},
+			isErr: false,
+		},
+	} {
+		var cmderList = []command{}
+		var cmderCg sync.WaitGroup
+
+		for _, worker := range v.workers {
+			cmderCg.Add(1)
+			workerCmd := command{}
+			workerCmd.init(gopath, strings.Split(worker, " "))
+			go func() {
+				workerResult, _ := workerCmd.startup()
+				cmderCg.Done()
+				fmt.Println("workerResult: ", workerResult)
+			}()
+			cmderList = append(cmderList, workerCmd)
+		}
+
+		cmder := command{}
+		cmder.init(gopath, strings.Split(v.args, " "))
+		result, err := cmder.startup()
+		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
+			if !v.isErr {
+				t.Errorf("startup error: %v, result: %v", err, result)
+			}
+		}
+		fmt.Println(name+" | result: ", result)
+
+		// stop all workers
+		for _, workerCmd := range cmderList {
+			workerCmd.stop()
+		}
+		cmderCg.Wait()
 	}
 
 	srv.Close()

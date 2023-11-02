@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -80,11 +81,9 @@ type StressParameters struct {
 	Qps                int                 `json:"qps"`                 // Qps is the rate limit.
 	DisableCompression bool                `json:"disable_compression"` // DisableCompression is an option to disable compression in response
 	DisableKeepAlives  bool                `json:"disable_keepalives"`  // DisableKeepAlives is an option to prevents re-use of TCP connections between different HTTP requests
-	AuthUsername       string              `json:"auth_username"`       // Basic authentication, username:password.
-	AuthPassword       string              `json:"auth_password"`
-	Headers            map[string][]string `json:"headers"` // Custom HTTP header.
-	Url                string              `json:"url"`     // Request url.
-	Output             string              `json:"output"`  // Output represents the output type. If "csv" is provided, the output will be dumped as a csv stream.
+	Headers            map[string][]string `json:"headers"`             // Custom HTTP header.
+	Url                string              `json:"url"`                 // Request url.
+	Output             string              `json:"output"`              // Output represents the output type. If "csv" is provided, the output will be dumped as a csv stream.
 }
 
 func (p *StressParameters) String() string {
@@ -713,22 +712,22 @@ func main() {
 	params.RequestBody = *body
 
 	if *bodyFile != "" {
-		if readBody, err := parseFile(*bodyFile, nil); err != nil {
+		readBody, err := parseFile(*bodyFile, nil)
+		if err != nil {
 			usageAndExit(*bodyFile + " file read error(" + err.Error() + ").")
-		} else {
-			if len(readBody) > 0 {
-				params.RequestBody = readBody[0]
-			}
+		}
+		if len(readBody) > 0 {
+			params.RequestBody = readBody[0]
 		}
 	}
 
 	if *scriptFile != "" {
-		if scriptBody, err := parseFile(*scriptFile, nil); err != nil {
+		scriptBody, err := parseFile(*scriptFile, nil)
+		if err != nil {
 			usageAndExit(*scriptFile + " file read error(" + err.Error() + ").")
-		} else {
-			if len(scriptBody) > 0 {
-				params.RequestScriptBody = scriptBody[0]
-			}
+		}
+		if len(scriptBody) > 0 {
+			params.RequestScriptBody = scriptBody[0]
 		}
 	}
 
@@ -763,11 +762,11 @@ func main() {
 
 	// set basic auth if set
 	if *authHeader != "" {
-		if match, err := parseInputWithRegexp(*authHeader, authRegexp); err != nil {
+		match, err := parseInputWithRegexp(*authHeader, authRegexp)
+		if err != nil {
 			usageAndExit(err.Error())
-		} else {
-			params.AuthUsername, params.AuthPassword = match[1], match[2]
 		}
+		params.Headers["Authorization"] = []string{fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(match[1]+":"+match[2])))}
 	}
 
 	if *output != "csv" && *output != "" {
