@@ -26,8 +26,8 @@
         <el-input placeholder="body" v-model="request_body" style="margin: 4px 0;">
             <template slot="prepend">Request body</template>
         </el-input>
-        <el-input placeholder="http1, http2, ws, wss, default http1" v-model="request_httptype" style="margin: 4px 0;">
-            <template slot="prepend">Request httptype</template>
+        <el-input placeholder="http1, http2, ws, wss, default http1" v-model="request_type" style="margin: 4px 0;">
+            <template slot="prepend">Request type</template>
         </el-input>
         <el-input placeholder="n" v-model="n" style="margin: 4px 0;">
             <template slot="prepend">N</template>
@@ -105,7 +105,7 @@
                 time_metrics: 1000,
                 request_method: "GET",
                 request_body: "",
-                request_httptype: "http1",
+                request_type: "http1",
                 n: 0,
                 c: 1,
                 duration: 1000,
@@ -127,7 +127,7 @@
                         sequence_id: this.g_seqid,
                         request_method: this.request_method,
                         request_body: this.request_body,
-                        request_httptype: this.request_httptype,
+                        request_type: this.request_type,
                         n: parseInt(this.n),
                         c: parseInt(this.c),
                         duration: parseInt(this.duration),

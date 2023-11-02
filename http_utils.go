@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	gourl "net/url"
 	"os"
 	"regexp"
@@ -22,14 +23,16 @@ const (
 	letterBytes    = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	letterNumBytes = "0123456789"
 
-	IntMax          = int(^uint(0) >> 1)
-	IntMin          = ^IntMax
-	ContentTypeJSON = "application/json"
+	IntMax              = int(^uint(0) >> 1)
+	IntMin              = ^IntMax
+	httpContentTypeJSON = "application/json"
+	httpWorkerApiPath   = "/api"
 )
 
 var (
 	ErrInitWsClient   = errors.New("init ws client error")
 	ErrInitHttpClient = errors.New("init http client error")
+	ErrInitTcpClient  = errors.New("init tcp client error")
 	ErrUrl            = errors.New("check url error")
 )
 
@@ -142,18 +145,21 @@ func parseTime(timeStr string) int64 {
 	return multi * t
 }
 
-func fastRead(r io.Reader) (int64, error) {
+func fastRead(r io.Reader, cycleRead bool) (int64, error) {
 	n := int64(0)
-	b := make([]byte, 0, 512)
+	b := make([]byte, 0, 10240)
 	bSize := cap(b)
 	for {
-		if bsize, err := r.Read(b[0:bSize]); err != nil {
+		bsize, err := r.Read(b[0:bSize])
+		if err != nil {
 			if err == io.EOF {
 				err = nil
 			}
 			return n, err
-		} else {
-			n += int64(bsize)
+		}
+		n += int64(bsize)
+		if !cycleRead {
+			return n, err
 		}
 	}
 }
@@ -165,14 +171,6 @@ func parseInputWithRegexp(input, regx string) ([]string, error) {
 		return nil, fmt.Errorf("could not parse the provided input; input = %v", input)
 	}
 	return matches, nil
-}
-
-func checkURL(url string) bool {
-	if _, err := gourl.ParseRequestURI(url); err != nil {
-		fmt.Fprintln(os.Stderr, "parse URL err: ", err.Error())
-		return false
-	}
-	return true
 }
 
 func parseFile(fileName string, delimiter []rune) ([]string, error) {
@@ -207,4 +205,50 @@ func parseFile(fileName string, delimiter []rune) ([]string, error) {
 	}
 
 	return contentList, nil
+}
+
+type tcpConn struct {
+	tcpClient net.Conn
+	uri       string
+}
+
+func DialTCP(uri string, timeout int) (*tcpConn, error) {
+	conn, err := net.Dial("tcp", uri)
+	if err != nil {
+		return nil, err
+	}
+
+	err = conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+	if err != nil {
+		return nil, err
+	}
+
+	tcp := &tcpConn{
+		tcpClient: conn,
+		uri:       uri,
+	}
+	return tcp, nil
+}
+
+func (tcp *tcpConn) Do(body []byte) (int64, error) {
+	if tcp.tcpClient == nil {
+		return 0, ErrInitTcpClient
+	}
+
+	_, err := tcp.tcpClient.Write(body)
+	if err != nil {
+		return 0, err
+	}
+
+	return fastRead(tcp.tcpClient, false)
+}
+
+func (tcp *tcpConn) Close() error {
+	if tcp.tcpClient == nil {
+		return ErrInitTcpClient
+	}
+
+	err := tcp.tcpClient.Close()
+	tcp.tcpClient = nil
+	return err
 }

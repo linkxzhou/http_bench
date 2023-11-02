@@ -9,7 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -19,6 +19,7 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -44,6 +45,7 @@ const (
 	typeHttp2 = "http2"
 	typeHttp3 = "http3"
 	typeWs    = "ws"
+	typeTCP   = "tcp"  // TODO: fix next version
 	typeGrpc  = "grpc" // TODO: next version to support
 
 	vTRACE = 0
@@ -70,7 +72,7 @@ type StressParameters struct {
 	RequestMethod      string              `json:"request_method"`      // Request Method.
 	RequestBody        string              `json:"request_body"`        // Request Body.
 	RequestScriptBody  string              `json:"request_script_body"` // Request Script Body.
-	RequestHttpType    string              `json:"request_httptype"`    // Request HTTP Type
+	RequestType        string              `json:"request_type"`        // Request Type
 	N                  int                 `json:"n"`                   // N is the total number of requests to make.
 	C                  int                 `json:"c"`                   // C is the concurrency level, the number of concurrent workers to run.
 	Duration           int64               `json:"duration"`            // D is the duration for stress test
@@ -86,11 +88,12 @@ type StressParameters struct {
 }
 
 func (p *StressParameters) String() string {
-	if body, err := json.MarshalIndent(p, "", "\t"); err != nil {
+	body, err := json.MarshalIndent(p, "", "\t")
+	if err != nil {
 		return err.Error()
-	} else {
-		return string(body)
 	}
+
+	return string(body)
 }
 
 type (
@@ -124,9 +127,7 @@ func (b *StressWorker) Start() {
 // Stop stop stress worker and wait coroutine finish
 func (b *StressWorker) Stop(wait bool, err error) {
 	b.RequestParams.Cmd = cmdStop
-	if err != nil {
-		b.err = err
-	}
+	b.err = err
 	if wait {
 		b.wg.Wait()
 	}
@@ -142,10 +143,12 @@ func (b *StressWorker) Append(result ...StressResult) {
 
 func (b *StressWorker) Wait() *StressResult {
 	b.wg.Wait()
-	if len(b.resultList) <= 0 {
+
+	if b.resultList == nil || len(b.resultList) <= 0 {
 		fmt.Fprintf(os.Stderr, "internal err: stress test result empty\n")
 		return nil
 	}
+
 	b.resultList[0].combine(b.resultList[1:]...)
 	verbosePrint(vDEBUG, "result length = %d", len(b.resultList))
 	return &(b.resultList[0])
@@ -172,6 +175,7 @@ func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
 			b.Stop(false, err)
 			return
 		}
+
 		b.results <- &result{
 			statusCode:    code,
 			duration:      time.Now().Sub(t),
@@ -204,6 +208,9 @@ func (b *StressWorker) runWorkers() {
 		wg.Add(1)
 		go func() {
 			client := b.getClient()
+			if client == nil {
+				return
+			}
 
 			defer func() {
 				b.closeClient(client)
@@ -213,13 +220,11 @@ func (b *StressWorker) runWorkers() {
 				}
 			}()
 
-			if client != nil {
-				sleep := 0
-				if b.RequestParams.Qps > 0 {
-					sleep = 1e6 / (b.RequestParams.Qps * b.RequestParams.C) // sleep XXus send request
-				}
-				b.runWorker(b.RequestParams.N/b.RequestParams.C, sleep, client)
+			sleep := 0
+			if b.RequestParams.Qps > 0 {
+				sleep = 1e6 / (b.RequestParams.Qps * b.RequestParams.C) // sleep XXus send request
 			}
+			b.runWorker(b.RequestParams.N/b.RequestParams.C, sleep, client)
 		}()
 	}
 
@@ -231,7 +236,7 @@ func (b *StressWorker) runWorkers() {
 
 func (b *StressWorker) getClient() *StressClient {
 	client := &StressClient{}
-	switch b.RequestParams.RequestHttpType {
+	switch b.RequestParams.RequestType {
 	case typeHttp3:
 		client.httpClient = &http.Client{
 			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
@@ -278,12 +283,21 @@ func (b *StressWorker) getClient() *StressClient {
 			Transport: tr,
 		}
 	case typeWs:
-		if c, _, err := websocket.DefaultDialer.Dial(b.RequestParams.Url, b.RequestParams.Headers); err != nil {
-			verbosePrint(vERROR, "websocket err: %s", err.Error())
+		c, _, err := websocket.DefaultDialer.Dial(b.RequestParams.Url, b.RequestParams.Headers)
+		if err != nil || c == nil {
+			verbosePrint(vERROR, "websocket err: %v", err)
 			return nil
-		} else {
-			client.wsClient = c
 		}
+		client.wsClient = c
+	case typeTCP:
+		c, err := DialTCP(b.RequestParams.Url, b.RequestParams.Timeout)
+		if err != nil || c == nil {
+			verbosePrint(vERROR, "tcp err: %s", err)
+			return nil
+		}
+		client.tcpClient = c
+	default:
+		// pass
 	}
 
 	return client
@@ -305,20 +319,11 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 		bodyBytes.WriteString(b.RequestParams.RequestBody)
 	}
 
-	if !checkURL(urlBytes.String()) {
-		err = ErrUrl
-		return
-	}
-
-	verbosePrint(vTRACE, "request url: %s", urlBytes.String())
+	verbosePrint(vTRACE, "request url: %s, request type: %s", urlBytes.String(), b.RequestParams.RequestType)
 	verbosePrint(vTRACE, "request body: %s", bodyBytes.String())
 
-	switch b.RequestParams.RequestHttpType {
+	switch b.RequestParams.RequestType {
 	case typeHttp1, typeHttp2, typeHttp3:
-		if client.httpClient == nil {
-			err = ErrInitHttpClient
-			return
-		}
 		req, reqErr := http.NewRequest(b.RequestParams.RequestMethod, urlBytes.String(), strings.NewReader(bodyBytes.String()))
 		if reqErr != nil || req == nil {
 			err = errors.New("request err: " + err.Error())
@@ -330,16 +335,12 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 			size = resp.ContentLength
 			code = resp.StatusCode
 			defer resp.Body.Close()
-			if n, _ := fastRead(resp.Body); size <= 0 {
+			if n, _ := fastRead(resp.Body, true); size <= 0 {
 				size = n
 			}
 		}
 		err = respErr
 	case typeWs:
-		if client.wsClient == nil {
-			err = ErrInitWsClient
-			return
-		}
 		if err = client.wsClient.WriteMessage(websocket.TextMessage, bodyBytes.Bytes()); err != nil {
 			return
 		}
@@ -350,6 +351,11 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 		}
 		size = int64(len(message))
 		code = http.StatusOK
+	case typeTCP:
+		if size, err = client.tcpClient.Do(bodyBytes.Bytes()); err != nil {
+			return
+		}
+		code = http.StatusOK
 	default:
 		// pass
 	}
@@ -358,21 +364,22 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 }
 
 func (b *StressWorker) closeClient(client *StressClient) {
-	switch b.RequestParams.RequestHttpType {
+	switch b.RequestParams.RequestType {
 	case typeHttp1, typeHttp2, typeHttp3:
-		if client.httpClient != nil {
-			client.httpClient.CloseIdleConnections()
-		}
+		client.httpClient.CloseIdleConnections()
 	case typeWs:
-		if client.wsClient != nil {
-			client.wsClient.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-		}
+		client.wsClient.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	case typeTCP:
+		client.tcpClient.Close()
+	default:
+		// pass
 	}
 }
 
 type StressClient struct {
 	httpClient *http.Client
 	wsClient   *websocket.Conn
+	tcpClient  *tcpConn
 }
 
 func (b *StressWorker) collectReport() {
@@ -384,6 +391,7 @@ func (b *StressWorker) collectReport() {
 			timeTicker.Stop()
 			b.wg.Done()
 		}()
+
 		b.currentResult = StressResult{
 			ErrorDist:      make(map[string]int, 0),
 			StatusCodeDist: make(map[int]int, 0),
@@ -391,6 +399,7 @@ func (b *StressWorker) collectReport() {
 			Slowest:        int64(IntMin),
 			Fastest:        int64(IntMax),
 		}
+
 		for {
 			select {
 			case res, ok := <-b.results:
@@ -490,7 +499,7 @@ func runStress(params StressParameters, stressTestPtr **StressWorker) *StressRes
 }
 
 func handleWorker(w http.ResponseWriter, r *http.Request) {
-	if reqStr, err := ioutil.ReadAll(r.Body); err == nil {
+	if reqStr, err := io.ReadAll(r.Body); err == nil {
 		var params StressParameters
 		var result *StressResult
 		if err := json.Unmarshal(reqStr, &params); err != nil {
@@ -505,31 +514,32 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 			result = runStress(params, &stressWorker)
 		}
 		if result != nil {
-			if wbody, err := result.marshal(); err != nil {
+			wbody, err := result.marshal()
+			if err != nil {
 				verbosePrint(vERROR, "marshal result: %v", err)
-			} else {
-				w.Write(wbody)
+				return
 			}
+			w.Write(wbody)
 		}
 	}
 }
 
 func requestWorker(uri string, body []byte) (*StressResult, error) {
-	verbosePrint(vDEBUG, "Request body: %s", string(body))
-	resp, err := http.Post(uri, ContentTypeJSON, bytes.NewBuffer(body))
+	verbosePrint(vDEBUG, "request body: %s", string(body))
+	resp, err := http.Post(uri, httpContentTypeJSON, bytes.NewBuffer(body))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "RequestWorker addr(%s), err: %s\n", uri, err.Error())
+		fmt.Fprintf(os.Stderr, "requestWorker addr(%s), err: %s\n", uri, err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 	var result StressResult
-	respStr, _ := ioutil.ReadAll(resp.Body)
+	respStr, _ := io.ReadAll(resp.Body)
 	err = json.Unmarshal(respStr, &result)
 	return &result, err
 }
 
 func joinHttpUri(addr string) string {
-	return "http://" + addr + "/"
+	return fmt.Sprintf("http://%s%s", addr, httpWorkerApiPath)
 }
 
 var (
@@ -548,12 +558,14 @@ var (
 
 	output = flag.String("o", "", "") // Output type
 
-	c            = flag.Int("c", 50, "")              // Number of requests to run concurrently
-	n            = flag.Int("n", 0, "")               // Number of requests to run
-	q            = flag.Int("q", 0, "")               // Rate limit, in seconds (QPS)
-	d            = flag.String("d", "10s", "")        // Duration for stress test
-	t            = flag.Int("t", 3000, "")            // Timeout in ms
-	httpType     = flag.String("http", typeHttp1, "") // HTTP Version
+	c        = flag.Int("c", 50, "")              // Number of requests to run concurrently
+	n        = flag.Int("n", 0, "")               // Number of requests to run
+	q        = flag.Int("q", 0, "")               // Rate limit, in seconds (QPS)
+	d        = flag.String("d", "10s", "")        // Duration for stress test
+	t        = flag.Int("t", 3000, "")            // Timeout in ms
+	httpType = flag.String("http", typeHttp1, "") // HTTP Version
+	pType    = flag.String("p", "", "")           // TCP/UDP Type
+
 	printExample = flag.Bool("example", false, "")
 
 	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
@@ -573,6 +585,7 @@ var (
 	requestWorkerList = func(paramsJson []byte, stressTest *StressWorker) []StressResult {
 		var wg sync.WaitGroup
 		var stressResult []StressResult
+
 		for _, v := range workerList {
 			wg.Add(1)
 			go func(workerAddr string) {
@@ -582,6 +595,7 @@ var (
 				}
 			}(v)
 		}
+
 		wg.Wait()
 		return stressResult
 	}
@@ -605,7 +619,7 @@ Options:
 	-H  Custom HTTP header. You can specify as many as needed by repeating the flag.
 		for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
 		but "Host: ***", replace that with -host.
-	-http  Support http1, http2, ws, wss (default http1).
+	-http  Support protocol http1, http2, ws, wss (default http1).
 	-body  Request body, default empty.
 	-a  Basic authentication, username:password.
 	-x  HTTP Proxy address as host:port.
@@ -619,12 +633,9 @@ Options:
 	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
 	-dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
 	-w/W		Running distributed stress test worker mechine list. e.g. -w "127.0.0.1:12710" -W "127.0.0.1:12711".
-	-example 	Print some stress test examples (default false).
-`
+	-example 	Print some stress test examples (default false).`
 
-	examples = `
-1.Example stress test:
-	./http_bench -n 1000 -c 10 -t 3000 -m GET -url "http://127.0.0.1/test1"
+	examples = `1.Example stress test:
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1" -url-file urls.txt
 	./http_bench -d 10s -c 10 -m POST -body "{}" -url-file urls.txt
@@ -643,8 +654,7 @@ Options:
 
 6.Example distributed stress test:
 	(1) ./http_bench -listen "127.0.0.1:12710" -verbose 1
-	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose 1 -W "127.0.0.1:12710"
-`
+	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose 1 -W "127.0.0.1:12710"`
 )
 
 func main() {
@@ -656,8 +666,7 @@ func main() {
 	var headerslice flagSlice
 
 	flag.Var(&headerslice, "H", "") // Custom HTTP header
-	// Worker mechine, support W/w
-	flag.Var(&workerList, "W", "")
+	flag.Var(&workerList, "W", "")  // Worker mechine, support W/w
 	flag.Var(&workerList, "w", "")
 	flag.Parse()
 
@@ -723,17 +732,21 @@ func main() {
 		}
 	}
 
-	switch strings.ToLower(*httpType) {
-	case typeHttp1, typeHttp2, typeWs:
-		params.RequestHttpType = strings.ToLower(*httpType)
-	case typeHttp3:
-		params.RequestHttpType = strings.ToLower(*httpType)
-		var err error
-		if http3Pool, err = x509.SystemCertPool(); err != nil {
-			panic(typeHttp3 + " err: " + err.Error())
+	if strings.ToLower(*pType) != "" {
+		params.RequestType = strings.ToLower(*pType)
+	} else {
+		switch strings.ToLower(*httpType) {
+		case typeHttp1, typeHttp2, typeWs:
+			params.RequestType = strings.ToLower(*httpType)
+		case typeHttp3:
+			params.RequestType = strings.ToLower(*httpType)
+			var err error
+			if http3Pool, err = x509.SystemCertPool(); err != nil {
+				panic(typeHttp3 + " err: " + err.Error())
+			}
+		default:
+			usageAndExit("not support -http: " + *httpType)
 		}
-	default:
-		usageAndExit("not support -http: " + *httpType)
 	}
 
 	// set any other additional repeatable headers
@@ -774,35 +787,27 @@ func main() {
 	var mainServer *http.Server
 	_, mainCancel := context.WithCancel(context.Background())
 
-	// decrease gc profile
-	if getEnv("BENCH_GC") == "1" {
-		debug.SetGCPercent(200)
+	// decrease go gc rate
+	benchGOGC := getEnv("BENCH_GOGC")
+	if n, err := strconv.ParseInt(benchGOGC, 2, 64); err == nil {
+		debug.SetGCPercent(int(n))
 	}
 
-	if len(*listen) > 0 {
+	if *listen != "" || *dashboard != "" {
 		mux := http.NewServeMux()
-		mux.HandleFunc("/", handleWorker)
-		fmt.Fprintf(os.Stdout, "worker listen %s\n", *listen)
+		if *dashboard != "" { // if startup dashboard and return index.html
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				w.Write([]byte(dashboardHtml)) // export dashboard index.html
+			})
+			*listen = *dashboard
+		}
+		mux.HandleFunc(httpWorkerApiPath, handleWorker)
 		mainServer = &http.Server{
 			Addr:    *listen,
 			Handler: mux,
 		}
 		if err := mainServer.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, "worker listen err: %s\n", err.Error())
-		}
-	} else if len(*dashboard) > 0 {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(dashboardHtml)) // export dashboard index.html
-		})
-		mux.HandleFunc("/api", handleWorker)
-		fmt.Fprintf(os.Stdout, "dashboard addr %s\n", *dashboard)
-		mainServer = &http.Server{
-			Addr:    *dashboard,
-			Handler: mux,
-		}
-		if err := mainServer.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, "dashboard listen err: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "listen err: %s\n", err.Error())
 		}
 	} else {
 		if len(requestUrls) <= 0 {
@@ -826,7 +831,7 @@ func main() {
 				params.Cmd = cmdStop
 				jsonBody, _ := json.Marshal(params)
 				requestWorkerList(jsonBody, stressTest)
-				stressTest.Stop(true, nil) // Recv stop signal and Stop commands
+				stressTest.Stop(true, nil) // recv stop signal and stop commands
 				mainCancel()
 			}()
 

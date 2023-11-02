@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io"
-	"log"
 	"net/http"
 	"testing"
 
@@ -15,7 +14,7 @@ import (
 func TestHTTP3Client(t *testing.T) {
 	pool, err := x509.SystemCertPool()
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	roundTripper := &http3.RoundTripper{
 		TLSClientConfig: &tls.Config{
@@ -29,14 +28,14 @@ func TestHTTP3Client(t *testing.T) {
 	}
 	rsp, err := hclient.Get("https://127.0.0.1:18093/")
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	body := &bytes.Buffer{}
 	r, err := io.Copy(body, rsp.Body)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	} else {
-		log.Fatal("==== r: ", r, ", body: ", body.String())
+		t.Fatal("r: ", r, ", body: ", body.String())
 	}
 }
 
