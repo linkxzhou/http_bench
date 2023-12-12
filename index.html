@@ -17,7 +17,7 @@
             <el-button type="primary" :loading="g_running" @click="submitStart">Stress Start</el-button>
             <el-button type="danger" @click="submitStop">Stress Stop</el-button>
         </el-row>
-        <el-input placeholder="Metrics Duration, default 5000ms" v-model="time_metrics" style="margin: 4px 0;">
+        <el-input placeholder="Metrics Duration, default 2000ms" v-model="time_metrics" style="margin: 4px 0;">
             <template slot="prepend">Metrics Duration</template>
         </el-input>
         <el-input placeholder="GET, POST, PUT, DELETE, HEAD, OPTIONS" v-model="request_method" style="margin: 4px 0;">
@@ -26,7 +26,7 @@
         <el-input placeholder="body" v-model="request_body" style="margin: 4px 0;">
             <template slot="prepend">Request body</template>
         </el-input>
-        <el-input placeholder="bodytype" v-model="request_bodytype" style="margin: 4px 0;">
+        <el-input placeholder="empty, hex, default empty" v-model="request_bodytype" style="margin: 4px 0;">
             <template slot="prepend">Request bodytype</template>
         </el-input>
         <el-input placeholder="http1, http2, ws, wss, default http1" v-model="request_type" style="margin: 4px 0;">
@@ -80,6 +80,10 @@
         });
         function metricsLoad(timeList, dataList) {
             var option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'cross' }
+                },
                 xAxis: {
                     type: 'category',
                     data: timeList
@@ -105,7 +109,7 @@
         new Vue({
             el: '#app',
             data: {
-                time_metrics: 1000,
+                time_metrics: 2000,
                 request_method: "GET",
                 request_body: "",
                 request_bodytype: "",
@@ -163,7 +167,7 @@
                     )
                     this.g_running = true;
                     let time_list = [], data_list = [], lats_total = 0;
-                    let time_metrics = this.time_metrics > 0 ? this.time_metrics : 5000;
+                    let time_metrics = this.time_metrics > 0 ? this.time_metrics : 2000;
                     this.g_interval = setInterval(function () {
                         request_data.cmd = 2;
                         fetch('/api', {
