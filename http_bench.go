@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -49,6 +50,8 @@ const (
 	typeTCP   = "tcp"  // TODO: fix next version
 	typeGrpc  = "grpc" // TODO: next version to support
 
+	bodyHex = "hex" // hex body to request
+
 	vTRACE = 0
 	vDEBUG = 1
 	vINFO  = 2
@@ -72,6 +75,7 @@ type StressParameters struct {
 	Cmd                int                 `json:"cmd"`                 // Commands
 	RequestMethod      string              `json:"request_method"`      // Request Method.
 	RequestBody        string              `json:"request_body"`        // Request Body.
+	RequestBodyType    string              `json:"request_bodytype"`    // Request BodyType.
 	RequestScriptBody  string              `json:"request_script_body"` // Request Script Body.
 	RequestType        string              `json:"request_type"`        // Request Type
 	N                  int                 `json:"n"`                   // N is the total number of requests to make.
@@ -312,13 +316,23 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 		urlBytes.WriteString(url)
 	}
 
-	if len(b.RequestParams.RequestBody) > 0 && b.bodyTemplate != nil {
-		b.bodyTemplate.Execute(&bodyBytes, nil)
-	} else {
-		bodyBytes.WriteString(b.RequestParams.RequestBody)
+	switch b.RequestParams.RequestBodyType {
+	case bodyHex:
+		hexb, hexbErr := hex.DecodeString(b.RequestParams.RequestBody)
+		if hexbErr != nil {
+			return -1, 0, errors.New("invalid hex: " + hexbErr.Error())
+		}
+		bodyBytes.Write(hexb)
+	default:
+		if len(b.RequestParams.RequestBody) > 0 && b.bodyTemplate != nil {
+			b.bodyTemplate.Execute(&bodyBytes, nil)
+		} else {
+			bodyBytes.WriteString(b.RequestParams.RequestBody)
+		}
 	}
 
-	verbosePrint(vTRACE, "request url: %s, request type: %s", urlBytes.String(), b.RequestParams.RequestType)
+	verbosePrint(vTRACE, "request url: %s, request type: %s, request bodytype: %s",
+		urlBytes.String(), b.RequestParams.RequestType, b.RequestParams.RequestBodyType)
 	verbosePrint(vTRACE, "request body: %s", bodyBytes.String())
 
 	switch b.RequestParams.RequestType {
@@ -553,6 +567,7 @@ var (
 
 	m          = flag.String("m", "GET", "")
 	body       = flag.String("body", "", "")
+	bodyType   = flag.String("bodytype", "", "")
 	authHeader = flag.String("a", "", "")
 
 	output = flag.String("o", "", "") // Output type
@@ -618,10 +633,11 @@ Options:
 	-H  Custom HTTP header. You can specify as many as needed by repeating the flag.
 		for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
 		but "Host: ***", replace that with -host.
-	-http  Support protocol http1, http2, ws, wss (default http1).
-	-body  Request body, default empty.
-	-a  Basic authentication, username:password.
-	-x  HTTP Proxy address as host:port.
+	-http  		Support protocol http1, http2, ws, wss (default http1).
+	-body  		Request body, default empty.
+	-bodytype   Request body type, default string, support string, hex.
+	-a  		Basic authentication, username:password.
+	-x  		HTTP Proxy address as host:port.
 	-disable-compression  Disable compression.
 	-disable-keepalive    Disable keep-alive, prevents re-use of TCP connections between different HTTP requests.
 	-cpus		Number of used cpu cores. (default for current machine is %d cores).
@@ -710,6 +726,7 @@ func main() {
 	params.DisableCompression = *disableCompression
 	params.DisableKeepAlives = *disableKeepAlives
 	params.RequestBody = *body
+	params.RequestBodyType = *bodyType
 
 	if *bodyFile != "" {
 		readBody, err := parseFile(*bodyFile, nil)
