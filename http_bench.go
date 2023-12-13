@@ -512,6 +512,14 @@ func runStress(params StressParameters, stressTestPtr **StressWorker) *StressRes
 }
 
 func handleWorker(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if reqStr, err := io.ReadAll(r.Body); err == nil {
 		var params StressParameters
 		var result *StressResult

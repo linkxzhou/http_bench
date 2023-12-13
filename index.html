@@ -11,7 +11,9 @@
 </head>
 
 <body style="height: 100%; margin: 0">
-    <div id="container" style="height: 70%"></div>
+    <div id="container"
+        style="height: 70%; margin: auto; width:98%; padding: 10px; box-sizing: border-box; box-shadow: rgba(0, 0, 0, 0.1) 0px 0px 20px;">
+    </div>
     <div id="app" style="margin: 20px;">
         <el-row>
             <el-button type="primary" :loading="g_running" @click="submitStart">Stress Start</el-button>
@@ -50,6 +52,9 @@
         <el-input placeholder="request url" v-model="url" style="margin: 4px 0;">
             <template slot="prepend">Url</template>
         </el-input>
+        <el-input placeholder="api path" v-model="api_path" style="margin: 4px 0;">
+            <template slot="prepend">API Path</template>
+        </el-input>
     </div>
     <script type="text/javascript">
         Date.prototype.format = function (fmt) {
@@ -74,7 +79,7 @@
         }
         var contentType = { 'Content-Type': 'application/json;charset=utf-8' };
         var dom = document.getElementById('container');
-        var stressChart = echarts.init(dom, 'dark', {
+        var stressChart = echarts.init(dom, null, {
             renderer: 'canvas',
             useDirtyRect: false
         });
@@ -124,6 +129,7 @@
                 auth_username: "",
                 auth_password: "",
                 url: "http://127.0.0.1:8000?data=1",
+                api_path: "",
                 g_running: false,
                 g_seqid: Math.floor(Math.random() * 1000000) + 1,
                 g_interval: undefined,
@@ -148,11 +154,16 @@
                         auth_password: this.auth_password,
                         url: this.url,
                     };
-                    fetch('/api', {
+                    let api_path = '/api';
+                    if (this.api_path.length > 0) {
+                        api_path = this.api_path;
+                    }
+
+                    fetch(api_path, {
                         method: 'POST',
                         headers: contentType,
                         body: JSON.stringify(request_data)
-                    }).then(response => response.json().then(data => {
+                    }).then(response => response.json()).then(data => {
                         if (data.err_code != 0) {
                             this.g_running = false;
                             if (this.g_interval) clearInterval(this.g_interval);
@@ -163,14 +174,14 @@
                                 duration: 5000,
                             });
                         }
-                    })
-                    )
+                    });
+
                     this.g_running = true;
                     let time_list = [], data_list = [], lats_total = 0;
                     let time_metrics = this.time_metrics > 0 ? this.time_metrics : 2000;
                     this.g_interval = setInterval(function () {
                         request_data.cmd = 2;
-                        fetch('/api', {
+                        fetch(api_path, {
                             method: 'POST',
                             headers: contentType,
                             body: JSON.stringify(request_data)
@@ -191,7 +202,13 @@
                         cmd: 1, // stop
                         sequence_id: this.g_seqid,
                     };
-                    fetch('/api', {
+
+                    let api_path = '/api';
+                    if (this.api_path.length > 0) {
+                        api_path = this.api_path;
+                    }
+
+                    fetch(api_path, {
                         method: 'POST',
                         headers: contentType,
                         body: JSON.stringify(request_data)
