@@ -247,72 +247,74 @@ func TestStressWS(t *testing.T) {
 }
 
 // todo: github ci has error and run local.
-// func TestStressHTTP1MultipleWorker(t *testing.T) {
-// 	name := "http1"
-// 	listen := "127.0.0.1:18091"
+func TestStressHTTP1MultipleWorker(t *testing.T) {
+	name := "http1"
+	listen := "127.0.0.1:18091"
 
-// 	var wg sync.WaitGroup
-// 	mux := http.NewServeMux()
-// 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-// 		w.Write([]byte(`This is ` + name + ` Echo Server`))
-// 	})
-// 	srv := &http.Server{Addr: listen, Handler: mux}
+	var wg sync.WaitGroup
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`This is ` + name + ` Echo Server`))
+	})
+	srv := &http.Server{Addr: listen, Handler: mux}
 
-// 	go func() {
-// 		wg.Add(1)
-// 		defer wg.Done()
-// 		if err := srv.ListenAndServe(); err != nil {
-// 			fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
-// 		}
-// 		fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
-// 	}()
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		if err := srv.ListenAndServe(); err != nil {
+			fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
+		}
+		fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
+	}()
 
-// 	for _, v := range []struct {
-// 		args    string
-// 		workers []string
-// 		isErr   bool
-// 	}{
-// 		{
-// 			args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body "%s" -url http://%s/ -W %s -W %s`, duration, name, `{}`, listen, "127.0.0.1:12710", "127.0.0.1:12711"),
-// 			workers: []string{
-// 				fmt.Sprintf(`-listen %s`, "127.0.0.1:12710"),
-// 				fmt.Sprintf(`-listen %s`, "127.0.0.1:12711"),
-// 			},
-// 			isErr: false,
-// 		},
-// 	} {
-// 		var cmderList = []command{}
-// 		var cmderCg sync.WaitGroup
+	workerList := []string{"127.0.0.1:12710", "127.0.0.1:12711"}
+	for _, v := range []struct {
+		args    string
+		workers []string
+		isErr   bool
+	}{
+		{
+			args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body "%s" -url http://%s/ -W %s -W %s`,
+				duration, name, `{}`, listen, workerList[0], workerList[1]),
+			workers: []string{
+				fmt.Sprintf(`-listen %s`, workerList[0]),
+				fmt.Sprintf(`-listen %s`, workerList[1]),
+			},
+			isErr: false,
+		},
+	} {
+		var cmderList = []command{}
+		var cmderCg sync.WaitGroup
 
-// 		for _, worker := range v.workers {
-// 			cmderCg.Add(1)
-// 			workerCmd := command{}
-// 			workerCmd.init(gopath, strings.Split(worker, " "))
-// 			go func() {
-// 				workerResult, _ := workerCmd.startup()
-// 				cmderCg.Done()
-// 				fmt.Println("workerResult: ", workerResult)
-// 			}()
-// 			cmderList = append(cmderList, workerCmd)
-// 		}
+		for _, worker := range v.workers {
+			cmderCg.Add(1)
+			workerCmd := command{}
+			workerCmd.init(gopath, strings.Split(worker, " "))
+			go func() {
+				workerResult, _ := workerCmd.startup()
+				cmderCg.Done()
+				fmt.Println("workerResult: ", workerResult)
+			}()
+			cmderList = append(cmderList, workerCmd)
+		}
 
-// 		cmder := command{}
-// 		cmder.init(gopath, strings.Split(v.args, " "))
-// 		result, err := cmder.startup()
-// 		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
-// 			if !v.isErr {
-// 				t.Errorf("startup error: %v, result: %v", err, result)
-// 			}
-// 		}
-// 		fmt.Println(name+" | result: ", result)
+		cmder := command{}
+		cmder.init(gopath, strings.Split(v.args, " "))
+		result, err := cmder.startup()
+		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
+			if !v.isErr {
+				t.Errorf("startup error: %v, result: %v", err, result)
+			}
+		}
+		fmt.Println(name+" | result: ", result)
 
-// 		// stop all workers
-// 		for _, workerCmd := range cmderList {
-// 			workerCmd.stop()
-// 		}
-// 		cmderCg.Wait()
-// 	}
+		// stop all workers
+		for _, workerCmd := range cmderList {
+			workerCmd.stop()
+		}
+		cmderCg.Wait()
+	}
 
-// 	srv.Close()
-// 	wg.Wait()
-// }
+	srv.Close()
+	wg.Wait()
+}

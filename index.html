@@ -25,7 +25,8 @@
         <el-input placeholder="GET, POST, PUT, DELETE, HEAD, OPTIONS" v-model="request_method" style="margin: 4px 0;">
             <template slot="prepend">Request method</template>
         </el-input>
-        <el-input placeholder="body" v-model="request_body" style="margin: 4px 0;">
+        <el-input placeholder="Request body" v-model="request_body" type="textarea"
+            :autosize="{ minRows: 2, maxRows: 10}" style="margin: 4px 0;">
             <template slot="prepend">Request body</template>
         </el-input>
         <el-input placeholder="empty, hex, default empty" v-model="request_bodytype" style="margin: 4px 0;">

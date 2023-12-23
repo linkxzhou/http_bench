@@ -47,6 +47,7 @@ const (
 	typeHttp2 = "http2"
 	typeHttp3 = "http3"
 	typeWs    = "ws"
+	typeWss   = "wss"
 	typeTCP   = "tcp"  // TODO: fix next version
 	typeGrpc  = "grpc" // TODO: next version to support
 
@@ -285,7 +286,7 @@ func (b *StressWorker) getClient() *StressClient {
 			Timeout:   time.Duration(b.RequestParams.Timeout) * time.Millisecond,
 			Transport: tr,
 		}
-	case typeWs:
+	case typeWs, typeWss:
 		c, _, err := websocket.DefaultDialer.Dial(b.RequestParams.Url, b.RequestParams.Headers)
 		if err != nil || c == nil {
 			verbosePrint(vERROR, "websocket err: %v", err)
@@ -633,7 +634,7 @@ Options:
 		be smaller than the concurency level.
 	-q  Rate limit, in seconds (QPS).
 	-d  Duration of the stress test, e.g. 2s, 2m, 2h
-	-t  Timeout in ms.
+	-t  Timeout in ms (default 3000ms).
 	-o  Output type. If none provided, a summary is printed.
 		"csv" is the only supported alternative. Dumps the response
 		metrics in comma-seperated values format.
@@ -643,7 +644,7 @@ Options:
 		but "Host: ***", replace that with -host.
 	-http  		Support protocol http1, http2, ws, wss (default http1).
 	-body  		Request body, default empty.
-	-bodytype   Request body type, default string, support string, hex.
+	-bodytype   Request body type, support string, hex (default string).
 	-a  		Basic authentication, username:password.
 	-x  		HTTP Proxy address as host:port.
 	-disable-compression  Disable compression.
@@ -653,9 +654,9 @@ Options:
 	-verbose 	Print detail logs, default 3(0:TRACE, 1:DEBUG, 2:INFO, 3:ERROR).
 	-url-file 	Read url list from file and random stress test.
 	-body-file	Request body from file.
-	-listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
+	-listen 	Listen IP:PORT for distributed stress test and worker node (default empty). e.g. "127.0.0.1:12710".
 	-dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
-	-w/W		Running distributed stress test worker mechine list. e.g. -w "127.0.0.1:12710" -W "127.0.0.1:12711".
+	-w/W		Running distributed stress test worker node list. e.g. -w "127.0.0.1:12710" -W "127.0.0.1:12711".
 	-example 	Print some stress test examples (default false).`
 
 	examples = `1.Example stress test:
@@ -760,7 +761,7 @@ func main() {
 		params.RequestType = strings.ToLower(*pType)
 	} else {
 		switch strings.ToLower(*httpType) {
-		case typeHttp1, typeHttp2, typeWs:
+		case typeHttp1, typeHttp2, typeWs, typeWss:
 			params.RequestType = strings.ToLower(*httpType)
 		case typeHttp3:
 			params.RequestType = strings.ToLower(*httpType)
@@ -791,7 +792,9 @@ func main() {
 		if err != nil {
 			usageAndExit(err.Error())
 		}
-		params.Headers["Authorization"] = []string{fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(match[1]+":"+match[2])))}
+		params.Headers["Authorization"] = []string{
+			fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(match[1]+":"+match[2]))),
+		}
 	}
 
 	if *output != "csv" && *output != "" {
