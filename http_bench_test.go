@@ -269,7 +269,7 @@ func TestStressHTTP1MultipleWorker(t *testing.T) {
 		fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
 	}()
 
-	workerList := []string{"127.0.0.1:18092", "127.0.0.1:18093"}
+	workerList := []string{"127.0.0.1:12710", "127.0.0.1:12711"}
 	for _, v := range []struct {
 		args    string
 		workers []string
@@ -300,7 +300,7 @@ func TestStressHTTP1MultipleWorker(t *testing.T) {
 			cmderList = append(cmderList, workerCmd)
 		}
 
-		time.Sleep(10) // wait for 10s
+		time.Sleep(10 * time.Second) // wait for 10s
 
 		cmder := command{}
 		cmder.init(gopath, strings.Split(v.args, " "))
