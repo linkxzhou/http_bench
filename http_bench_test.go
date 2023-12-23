@@ -25,6 +25,7 @@ type command struct {
 }
 
 func (c *command) init(cmd string, args []string) {
+	fmt.Println("cmd args: ", strings.Join(args, " "))
 	c.cmder = exec.Command(cmd, args...)
 	c.cmder.Env = os.Environ()
 	c.cmder.Dir, _ = os.Getwd()
@@ -268,7 +269,7 @@ func TestStressHTTP1MultipleWorker(t *testing.T) {
 		fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
 	}()
 
-	workerList := []string{"127.0.0.1:12710", "127.0.0.1:12711"}
+	workerList := []string{"127.0.0.1:18092", "127.0.0.1:18093"}
 	for _, v := range []struct {
 		args    string
 		workers []string
