@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/quic-go/quic-go/http3"
@@ -297,6 +298,8 @@ func TestStressHTTP1MultipleWorker(t *testing.T) {
 			}()
 			cmderList = append(cmderList, workerCmd)
 		}
+
+		time.Sleep(10) // wait for 10s
 
 		cmder := command{}
 		cmder.init(gopath, strings.Split(v.args, " "))
