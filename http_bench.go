@@ -76,7 +76,7 @@ type StressParameters struct {
 	Cmd                int                 `json:"cmd"`                 // Commands
 	RequestMethod      string              `json:"request_method"`      // Request Method.
 	RequestBody        string              `json:"request_body"`        // Request Body.
-	RequestBodyType    string              `json:"request_bodytype"`    // Request BodyType.
+	RequestBodyType    string              `json:"request_bodytype"`    // Request BodyType, default string.
 	RequestScriptBody  string              `json:"request_script_body"` // Request Script Body.
 	RequestType        string              `json:"request_type"`        // Request Type
 	N                  int                 `json:"n"`                   // N is the total number of requests to make.
@@ -211,6 +211,8 @@ func (b *StressWorker) runWorkers() {
 	for i := 0; i < b.RequestParams.C && !(b.IsStop()); i++ {
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
+
 			client := b.getClient()
 			if client == nil {
 				return
@@ -218,7 +220,6 @@ func (b *StressWorker) runWorkers() {
 
 			defer func() {
 				b.closeClient(client)
-				wg.Done()
 				if r := recover(); r != nil {
 					fmt.Fprintf(os.Stderr, "internal err: %v\n", r)
 				}
@@ -294,7 +295,10 @@ func (b *StressWorker) getClient() *StressClient {
 		}
 		client.wsClient = c
 	case typeTCP:
-		c, err := DialTCP(b.RequestParams.Url, b.RequestParams.Timeout)
+		c, err := DialTCP(b.RequestParams.Url, ConnOption{
+			timeout:           time.Duration(b.RequestParams.Duration) * time.Second,
+			disableKeepAlives: b.RequestParams.DisableKeepAlives,
+		})
 		if err != nil || c == nil {
 			verbosePrint(vERROR, "tcp err: %s", err)
 			return nil
@@ -438,23 +442,6 @@ func usageAndExit(msg string) {
 	flag.Usage()
 	fmt.Fprintf(os.Stderr, "\n")
 	os.Exit(1)
-}
-
-func verbosePrint(level int, vfmt string, args ...interface{}) {
-	if *verbose > level {
-		return
-	}
-
-	switch level {
-	case vTRACE:
-		fmt.Printf("[TRACE] "+vfmt+"\n", args...)
-	case vDEBUG:
-		fmt.Printf("[DEBUG] "+vfmt+"\n", args...)
-	case vINFO:
-		fmt.Printf("[INFO] "+vfmt+"\n", args...)
-	default:
-		fmt.Printf("[ERROR] "+vfmt+"\n", args...)
-	}
 }
 
 func runStress(params StressParameters, stressTestPtr **StressWorker) *StressResult {

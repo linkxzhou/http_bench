@@ -16,6 +16,23 @@ import (
 	"time"
 )
 
+func verbosePrint(level int, vfmt string, args ...interface{}) {
+	if *verbose > level {
+		return
+	}
+
+	switch level {
+	case vTRACE:
+		fmt.Printf("[TRACE] "+vfmt+"\n", args...)
+	case vDEBUG:
+		fmt.Printf("[DEBUG] "+vfmt+"\n", args...)
+	case vINFO:
+		fmt.Printf("[INFO] "+vfmt+"\n", args...)
+	default:
+		fmt.Printf("[ERROR] "+vfmt+"\n", args...)
+	}
+}
+
 const (
 	letterIdxBits  = 6                    // 6 bits to represent a letter index
 	letterIdxMask  = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
@@ -147,20 +164,24 @@ func parseTime(timeStr string) int64 {
 
 func fastRead(r io.Reader, cycleRead bool) (int64, error) {
 	n := int64(0)
-	b := make([]byte, 0, 10240)
+	b := make([]byte, 0, 10240) // TODO: default recieve size
 	bSize := cap(b)
 	for {
 		bsize, err := r.Read(b[0:bSize])
+		verbosePrint(vDEBUG, "fastRead: %v, bsize: %v", b, bsize)
 		if err != nil {
 			if err == io.EOF {
 				err = nil
 			}
-			return n, err
 		}
 		n += int64(bsize)
-		if !cycleRead {
-			return n, err
-		}
+
+		// TODO: cycleRead isn't support
+		// if !cycleRead || bsize == 0 {
+		// 	return n, err
+		// }
+
+		return n, err
 	}
 }
 
@@ -207,25 +228,34 @@ func parseFile(fileName string, delimiter []rune) ([]string, error) {
 	return contentList, nil
 }
 
+type ConnOption struct {
+	timeout           time.Duration
+	disableKeepAlives bool
+}
+
 type tcpConn struct {
 	tcpClient net.Conn
 	uri       string
+	option    ConnOption
 }
 
-func DialTCP(uri string, timeout int) (*tcpConn, error) {
+func DialTCP(uri string, option ConnOption) (*tcpConn, error) {
 	conn, err := net.Dial("tcp", uri)
 	if err != nil {
+		verbosePrint(vERROR, "DialTCP Dial err: %v", err)
 		return nil, err
 	}
 
-	err = conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+	err = conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(option.timeout)))
 	if err != nil {
+		verbosePrint(vERROR, "DialTCP SetDeadline err: %v", err)
 		return nil, err
 	}
 
 	tcp := &tcpConn{
 		tcpClient: conn,
 		uri:       uri,
+		option:    option,
 	}
 	return tcp, nil
 }
@@ -240,7 +270,7 @@ func (tcp *tcpConn) Do(body []byte) (int64, error) {
 		return 0, err
 	}
 
-	return fastRead(tcp.tcpClient, false)
+	return fastRead(tcp.tcpClient, !tcp.option.disableKeepAlives)
 }
 
 func (tcp *tcpConn) Close() error {

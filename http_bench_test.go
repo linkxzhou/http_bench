@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -248,7 +249,7 @@ func TestStressWS(t *testing.T) {
 	wg.Wait()
 }
 
-// todo: github ci has error and run local.
+// TODO: github ci has error and run local.
 func TestStressHTTP1MultipleWorker(t *testing.T) {
 	name := "http1"
 	listen := "127.0.0.1:18091"
@@ -319,6 +320,87 @@ func TestStressHTTP1MultipleWorker(t *testing.T) {
 		cmderCg.Wait()
 	}
 
+	srv.Close()
+	wg.Wait()
+}
+
+var tcpHandleStop bool
+
+func tcpHandleConnection(conn net.Conn) error {
+	buffer := make([]byte, 1024)
+	for {
+		n, err := conn.Read(buffer[0:1024])
+		if err != nil {
+			return err
+		}
+
+		if tcpHandleStop {
+			return nil
+		}
+
+		message := string(buffer[:n])
+		response := fmt.Sprintf("recv: %s", message)
+		_, err = conn.Write([]byte(response))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func TestStressTCP(t *testing.T) {
+	name := "tcp"
+	body := "this is stress body"
+	listen := "127.0.0.1:18091"
+	srv, err := net.Listen("tcp", listen)
+	if err != nil {
+		fmt.Println(name+" | srv err: ", err)
+		return
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for {
+			conn, err := srv.Accept()
+			fmt.Println("conn: ", conn, "err: ", err)
+			if err != nil {
+				break
+			}
+
+			wg.Add(1)
+			go func(c net.Conn) {
+				defer wg.Done()
+				err = tcpHandleConnection(conn)
+				fmt.Println("tcpHandleConnection err: ", err)
+			}(conn)
+		}
+	}()
+
+	for _, v := range []struct {
+		args  string
+		isErr bool
+	}{
+		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -p %s -body "%s" -url %s`, duration, name, body, listen),
+			isErr: false,
+		},
+	} {
+		cmder := command{}
+		cmder.init(gopath, strings.Split(v.args, " "))
+		result, err := cmder.startup()
+		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
+			if !v.isErr {
+				t.Errorf("startup error: %v, result: %v", err, result)
+			}
+		}
+		fmt.Println(name+" | result: ", result)
+	}
+
+	tcpHandleStop = true // stop server
 	srv.Close()
 	wg.Wait()
 }

@@ -34,20 +34,22 @@ func TestEchoTCP(t *testing.T) {
 }
 
 func handleConnection(conn net.Conn) {
-	buffer := make([]byte, 4)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		fmt.Println(NAMETCP+" read error: ", err)
-		return
-	}
+	buffer := make([]byte, 1024)
+	for {
+		n, err := conn.Read(buffer)
+		if err != nil {
+			fmt.Println(NAMETCP+" read error: ", err)
+			return
+		}
 
-	fmt.Println(NAMETCP+" read buffer: ", string(buffer), ", n: ", n)
-	message := string(buffer[:n])
-	response := fmt.Sprintf(NAMETCP+"recv: %s", message)
-	_, err = conn.Write([]byte(response))
-	if err != nil {
-		fmt.Println(NAMETCP+" send error: ", err)
-		return
+		fmt.Println(NAMETCP+" read buffer: ", string(buffer), ", n: ", n)
+		message := string(buffer[:n])
+		response := fmt.Sprintf(NAMETCP+"recv: %s", message)
+		_, err = conn.Write([]byte(response))
+		if err != nil {
+			fmt.Println(NAMETCP+" send error: ", err)
+			return
+		}
+		fmt.Println(NAMETCP+" send buffer: ", string(message))
 	}
-	fmt.Println(NAMETCP+" send buffer: ", string(message))
 }
