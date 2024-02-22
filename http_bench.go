@@ -646,7 +646,8 @@ Options:
 	-w/W		Running distributed stress test worker node list. e.g. -w "127.0.0.1:12710" -W "127.0.0.1:12711".
 	-example 	Print some stress test examples (default false).`
 
-	examples = `1.Example stress test:
+	examples = `
+1.Example stress test:
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1" -url-file urls.txt
 	./http_bench -d 10s -c 10 -m POST -body "{}" -url-file urls.txt

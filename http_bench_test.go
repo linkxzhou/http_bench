@@ -388,6 +388,10 @@ func TestStressTCP(t *testing.T) {
 			args:  fmt.Sprintf(`-c 1 -d %ds -p %s -body "%s" -url %s`, duration, name, body, listen),
 			isErr: false,
 		},
+		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -p %s -body "{{ stringToHex '%s' }}" -url %s`, duration, name, body, listen),
+			isErr: false,
+		},
 	} {
 		cmder := command{}
 		cmder.init(gopath, strings.Split(v.args, " "))

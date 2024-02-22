@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -65,6 +66,8 @@ var (
 		"UUID":         uuid,
 		"escape":       escape,
 		"getEnv":       getEnv,
+		"hexToString":  hexToString,
+		"stringToHex":  stringToHex,
 	}
 	fnUUID = randomString(10)
 )
@@ -137,6 +140,17 @@ func uuid() string {
 
 func getEnv(key string) string {
 	return os.Getenv(key)
+}
+
+func hexToString(hexStr string) string {
+	data, _ := hex.DecodeString(hexStr)
+	return string(data)
+}
+
+func stringToHex(s string) string {
+	data := []byte(s)
+	hexStr := hex.EncodeToString(data)
+	return hexStr
 }
 
 func parseTime(timeStr string) int64 {

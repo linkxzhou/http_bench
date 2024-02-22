@@ -12,6 +12,7 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [x] HTTP/1 stress testing
 - [x] HTTP/2 stress testing
 - [x] HTTP/3 stress testing
+- [ ] TCP/UDP stress testing(beta)
 - [x] Websocket stress testing
 - [x] Distributed stress testing
 - [x] Support functions
@@ -253,4 +254,34 @@ Client Request Example:
 Body Request Example:  
 
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID | escape }}" -verbose 0
+```
+
+**(9) hexToString**  
+```
+Function: 
+  hexToString str(hex to string)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
+
+Body Request Example:  
+
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
+```
+
+**(10) stringToHex**  
+```
+Function: 
+  stringToHex str(string to hex, pipeline with other functions)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ stringToHex 'hello world' }}" -verbose 0
+
+Body Request Example:  
+
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ stringToHex 'hello world' }}" -verbose 0
 ```

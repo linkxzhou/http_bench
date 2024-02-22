@@ -10,6 +10,7 @@
 - [x] HTTP/1 压测
 - [x] HTTP/2 压测
 - [x] HTTP/3 压测
+- [ ] TCP/UDP 压测(beta版本)
 - [x] Websocket 压测
 - [x] 分布式压测
 - [x] 支持函数
@@ -243,4 +244,34 @@ Client Request Example:
 
 Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID | escape }}" -verbose 0
+```
+
+**(9) 16进制转换字符串**  
+```
+Function: 
+  hexToString str(hex to string)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
+
+Body Request Example:  
+
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
+```
+
+**(10) 字符串转换16进制**  
+```
+Function: 
+  stringToHex str(string to hex, pipeline with other functions)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ stringToHex 'hello world' }}" -verbose 0
+
+Body Request Example:  
+
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ stringToHex 'hello world' }}" -verbose 0
 ```
