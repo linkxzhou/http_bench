@@ -149,8 +149,7 @@ func hexToString(hexStr string) string {
 
 func stringToHex(s string) string {
 	data := []byte(s)
-	hexStr := hex.EncodeToString(data)
-	return hexStr
+	return hex.EncodeToString(data)
 }
 
 func parseTime(timeStr string) int64 {

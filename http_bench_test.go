@@ -352,6 +352,7 @@ func tcpHandleConnection(conn net.Conn) error {
 func TestStressTCP(t *testing.T) {
 	name := "tcp"
 	body := "this is stress body"
+	bodyHex := "746869732069732073747265737320626f6479"
 	listen := "127.0.0.1:18091"
 	srv, err := net.Listen("tcp", listen)
 	if err != nil {
@@ -389,7 +390,7 @@ func TestStressTCP(t *testing.T) {
 			isErr: false,
 		},
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -p %s -body "{{ stringToHex '%s' }}" -url %s`, duration, name, body, listen),
+			args:  fmt.Sprintf(`-c 1 -d %ds -p %s -bodytype hex -body %s -url %s`, duration, name, bodyHex, listen),
 			isErr: false,
 		},
 	} {

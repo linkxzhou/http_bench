@@ -179,10 +179,10 @@ Function:
 Example:  
 
 Client Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate \"YMD\"}}" -verbose 0
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate 'YMD' }}" -verbose 0
 
 Body Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate \"YMD\" }}" -verbose 0
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate 'YMD' }}" -verbose 0
 ```
 
 **(4) randomString**  
@@ -221,10 +221,10 @@ Function:
 Example:  
 
 Client Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date \"YMD\" }}" -verbose 0
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date 'YMD' }}" -verbose 0
 
 Body Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date \"YMD\" }}" -verbose 0
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date 'YMD' }}" -verbose 0
 ```
 
 **(7) UUID**  
