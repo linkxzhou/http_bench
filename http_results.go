@@ -7,10 +7,9 @@ import (
 	"sync"
 )
 
-const (
-	scaleNum = 10000
-)
+const scaleNum = 10000
 
+var pctls = []int{10, 25, 50, 75, 90, 95, 99}
 var resultRdMutex sync.RWMutex
 
 // StressResult record result
@@ -32,36 +31,53 @@ type StressResult struct {
 	Output         string           `json:"output"`
 }
 
+func toByteSizeStr(size float64) string {
+	switch {
+	case size > 1073741824:
+		return fmt.Sprintf("%4.3f GB", size/1073741824)
+	case size > 1048576:
+		return fmt.Sprintf("%4.3f MB", size/1048576)
+	case size > 1024:
+		return fmt.Sprintf("%4.3f KB", size/1024)
+	}
+	return fmt.Sprintf("%4.3f bytes", size)
+}
+
+func println(f string, args ...interface{}) {
+	fmt.Printf(f+"\n", args...)
+}
+
+func GetStressResult() *StressResult {
+	return &StressResult{
+		ErrorDist:      make(map[string]int, 0),
+		StatusCodeDist: make(map[int]int, 0),
+		Lats:           make(map[string]int64, 0),
+		Slowest:        int64(IntMin),
+		Fastest:        int64(IntMax),
+	}
+}
+
 func (result *StressResult) print() {
 	resultRdMutex.RLock()
 	defer resultRdMutex.RUnlock()
+
 	switch result.Output {
 	case "csv":
-		fmt.Printf("Duration,Count\n")
+		println("Duration,Count")
 		for duration, val := range result.Lats {
-			fmt.Printf("%s,%d", duration, val/scaleNum)
+			println("%s,%d", duration, val/scaleNum)
 		}
 		return
-	default:
-		// pass
 	}
 	if len(result.Lats) > 0 {
-		fmt.Printf("Summary:\n")
-		fmt.Printf("  Total:\t%4.3f secs\n", float32(result.Duration)/scaleNum)
-		fmt.Printf("  Slowest:\t%4.3f secs\n", float32(result.Slowest)/scaleNum)
-		fmt.Printf("  Fastest:\t%4.3f secs\n", float32(result.Fastest)/scaleNum)
-		fmt.Printf("  Average:\t%4.3f secs\n", float32(result.Average)/scaleNum)
-		fmt.Printf("  Requests/sec:\t%4.3f\n", float32(result.Rps)/scaleNum)
-		if result.SizeTotal > 1073741824 {
-			fmt.Printf("  Total data:\t%4.3f GB\n", float64(result.SizeTotal)/1073741824)
-		} else if result.SizeTotal > 1048576 {
-			fmt.Printf("  Total data:\t%4.3f MB\n", float64(result.SizeTotal)/1048576)
-		} else if result.SizeTotal > 1024 {
-			fmt.Printf("  Total data:\t%4.3f KB\n", float64(result.SizeTotal)/1024)
-		} else if result.SizeTotal > 0 {
-			fmt.Printf("  Total data:\t%4.3f bytes\n", float64(result.SizeTotal))
-		}
-		fmt.Printf("  Size/request:\t%d bytes\n", result.SizeTotal/result.LatsTotal)
+		println("Summary:")
+		println("  Total:\t%4.3f secs", float32(result.Duration))
+		println("  Slowest:\t%4.3f secs", float32(result.Slowest)/scaleNum)
+		println("  Fastest:\t%4.3f secs", float32(result.Fastest)/scaleNum)
+		println("  Average:\t%4.3f secs", float32(result.Average)/scaleNum)
+		println("  Requests/sec:\t%4.3f", float32(result.Rps)/scaleNum)
+		println("  Total data:\t%s", toByteSizeStr(float64(result.SizeTotal)))
+		println("  Size/request:\t%d bytes", result.SizeTotal/result.LatsTotal)
 		result.printStatusCodes()
 		result.printLatencies()
 	}
@@ -70,40 +86,41 @@ func (result *StressResult) print() {
 	}
 }
 
-// Print latency distribution.
+// printLatencies Print latency distribution.
 func (result *StressResult) printLatencies() {
-	pctls := []int{10, 25, 50, 75, 90, 95, 99}
 	data := make([]string, len(pctls))
 	durationLats := make([]string, 0)
 	for duration := range result.Lats {
 		durationLats = append(durationLats, duration)
 	}
+
 	sort.Strings(durationLats)
-	var j int = 0
-	var current int64 = 0
-	for i := 0; i < len(durationLats) && j < len(pctls); i++ {
-		current = current + result.Lats[durationLats[i]]
-		if int(current*100/result.LatsTotal) >= pctls[j] {
+
+	for i, j, dCounts := 0, 0, int64(0); i < len(durationLats) && j < len(pctls); i = i + 1 {
+		dCounts = dCounts + result.Lats[durationLats[i]]
+		if int(dCounts*100/result.LatsTotal) >= pctls[j] {
 			data[j] = durationLats[i]
 			j++
 		}
 	}
-	fmt.Printf("\nLatency distribution:\n")
+
+	println("\nLatency distribution:")
 	for i := 0; i < len(pctls); i++ {
 		fmt.Printf("  %v%% in %s secs\n", pctls[i], data[i])
 	}
 }
 
-// Print status code distribution.
+// printStatusCodes Print status code distribution.
 func (result *StressResult) printStatusCodes() {
-	fmt.Printf("\nStatus code distribution:\n")
+	println("\nStatus code distribution:")
 	for code, num := range result.StatusCodeDist {
 		fmt.Printf("  [%d]\t%d responses\n", code, num)
 	}
 }
 
+// printErrors Print response errors
 func (result *StressResult) printErrors() {
-	fmt.Printf("\nError distribution:\n")
+	println("\nError distribution:")
 	for err, num := range result.ErrorDist {
 		fmt.Printf("  [%d]\t%s", num, err)
 	}
@@ -116,7 +133,7 @@ func (result *StressResult) marshal() ([]byte, error) {
 	return json.Marshal(result)
 }
 
-func (result *StressResult) result(res *result) {
+func (result *StressResult) append(res *result) {
 	resultRdMutex.Lock()
 	defer resultRdMutex.Unlock()
 
@@ -140,9 +157,13 @@ func (result *StressResult) result(res *result) {
 	}
 }
 
-func (result *StressResult) combine(resultList ...StressResult) {
-	resultRdMutex.RLock()
-	defer resultRdMutex.RUnlock()
+// calMutliStressResult calculate mutli stress result
+func calMutliStressResult(result *StressResult, resultList ...StressResult) *StressResult {
+	if result == nil {
+		result = GetStressResult()
+	}
+
+	var duration int64 = result.Duration
 
 	for _, v := range resultList {
 		if result.Slowest < v.Slowest {
@@ -163,13 +184,20 @@ func (result *StressResult) combine(resultList ...StressResult) {
 		for lats, c := range v.Lats {
 			result.Lats[lats] += c
 		}
+
+		if duration < v.Duration {
+			duration = v.Duration
+		}
 	}
 
-	if result.Duration > 0 {
-		result.Rps = int64((result.LatsTotal * scaleNum * scaleNum) / result.Duration)
+	if duration > 0 {
+		result.Duration = duration
+		result.Rps = int64((result.LatsTotal * scaleNum) / duration)
 	}
 
 	if result.LatsTotal > 0 {
 		result.Average = result.AvgTotal / result.LatsTotal
 	}
+
+	return result
 }

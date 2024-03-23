@@ -38,6 +38,8 @@ import (
 //go:embed index.html
 var dashboardHtml string
 
+var globalStop int
+
 const (
 	cmdStart int = iota
 	cmdStop
@@ -58,17 +60,6 @@ const (
 	vINFO  = 2
 	vERROR = 3
 )
-
-type flagSlice []string
-
-func (h *flagSlice) String() string {
-	return fmt.Sprintf("%s", *h)
-}
-
-func (h *flagSlice) Set(value string) error {
-	*h = append(*h, value)
-	return nil
-}
 
 // StressParameters stress params for worker
 type StressParameters struct {
@@ -110,22 +101,29 @@ type (
 
 	StressWorker struct {
 		RequestParams             *StressParameters
-		results                   chan *result
-		resultList                []StressResult
-		currentResult             StressResult
+		resultChan                chan *result
+		curResult                 *StressResult  // current worker result
+		workersResult             []StressResult // multi workers result
+		resultWg                  sync.WaitGroup // Wait some task finish
 		totalTime                 time.Duration
-		wg                        sync.WaitGroup // Wait some task finish
 		err                       error
 		bodyTemplate, urlTemplate *template.Template
+	}
+
+	StressClient struct {
+		httpClient *http.Client
+		wsClient   *websocket.Conn
+		tcpClient  *tcpConn
 	}
 )
 
 func (b *StressWorker) Start() {
-	b.results = make(chan *result, 2*b.RequestParams.C+1)
-	b.resultList = make([]StressResult, 0)
-	b.collectReport()
-	b.runWorkers()
-	verbosePrint(vINFO, "worker finished and wait result")
+	b.resultChan = make(chan *result, 2*b.RequestParams.C+1)
+	b.workersResult = make([]StressResult, 0)
+	b.curResult = GetStressResult()
+	b.asyncCollectResult()
+	b.startClients()
+	verbosePrint(vINFO, "worker finished and waiting result")
 }
 
 // Stop stop stress worker and wait coroutine finish
@@ -133,32 +131,26 @@ func (b *StressWorker) Stop(wait bool, err error) {
 	b.RequestParams.Cmd = cmdStop
 	b.err = err
 	if wait {
-		b.wg.Wait()
+		b.resultWg.Wait()
 	}
 }
 
 func (b *StressWorker) IsStop() bool {
-	return b.RequestParams.Cmd == cmdStop
+	return b.RequestParams.Cmd == cmdStop || globalStop == cmdStop
 }
 
-func (b *StressWorker) Append(result ...StressResult) {
-	b.resultList = append(b.resultList, result...)
+func (b *StressWorker) WaitResult() *StressResult {
+	b.resultWg.Wait()
+	return calMutliStressResult(nil, *b.curResult)
 }
 
-func (b *StressWorker) Wait() *StressResult {
-	b.wg.Wait()
-
-	if b.resultList == nil || len(b.resultList) <= 0 {
-		fmt.Fprintf(os.Stderr, "internal err: stress test result empty\n")
-		return nil
-	}
-
-	b.resultList[0].combine(b.resultList[1:]...)
-	verbosePrint(vDEBUG, "result length = %d", len(b.resultList))
-	return &(b.resultList[0])
+func (b *StressWorker) WaitWorkersResult() *StressResult {
+	b.resultWg.Wait()
+	verbosePrint(vDEBUG, "result length = %d", len(b.workersResult))
+	return calMutliStressResult(nil, b.workersResult...)
 }
 
-func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
+func (b *StressWorker) execute(n, sleep int, client *StressClient) {
 	var runCounts int = 0
 	// random set seed
 	rand.Seed(time.Now().UnixNano())
@@ -168,9 +160,7 @@ func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
 		}
 
 		runCounts++
-		if sleep > 0 {
-			time.Sleep(time.Duration(sleep) * time.Microsecond)
-		}
+		time.Sleep(time.Duration(sleep) * time.Microsecond)
 
 		var t = time.Now()
 		code, size, err := b.doClient(client)
@@ -180,63 +170,13 @@ func (b *StressWorker) runWorker(n, sleep int, client *StressClient) {
 			return
 		}
 
-		b.results <- &result{
+		b.resultChan <- &result{
 			statusCode:    code,
 			duration:      time.Now().Sub(t),
 			err:           err,
 			contentLength: size,
 		}
 	}
-}
-
-func (b *StressWorker) runWorkers() {
-	fmt.Printf("running %d connections, @ %s\n", b.RequestParams.C, b.RequestParams.Url)
-	var (
-		wg               sync.WaitGroup
-		err              error
-		start            = time.Now()
-		bodyTemplateName = fmt.Sprintf("BODY-%d", b.RequestParams.SequenceId)
-		urlTemplateName  = fmt.Sprintf("URL-%d", b.RequestParams.SequenceId)
-	)
-
-	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Url); err != nil {
-		verbosePrint(vERROR, "parse urls function err: "+err.Error()+"")
-	}
-
-	if b.bodyTemplate, err = template.New(bodyTemplateName).Funcs(fnMap).Parse(b.RequestParams.RequestBody); err != nil {
-		verbosePrint(vERROR, "parse request body function err: "+err.Error()+"")
-	}
-
-	// ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
-	for i := 0; i < b.RequestParams.C && !(b.IsStop()); i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			client := b.getClient()
-			if client == nil {
-				return
-			}
-
-			defer func() {
-				b.closeClient(client)
-				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "internal err: %v\n", r)
-				}
-			}()
-
-			sleep := 0
-			if b.RequestParams.Qps > 0 {
-				sleep = 1e6 / (b.RequestParams.Qps * b.RequestParams.C) // sleep XXus send request
-			}
-			b.runWorker(b.RequestParams.N/b.RequestParams.C, sleep, client)
-		}()
-	}
-
-	wg.Wait()
-	b.Stop(false, nil)
-	b.totalTime = time.Now().Sub(start)
-	close(b.results)
 }
 
 func (b *StressWorker) getClient() *StressClient {
@@ -305,7 +245,8 @@ func (b *StressWorker) getClient() *StressClient {
 		}
 		client.tcpClient = c
 	default:
-		// pass
+		verbosePrint(vERROR, "not support %s", b.RequestParams.RequestType)
+		return nil
 	}
 
 	return client
@@ -352,6 +293,7 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 		if respErr == nil {
 			size = resp.ContentLength
 			code = resp.StatusCode
+
 			defer resp.Body.Close()
 			if n, _ := fastRead(resp.Body, true); size <= 0 {
 				size = n
@@ -394,39 +336,24 @@ func (b *StressWorker) closeClient(client *StressClient) {
 	}
 }
 
-type StressClient struct {
-	httpClient *http.Client
-	wsClient   *websocket.Conn
-	tcpClient  *tcpConn
-}
-
-func (b *StressWorker) collectReport() {
-	b.wg.Add(1)
+func (b *StressWorker) asyncCollectResult() {
+	b.resultWg.Add(1)
 
 	go func() {
 		timeTicker := time.NewTicker(time.Duration(b.RequestParams.Duration) * time.Second)
 		defer func() {
 			timeTicker.Stop()
-			b.wg.Done()
+			b.resultWg.Done()
 		}()
-
-		b.currentResult = StressResult{
-			ErrorDist:      make(map[string]int, 0),
-			StatusCodeDist: make(map[int]int, 0),
-			Lats:           make(map[string]int64, 0),
-			Slowest:        int64(IntMin),
-			Fastest:        int64(IntMax),
-		}
 
 		for {
 			select {
-			case res, ok := <-b.results:
+			case res, ok := <-b.resultChan:
 				if !ok {
-					b.currentResult.Duration = int64(b.totalTime.Seconds() * scaleNum)
-					b.resultList = append(b.resultList, b.currentResult)
+					b.curResult.Duration = int64(b.totalTime.Seconds())
 					return
 				}
-				b.currentResult.result(res)
+				b.curResult.append(res)
 			case <-timeTicker.C:
 				verbosePrint(vINFO, "time ticker upcoming, duration: %ds", b.RequestParams.Duration)
 				b.Stop(false, nil) // Time ticker exec Stop commands
@@ -435,71 +362,119 @@ func (b *StressWorker) collectReport() {
 	}()
 }
 
-func usageAndExit(msg string) {
-	if msg != "" {
-		fmt.Fprintf(os.Stderr, msg+"\n")
+func (b *StressWorker) startClients() {
+	fmt.Printf("running %d connections, @ %s\n", b.RequestParams.C, b.RequestParams.Url)
+
+	var (
+		wg               sync.WaitGroup
+		err              error
+		startTime        = time.Now()
+		bodyTemplateName = fmt.Sprintf("BODY-%d", b.RequestParams.SequenceId)
+		urlTemplateName  = fmt.Sprintf("URL-%d", b.RequestParams.SequenceId)
+	)
+
+	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Url); err != nil {
+		verbosePrint(vERROR, "parse urls function err: "+err.Error())
 	}
-	flag.Usage()
-	fmt.Fprintf(os.Stderr, "\n")
-	os.Exit(1)
+
+	if b.bodyTemplate, err = template.New(bodyTemplateName).Funcs(fnMap).Parse(b.RequestParams.RequestBody); err != nil {
+		verbosePrint(vERROR, "parse request body function err: "+err.Error())
+	}
+
+	// ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
+	for i := 0; i < b.RequestParams.C && !b.IsStop(); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			client := b.getClient()
+			if client == nil {
+				return
+			}
+
+			defer func() {
+				b.closeClient(client)
+				if r := recover(); r != nil {
+					verbosePrint(vERROR, "internal err: %v", r)
+				}
+			}()
+
+			sleep := 0
+			if b.RequestParams.Qps > 0 {
+				sleep = 1e6 / (b.RequestParams.C * b.RequestParams.Qps) // sleep XXus send request
+			}
+
+			b.execute(b.RequestParams.N/b.RequestParams.C, sleep, client)
+		}()
+	}
+
+	wg.Wait()
+	b.Stop(false, nil)
+
+	b.totalTime = time.Now().Sub(startTime)
+	close(b.resultChan)
 }
 
-func runStress(params StressParameters, stressTestPtr **StressWorker) *StressResult {
-	var stressResult *StressResult
-	var stressTest *StressWorker
+func executeStress(params StressParameters) (*StressWorker, *StressResult) {
+	var (
+		stressTesting        *StressWorker
+		stressResult         *StressResult
+		isDistributedTesting bool
+	)
 
-	if v, ok := stressList.Load(params.SequenceId); ok && v != nil {
-		stressTest = v.(*StressWorker)
-	} else {
-		stressTest = &StressWorker{RequestParams: &params}
-		stressList.Store(params.SequenceId, stressTest)
+	if len(workerList) > 0 {
+		isDistributedTesting = true
 	}
 
-	*stressTestPtr = stressTest
+	if v, ok := stressList.Load(params.SequenceId); ok && v != nil {
+		stressTesting = v.(*StressWorker)
+	} else {
+		stressTesting = &StressWorker{RequestParams: &params}
+		stressList.Store(params.SequenceId, stressTesting)
+	}
+
+	jsonBody, err := json.Marshal(params)
+	if err != nil {
+		verbosePrint(vERROR, "invalid stress testing params!")
+	}
+
 	switch params.Cmd {
 	case cmdStart:
-		if len(workerList) > 0 {
-			jsonBody, _ := json.Marshal(params)
-			resultList := requestWorkerList(jsonBody, stressTest)
-			stressTest.Append(resultList...)
+		if isDistributedTesting {
+			stressTesting.workersResult = waitWorkerListReq(jsonBody)
+			stressResult = stressTesting.WaitWorkersResult()
 		} else {
-			stressTest.Start()
+			stressTesting.Start()
+			stressResult = stressTesting.WaitResult()
 		}
-		stressResult = stressTest.Wait()
-		if stressResult != nil {
+		if stressResult != nil && !isDistributedTesting {
 			stressResult.print()
 		}
 		stressList.Delete(params.SequenceId)
 	case cmdStop:
-		if len(workerList) > 0 {
-			jsonBody, _ := json.Marshal(params)
-			requestWorkerList(jsonBody, stressTest)
+		if isDistributedTesting {
+			waitWorkerListReq(jsonBody)
 		}
-		stressTest.Stop(true, nil)
+		stressTesting.Stop(true, nil)
 		stressList.Delete(params.SequenceId)
 	case cmdMetrics:
-		if len(workerList) > 0 {
-			jsonBody, _ := json.Marshal(params)
-			if resultList := requestWorkerList(jsonBody, stressTest); len(resultList) > 0 {
-				stressResult = &StressResult{}
-				for i := 0; i < len(resultList); i++ {
-					stressResult.LatsTotal += resultList[i].LatsTotal
-				} // TODO: assign other variable
-			}
+		if isDistributedTesting {
+			workersResult := waitWorkerListReq(jsonBody)
+			stressResult = calMutliStressResult(nil, workersResult...)
 		} else {
-			stressResult = &stressTest.currentResult
+			stressResult = calMutliStressResult(nil, *stressTesting.curResult)
 		}
 	}
 
-	if stressTest.err != nil {
+	if stressTesting.err != nil {
 		stressResult.ErrCode = -1
-		stressResult.ErrMsg = stressTest.err.Error()
+		stressResult.ErrMsg = stressTesting.err.Error()
 	}
 
-	return stressResult
+	return stressTesting, stressResult
 }
 
-func handleWorker(w http.ResponseWriter, r *http.Request) {
+func serveWorker(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -508,7 +483,8 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if reqStr, err := io.ReadAll(r.Body); err == nil {
+	reqStr, err := io.ReadAll(r.Body)
+	if err == nil {
 		var params StressParameters
 		var result *StressResult
 		if err := json.Unmarshal(reqStr, &params); err != nil {
@@ -519,9 +495,9 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			verbosePrint(vDEBUG, "request params: %s", params.String())
-			var stressWorker *StressWorker
-			result = runStress(params, &stressWorker)
+			_, result = executeStress(params)
 		}
+
 		if result != nil {
 			wbody, err := result.marshal()
 			if err != nil {
@@ -533,22 +509,39 @@ func handleWorker(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func requestWorker(uri string, body []byte) (*StressResult, error) {
+var waitWorkerListReq = func(paramsJson []byte) []StressResult {
+	var wg sync.WaitGroup
+	var stressResult []StressResult
+
+	for _, v := range workerList {
+		wg.Add(1)
+		go func(workerAddr string) {
+			defer wg.Done()
+			result, err := executeWorkerReq(
+				fmt.Sprintf("http://%s%s", workerAddr, httpWorkerApiPath), paramsJson)
+			if err == nil {
+				stressResult = append(stressResult, *result)
+			}
+		}(v)
+	}
+
+	wg.Wait()
+	return stressResult
+}
+
+func executeWorkerReq(uri string, body []byte) (*StressResult, error) {
 	verbosePrint(vDEBUG, "request body: %s", string(body))
-	resp, err := http.Post(uri, httpContentTypeJSON, bytes.NewBuffer(body))
+	resp, err := http.Post(uri, httpContentTypeJSON, bytes.NewBuffer(body)) // default not timeout
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "requestWorker addr(%s), err: %s\n", uri, err.Error())
+		fmt.Fprintf(os.Stderr, "executeWorkerReq addr(%s), err: %s\n", uri, err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
+
 	var result StressResult
 	respStr, _ := io.ReadAll(resp.Body)
 	err = json.Unmarshal(respStr, &result)
 	return &result, err
-}
-
-func joinHttpUri(addr string) string {
-	return fmt.Sprintf("http://%s%s", addr, httpWorkerApiPath)
 }
 
 var (
@@ -589,26 +582,9 @@ var (
 	listen    = flag.String("listen", "", "")
 	dashboard = flag.String("dashboard", "", "")
 
-	urlFile           = flag.String("url-file", "", "")
-	bodyFile          = flag.String("body-file", "", "")
-	scriptFile        = flag.String("script", "", "")
-	requestWorkerList = func(paramsJson []byte, stressTest *StressWorker) []StressResult {
-		var wg sync.WaitGroup
-		var stressResult []StressResult
-
-		for _, v := range workerList {
-			wg.Add(1)
-			go func(workerAddr string) {
-				defer wg.Done()
-				if result, err := requestWorker(joinHttpUri(workerAddr), paramsJson); err == nil {
-					stressResult = append(stressResult, *result)
-				}
-			}(v)
-		}
-
-		wg.Wait()
-		return stressResult
-	}
+	urlFile    = flag.String("url-file", "", "")
+	bodyFile   = flag.String("body-file", "", "")
+	scriptFile = flag.String("script", "", "")
 
 	http3Pool *x509.CertPool
 )
@@ -748,11 +724,11 @@ func main() {
 	if strings.ToLower(*pType) != "" {
 		params.RequestType = strings.ToLower(*pType)
 	} else {
-		switch strings.ToLower(*httpType) {
+		switch t := strings.ToLower(*httpType); t {
 		case typeHttp1, typeHttp2, typeWs, typeWss:
-			params.RequestType = strings.ToLower(*httpType)
+			params.RequestType = t
 		case typeHttp3:
-			params.RequestType = strings.ToLower(*httpType)
+			params.RequestType = t
 			var err error
 			if http3Pool, err = x509.SystemCertPool(); err != nil {
 				panic(typeHttp3 + " err: " + err.Error())
@@ -816,7 +792,7 @@ func main() {
 			})
 			*listen = *dashboard
 		}
-		mux.HandleFunc(httpWorkerApiPath, handleWorker)
+		mux.HandleFunc(httpWorkerApiPath, serveWorker)
 		mainServer = &http.Server{
 			Addr:    *listen,
 			Handler: mux,
@@ -824,36 +800,39 @@ func main() {
 		if err := mainServer.ListenAndServe(); err != nil {
 			fmt.Fprintf(os.Stderr, "listen err: %s\n", err.Error())
 		}
-	} else {
-		if len(requestUrls) <= 0 {
-			usageAndExit("url or url-file empty.")
-		}
+		return
+	}
 
-		for _, url := range requestUrls {
-			params.Url = url
-			params.SequenceId = time.Now().Unix()
-			params.Cmd = cmdStart
-			verbosePrint(vDEBUG, "request params: %s", params.String())
-			stopSignal = make(chan os.Signal)
-			signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
+	if len(requestUrls) <= 0 {
+		usageAndExit("url or url-file empty.")
+	}
 
-			var stressTest *StressWorker
-			var stressResult *StressResult
+	for _, url := range requestUrls {
+		params.Url = url
+		params.SequenceId = time.Now().Unix()
+		params.Cmd = cmdStart
 
-			go func() {
-				<-stopSignal
-				verbosePrint(vINFO, "recv stop signal")
-				params.Cmd = cmdStop
-				jsonBody, _ := json.Marshal(params)
-				requestWorkerList(jsonBody, stressTest)
-				stressTest.Stop(true, nil) // recv stop signal and stop commands
-				mainCancel()
-			}()
+		verbosePrint(vDEBUG, "request params: %s", params.String())
+		stopSignal = make(chan os.Signal)
+		signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
 
-			if stressResult = runStress(params, &stressTest); stressResult != nil {
-				close(stopSignal)
-				stressResult.print()
-			}
+		var stressTesting *StressWorker
+		var stressResult *StressResult
+
+		go func() {
+			<-stopSignal
+			verbosePrint(vINFO, "recv stop signal")
+			params.Cmd = cmdStop // stop workers
+			globalStop = cmdStop // stop all
+			jsonBody, _ := json.Marshal(params)
+			waitWorkerListReq(jsonBody)
+			mainCancel()
+		}()
+
+		if stressTesting, stressResult = executeStress(params); stressResult != nil {
+			close(stopSignal)
+			stressTesting.Stop(true, nil) // recv stop signal and stop commands
+			stressResult.print()
 		}
 	}
 }

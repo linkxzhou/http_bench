@@ -1,10 +1,10 @@
 <mxfile host="65bd71144e">
     <diagram id="HxPb-nG4Zz1febz0ZImj" name="第 1 页">
-        <mxGraphModel dx="1285" dy="802" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="1035" dy="642" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="7xEpuCTu46up-qAN1ttC-1" value="Stress test Collector(127.0.0.1)" style="rounded=1;whiteSpace=wrap;html=1;sketch=1;" parent="1" vertex="1">
+                <mxCell id="7xEpuCTu46up-qAN1ttC-1" value="Stress testing Collector(127.0.0.1)" style="rounded=1;whiteSpace=wrap;html=1;sketch=1;" parent="1" vertex="1">
                     <mxGeometry x="62" y="228" width="150" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="7xEpuCTu46up-qAN1ttC-2" value="Stress test Worker(server1:12710)" style="rounded=1;whiteSpace=wrap;html=1;sketch=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
@@ -76,16 +76,16 @@
                 <mxCell id="7xEpuCTu46up-qAN1ttC-14" value="..." style="rounded=1;whiteSpace=wrap;html=1;shadow=0;sketch=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
                     <mxGeometry x="485" y="559" width="150" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="7xEpuCTu46up-qAN1ttC-15" value="" style="endArrow=classic;html=1;rounded=1;sketch=1;curved=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" target="7xEpuCTu46up-qAN1ttC-14" edge="1" source="7xEpuCTu46up-qAN1ttC-1">
+                <mxCell id="7xEpuCTu46up-qAN1ttC-15" value="" style="endArrow=classic;html=1;rounded=1;sketch=1;curved=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="7xEpuCTu46up-qAN1ttC-1" target="7xEpuCTu46up-qAN1ttC-14" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
                         <mxPoint x="210" y="280" as="sourcePoint"/>
                         <mxPoint x="320" y="370" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="7xEpuCTu46up-qAN1ttC-16" value="Command:./http_bench -c 1 -d 10s &quot;http://127.0.0.1:18090/test1&quot; -body &quot;{}&quot; -W &quot;127.0.0.1:12710&quot; -W &quot;127.0.0.1:12711&quot;" style="rounded=0;whiteSpace=wrap;html=1;sketch=1;fontSize=8;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;" parent="1" vertex="1">
+                <mxCell id="7xEpuCTu46up-qAN1ttC-16" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Command:./http_bench -c 1 -d 10s &quot;http://127.0.0.1:18090/test1&quot; -body &quot;{}&quot; -W &quot;127.0.0.1:12710&quot; -W &quot;127.0.0.1:12711&quot;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;sketch=1;fontSize=8;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;" parent="1" vertex="1">
                     <mxGeometry x="55" y="157" width="397" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="7xEpuCTu46up-qAN1ttC-17" value="Command:./http_bench -listen &quot;127.0.0.1:12710&quot; -verbose true" style="rounded=0;whiteSpace=wrap;html=1;sketch=1;fontSize=8;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;" parent="1" vertex="1">
+                <mxCell id="7xEpuCTu46up-qAN1ttC-17" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Command:./http_bench -listen &quot;127.0.0.1:12710&quot; -verbose 0&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;sketch=1;fontSize=8;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;" parent="1" vertex="1">
                     <mxGeometry x="483" y="157" width="149" height="50" as="geometry"/>
                 </mxCell>
                 <mxCell id="7xEpuCTu46up-qAN1ttC-18" value="" style="endArrow=classic;html=1;rounded=1;sketch=1;fontSize=8;curved=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.013;entryY=0.617;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="7xEpuCTu46up-qAN1ttC-16" target="7xEpuCTu46up-qAN1ttC-1" edge="1">
@@ -107,17 +107,17 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="dxToJmBmV2eZCdS-MfID-2" value="Task" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;sketch=1;" parent="1" vertex="1">
-                    <mxGeometry x="390" y="249" width="53" height="23" as="geometry"/>
+                <mxCell id="dxToJmBmV2eZCdS-MfID-7" value="Stress Task" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;sketch=1;" parent="1" vertex="1">
+                    <mxGeometry x="388" y="381" width="70" height="23" as="geometry"/>
                 </mxCell>
-                <mxCell id="dxToJmBmV2eZCdS-MfID-5" value="Task" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;sketch=1;" parent="1" vertex="1">
-                    <mxGeometry x="392" y="314" width="53" height="23" as="geometry"/>
+                <mxCell id="2" value="Stress Task" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;sketch=1;" vertex="1" parent="1">
+                    <mxGeometry x="390" y="455" width="70" height="23" as="geometry"/>
                 </mxCell>
-                <mxCell id="dxToJmBmV2eZCdS-MfID-7" value="Task" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;sketch=1;" parent="1" vertex="1">
-                    <mxGeometry x="395" y="381" width="53" height="23" as="geometry"/>
+                <mxCell id="3" value="Stress Task" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;sketch=1;" vertex="1" parent="1">
+                    <mxGeometry x="388" y="312" width="70" height="23" as="geometry"/>
                 </mxCell>
-                <mxCell id="dxToJmBmV2eZCdS-MfID-8" value="Task" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;sketch=1;" parent="1" vertex="1">
-                    <mxGeometry x="395" y="461" width="53" height="23" as="geometry"/>
+                <mxCell id="4" value="Stress Task" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;sketch=1;" vertex="1" parent="1">
+                    <mxGeometry x="388" y="251" width="70" height="23" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

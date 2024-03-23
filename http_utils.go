@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,9 +14,30 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 )
+
+func usageAndExit(msg string) {
+	if msg != "" {
+		fmt.Println(msg)
+	}
+	flag.Usage()
+	fmt.Println("")
+	os.Exit(1)
+}
+
+type flagSlice []string
+
+func (h *flagSlice) String() string {
+	return fmt.Sprintf("%s", *h)
+}
+
+func (h *flagSlice) Set(value string) error {
+	*h = append(*h, value)
+	return nil
+}
 
 func verbosePrint(level int, vfmt string, args ...interface{}) {
 	if *verbose > level {
@@ -35,14 +57,17 @@ func verbosePrint(level int, vfmt string, args ...interface{}) {
 }
 
 const (
+	IntMax = int(^uint(0) >> 1)
+	IntMin = ^IntMax
+)
+
+const (
 	letterIdxBits  = 6                    // 6 bits to represent a letter index
 	letterIdxMask  = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
 	letterIdxMax   = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 	letterBytes    = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	letterNumBytes = "0123456789"
 
-	IntMax              = int(^uint(0) >> 1)
-	IntMin              = ^IntMax
 	httpContentTypeJSON = "application/json"
 	httpWorkerApiPath   = "/api"
 )
@@ -68,6 +93,7 @@ var (
 		"getEnv":       getEnv,
 		"hexToString":  hexToString,
 		"stringToHex":  stringToHex,
+		"format":       format,
 	}
 	fnUUID = randomString(10)
 )
@@ -152,6 +178,10 @@ func stringToHex(s string) string {
 	return hex.EncodeToString(data)
 }
 
+func format(f string, args ...interface{}) string {
+	return fmt.Sprintf(f, args...)
+}
+
 func parseTime(timeStr string) int64 {
 	var multi int64 = 1
 	if timeStrLen := len(timeStr) - 1; timeStrLen > 0 {
@@ -175,26 +205,47 @@ func parseTime(timeStr string) int64 {
 	return multi * t
 }
 
+type byteBlock struct {
+	block []byte
+	cap   int
+}
+
+var bytePool = sync.Pool{
+	New: func() interface{} {
+		return &byteBlock{
+			block: make([]byte, 0, 10240),
+			cap:   10240,
+		}
+	},
+}
+
+// the purpose of this function is to reduce processing
 func fastRead(r io.Reader, cycleRead bool) (int64, error) {
-	n := int64(0)
-	b := make([]byte, 0, 10240) // TODO: default recieve size
-	bSize := cap(b)
+	var (
+		n     = int64(0)
+		b     = bytePool.Get().(*byteBlock)
+		bsize int
+		err   error
+	)
+
+	defer bytePool.Put(b)
+
 	for {
-		bsize, err := r.Read(b[0:bSize])
+		bsize, err = r.Read(b.block[0:b.cap])
 		verbosePrint(vDEBUG, "fastRead: %v, bsize: %v", b, bsize)
 		if err != nil {
 			if err == io.EOF {
 				err = nil
+			} else {
+				return n, err
 			}
 		}
 		n += int64(bsize)
 
 		// TODO: cycleRead isn't support
-		// if !cycleRead || bsize == 0 {
-		// 	return n, err
-		// }
-
-		return n, err
+		if !cycleRead || bsize == 0 {
+			return n, err
+		}
 	}
 }
 
@@ -224,6 +275,7 @@ func parseFile(fileName string, delimiter []rune) ([]string, error) {
 	if delimiter == nil {
 		return []string{string(content)}, nil
 	}
+
 	lines := strings.FieldsFunc(string(content), func(r rune) bool {
 		for _, v := range delimiter {
 			if r == v {
@@ -232,6 +284,7 @@ func parseFile(fileName string, delimiter []rune) ([]string, error) {
 		}
 		return false
 	})
+
 	for _, line := range lines {
 		if len(line) > 0 {
 			contentList = append(contentList, line)

@@ -60,8 +60,8 @@ func TestStressHTTP1(t *testing.T) {
 	})
 	srv := &http.Server{Addr: listen, Handler: mux}
 
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
 		defer wg.Done()
 		if err := srv.ListenAndServe(); err != nil {
 			fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
@@ -345,8 +345,6 @@ func tcpHandleConnection(conn net.Conn) error {
 			return err
 		}
 	}
-
-	return nil
 }
 
 func TestStressTCP(t *testing.T) {
