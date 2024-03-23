@@ -363,7 +363,7 @@ func (b *StressWorker) asyncCollectResult() {
 }
 
 func (b *StressWorker) startClients() {
-	fmt.Printf("running %d connections, @ %s\n", b.RequestParams.C, b.RequestParams.Url)
+	println("running %d connections, @ %s", b.RequestParams.C, b.RequestParams.Url)
 
 	var (
 		wg               sync.WaitGroup
@@ -462,7 +462,9 @@ func executeStress(params StressParameters) (*StressWorker, *StressResult) {
 			workersResult := waitWorkerListReq(jsonBody)
 			stressResult = calMutliStressResult(nil, workersResult...)
 		} else {
-			stressResult = calMutliStressResult(nil, *stressTesting.curResult)
+			if stressTesting.curResult != nil {
+				stressResult = calMutliStressResult(nil, *stressTesting.curResult)
+			}
 		}
 	}
 
@@ -667,7 +669,7 @@ func main() {
 	}
 
 	if *printExample {
-		fmt.Printf(examples + "\n")
+		println(examples)
 		return
 	}
 
@@ -784,19 +786,20 @@ func main() {
 		debug.SetGCPercent(int(n))
 	}
 
-	if *listen != "" || *dashboard != "" {
+	if len(*dashboard) > 0 {
+		*listen = *dashboard
+	}
+	if len(*listen) > 0 {
 		mux := http.NewServeMux()
-		if *dashboard != "" { // if startup dashboard and return index.html
-			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-				w.Write([]byte(dashboardHtml)) // export dashboard index.html
-			})
-			*listen = *dashboard
-		}
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(dashboardHtml)) // export dashboard index.html
+		})
 		mux.HandleFunc(httpWorkerApiPath, serveWorker)
 		mainServer = &http.Server{
 			Addr:    *listen,
 			Handler: mux,
 		}
+		println("listen %s, and you can open http://%s/index.html on browser", *listen, *listen)
 		if err := mainServer.ListenAndServe(); err != nil {
 			fmt.Fprintf(os.Stderr, "listen err: %s\n", err.Error())
 		}

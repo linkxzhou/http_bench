@@ -46,13 +46,13 @@ func verbosePrint(level int, vfmt string, args ...interface{}) {
 
 	switch level {
 	case vTRACE:
-		fmt.Printf("[TRACE] "+vfmt+"\n", args...)
+		println("[TRACE] "+vfmt, args...)
 	case vDEBUG:
-		fmt.Printf("[DEBUG] "+vfmt+"\n", args...)
+		println("[DEBUG] "+vfmt, args...)
 	case vINFO:
-		fmt.Printf("[INFO] "+vfmt+"\n", args...)
+		println("[INFO] "+vfmt, args...)
 	default:
-		fmt.Printf("[ERROR] "+vfmt+"\n", args...)
+		println("[ERROR] "+vfmt, args...)
 	}
 }
 
@@ -336,7 +336,7 @@ func (tcp *tcpConn) Do(body []byte) (int64, error) {
 		return 0, err
 	}
 
-	return fastRead(tcp.tcpClient, !tcp.option.disableKeepAlives)
+	return fastRead(tcp.tcpClient, false) // !tcp.option.disableKeepAlives
 }
 
 func (tcp *tcpConn) Close() error {

@@ -43,8 +43,8 @@ func toByteSizeStr(size float64) string {
 	return fmt.Sprintf("%4.3f bytes", size)
 }
 
-func println(f string, args ...interface{}) {
-	fmt.Printf(f+"\n", args...)
+func println(vfmt string, args ...interface{}) {
+	fmt.Printf(vfmt+"\n", args...)
 }
 
 func GetStressResult() *StressResult {
@@ -106,7 +106,7 @@ func (result *StressResult) printLatencies() {
 
 	println("\nLatency distribution:")
 	for i := 0; i < len(pctls); i++ {
-		fmt.Printf("  %v%% in %s secs\n", pctls[i], data[i])
+		println("  %v%% in %s secs", pctls[i], data[i])
 	}
 }
 
@@ -114,7 +114,7 @@ func (result *StressResult) printLatencies() {
 func (result *StressResult) printStatusCodes() {
 	println("\nStatus code distribution:")
 	for code, num := range result.StatusCodeDist {
-		fmt.Printf("  [%d]\t%d responses\n", code, num)
+		println("  [%d]\t%d responses", code, num)
 	}
 }
 
