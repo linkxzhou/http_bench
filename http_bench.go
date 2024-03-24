@@ -791,9 +791,14 @@ func main() {
 	_, mainCancel := context.WithCancel(context.Background())
 
 	// decrease go gc rate
-	benchGOGC := getEnv("BENCH_GOGC")
-	if n, err := strconv.ParseInt(benchGOGC, 2, 64); err == nil {
+	stressGOGC := getEnv("STRESS_GOGC")
+	if n, err := strconv.ParseInt(stressGOGC, 2, 64); err == nil {
 		debug.SetGCPercent(int(n))
+	}
+	// cloud worker API
+	stressWorkerAPI := getEnv("STRESS_WORKERAPI")
+	if stressWorkerAPI != "" {
+		dashboardHtml = strings.ReplaceAll(dashboardHtml, "/api", stressWorkerAPI)
 	}
 
 	if len(*dashboard) > 0 {
