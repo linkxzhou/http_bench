@@ -286,38 +286,43 @@ func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err
 		req, reqErr := http.NewRequest(b.RequestParams.RequestMethod, urlBytes.String(), strings.NewReader(bodyBytes.String()))
 		if reqErr != nil || req == nil {
 			err = errors.New("request err: " + err.Error())
+			code = -1 // has errors
 			return
 		}
 		req.Header = b.RequestParams.Headers
 		resp, respErr := client.httpClient.Do(req)
-		if respErr == nil {
-			size = resp.ContentLength
-			code = resp.StatusCode
-
-			defer resp.Body.Close()
-			if n, _ := fastRead(resp.Body, true); size <= 0 {
-				size = n
-			}
+		if respErr != nil {
+			err = respErr
+			code = -99 // has errors
+			return
 		}
-		err = respErr
+		size = resp.ContentLength
+		code = resp.StatusCode
+
+		defer resp.Body.Close()
+		if n, _ := fastRead(resp.Body, true); size <= 0 {
+			size = n
+		}
 	case typeWs:
 		if err = client.wsClient.WriteMessage(websocket.TextMessage, bodyBytes.Bytes()); err != nil {
 			return
 		}
-		_, message, readErr := client.wsClient.ReadMessage()
+		messageType, message, readErr := client.wsClient.ReadMessage()
 		if readErr != nil {
 			err = readErr
+			code = -99 // has errors
 			return
 		}
 		size = int64(len(message))
-		code = http.StatusOK
+		code = messageType
 	case typeTCP:
 		if size, err = client.tcpClient.Do(bodyBytes.Bytes()); err != nil {
+			code = -99 // has errors
 			return
 		}
 		code = http.StatusOK
 	default:
-		// pass
+		code = -98 // invalid type
 	}
 
 	return
@@ -517,14 +522,19 @@ var waitWorkerListReq = func(paramsJson []byte) []StressResult {
 
 	for _, v := range workerList {
 		wg.Add(1)
+
+		addr := fmt.Sprintf("http://%s%s", v, httpWorkerApiPath)
+		if strings.Contains(v, "http://") || strings.Contains(v, "https://") {
+			addr = fmt.Sprintf("%s%s", v, httpWorkerApiPath)
+		}
+
 		go func(workerAddr string) {
 			defer wg.Done()
-			result, err := executeWorkerReq(
-				fmt.Sprintf("http://%s%s", workerAddr, httpWorkerApiPath), paramsJson)
+			result, err := executeWorkerReq(workerAddr, paramsJson)
 			if err == nil {
 				stressResult = append(stressResult, *result)
 			}
-		}(v)
+		}(addr)
 	}
 
 	wg.Wait()

@@ -26,7 +26,7 @@
             <template slot="prepend">Request method</template>
         </el-input>
         <el-input placeholder="Request body" v-model="request_body" type="textarea"
-            :autosize="{ minRows: 2, maxRows: 10}" style="margin: 4px 0;">
+            :autosize="{ minRows: 5, maxRows: 100}" style="margin: 4px 0;">
             <template slot="prepend">Request body</template>
         </el-input>
         <el-input placeholder="empty, hex, default empty" v-model="request_bodytype" style="margin: 4px 0;">
@@ -41,20 +41,20 @@
         <el-input placeholder="c" v-model="c" style="margin: 4px 0;">
             <template slot="prepend">C</template>
         </el-input>
-        <el-input placeholder="duration" v-model="duration" style="margin: 4px 0;">
+        <el-input placeholder="duration(s)" v-model="duration" style="margin: 4px 0;">
             <template slot="prepend">Duration</template>
         </el-input>
-        <el-input placeholder="timeout" v-model="timeout" style="margin: 4px 0;">
+        <el-input placeholder="timeout(ms)" v-model="timeout" style="margin: 4px 0;">
             <template slot="prepend">Timeout</template>
         </el-input>
         <el-input placeholder="qps" v-model="qps" style="margin: 4px 0;">
             <template slot="prepend">QPS</template>
         </el-input>
         <el-input placeholder="request url" v-model="url" style="margin: 4px 0;">
-            <template slot="prepend">Url</template>
+            <template slot="prepend">Stress Url</template>
         </el-input>
-        <el-input placeholder="api path" v-model="api_path" style="margin: 4px 0;">
-            <template slot="prepend">API Path</template>
+        <el-input placeholder="default https://service-akrbbnzg-1251014631.gz.tencentapigw.com.cn/" v-model="apinode_path" style="margin: 4px 0;">
+            <template slot="prepend">API Node Path</template>
         </el-input>
     </div>
     <script type="text/javascript">
@@ -78,14 +78,20 @@
             }
             return fmt;
         }
-        var contentType = { 'Content-Type': 'application/json;charset=utf-8' };
-        var dom = document.getElementById('container');
-        var stressChart = echarts.init(dom, null, {
+
+        const contentType = { 'Content-Type': 'application/json;charset=utf-8' };
+        const defaultAPINodePath = "https://service-akrbbnzg-1251014631.gz.tencentapigw.com.cn/api";
+        let dom = document.getElementById('container');
+        let stressChart = echarts.init(dom, 'dark', {
             renderer: 'canvas',
             useDirtyRect: false
         });
-        function metricsLoad(timeList, dataList) {
-            var option = {
+
+        function metricsLoad(timeList, qpsList, codeList) {        
+            let option = {
+                legend: {
+                    data: ['qps']
+                },
                 tooltip: {
                     trigger: 'axis',
                     axisPointer: { type: 'cross' }
@@ -99,12 +105,24 @@
                 },
                 series: [
                     {
-                        data: dataList,
+                        name: "qps",
+                        data: qpsList,
                         type: 'line',
                         smooth: true
-                    }
+                    },
                 ]
             };
+
+            for (let key in codeList) {
+                option.series.push({
+                    name: key,
+                    data: codeList[key],
+                    type: 'line',
+                    smooth: true
+                });
+                option.legend.data.push(key);
+            }
+
             if (option && typeof option === 'object') {
                 stressChart.setOption(option);
             }
@@ -130,7 +148,7 @@
                 auth_username: "",
                 auth_password: "",
                 url: "http://127.0.0.1:8000?data=1",
-                api_path: "",
+                apinode_path: "",
                 g_running: false,
                 g_seqid: Math.floor(Math.random() * 1000000) + 1,
                 g_interval: undefined,
@@ -155,19 +173,22 @@
                         auth_password: this.auth_password,
                         url: this.url,
                     };
-                    let api_path = '/api';
-                    if (this.api_path.length > 0) {
-                        api_path = this.api_path;
+
+                    let apinode_path = defaultAPINodePath;
+                    if (this.apinode_path.length > 0) {
+                        apinode_path = this.apinode_path;
                     }
 
-                    fetch(api_path, {
+                    fetch(apinode_path, {
                         method: 'POST',
                         headers: contentType,
                         body: JSON.stringify(request_data)
                     }).then(response => response.json()).then(data => {
                         if (data.err_code != 0) {
+                            
                             this.g_running = false;
-                            if (this.g_interval) clearInterval(this.g_interval);
+                            this.g_interval && clearInterval(this.g_interval);
+
                             this.$message({
                                 showClose: true,
                                 message: 'error：' + data.err_msg,
@@ -177,39 +198,56 @@
                         }
                     });
 
-                    this.g_running = true;
-                    let time_list = [], data_list = [], lats_total = 0;
+                    let time_list = [], qps_list = [], lats_total = 0;
+                    let status_code_list = {}, lats_status_code_list = {};
                     let time_metrics = this.time_metrics > 0 ? this.time_metrics : 2000;
+
+                    this.g_running = true;
                     this.g_interval = setInterval(function () {
-                        request_data.cmd = 2;
-                        fetch(api_path, {
+                        request_data.cmd = 2; // get metrics
+                        fetch(apinode_path, {
                             method: 'POST',
                             headers: contentType,
                             body: JSON.stringify(request_data)
                         }).then(response => response.json()).then(data => {
                             if (data && data.lats_total && (data.lats_total - lats_total) >= 0) {
                                 time_list.push(new Date().format("hh:mm:ss"));
-                                data_list.push((data.lats_total - lats_total) * 1000 / time_metrics);
-                                metricsLoad(time_list, data_list);
+                                qps_list.push((data.lats_total - lats_total) * 1000 / time_metrics);
                                 lats_total = data.lats_total;
+
+                                if (data.status_code_dist) {
+                                    for (let key in data.status_code_dist) {
+                                        if (!status_code_list.hasOwnProperty(key)) {
+                                            status_code_list[key] = [];
+                                        }
+                                        if (!lats_status_code_list.hasOwnProperty(key)) {
+                                            lats_status_code_list[key] = 0;
+                                        }
+                                        status_code_list[key].push(
+                                            (data.status_code_dist[key] - lats_status_code_list[key]) * 1000 / time_metrics)
+                                    }
+                                    lats_status_code_list = data.status_code_dist;
+                                }
                             }
+                            metricsLoad(time_list, qps_list, status_code_list);
                         })
                     }, time_metrics);
                 },
                 submitStop: function (e) {
                     this.g_running = false;
-                    if (this.g_interval) clearInterval(this.g_interval);
+                    this.g_interval && clearInterval(this.g_interval);
+
                     let request_data = {
                         cmd: 1, // stop
                         sequence_id: this.g_seqid,
                     };
 
-                    let api_path = '/api';
-                    if (this.api_path.length > 0) {
-                        api_path = this.api_path;
+                    let apinode_path = defaultAPINodePath;
+                    if (this.apinode_path.length > 0) {
+                        apinode_path = this.apinode_path;
                     }
 
-                    fetch(api_path, {
+                    fetch(apinode_path, {
                         method: 'POST',
                         headers: contentType,
                         body: JSON.stringify(request_data)
