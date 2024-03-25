@@ -22,6 +22,9 @@
         <el-input placeholder="Metrics Duration, default 2000ms" v-model="time_metrics" style="margin: 4px 0;">
             <template slot="prepend">Metrics Duration</template>
         </el-input>
+        <el-input placeholder="request url" v-model="url" style="margin: 4px 0;">
+            <template slot="prepend">Stress Url</template>
+        </el-input>
         <el-input placeholder="GET, POST, PUT, DELETE, HEAD, OPTIONS" v-model="request_method" style="margin: 4px 0;">
             <template slot="prepend">Request method</template>
         </el-input>
@@ -49,9 +52,6 @@
         </el-input>
         <el-input placeholder="qps" v-model="qps" style="margin: 4px 0;">
             <template slot="prepend">QPS</template>
-        </el-input>
-        <el-input placeholder="request url" v-model="url" style="margin: 4px 0;">
-            <template slot="prepend">Stress Url</template>
         </el-input>
         <el-input placeholder="/api" v-model="worker_api" style="margin: 4px 0;">
             <template slot="prepend">Worker API</template>
@@ -88,7 +88,7 @@
             useDirtyRect: false
         });
 
-        function metricsLoad(timeList, qpsList, codeList) {        
+        function metricsLoad(timeList, qpsList, codeList) {
             let option = {
                 legend: {
                     data: ['qps']
@@ -186,7 +186,6 @@
                         body: JSON.stringify(request_data)
                     }).then(response => response.json()).then(data => {
                         if (data.err_code != 0) {
-                            
                             this.g_running = false;
                             this.g_interval && clearInterval(this.g_interval);
 
@@ -196,7 +195,15 @@
                                 type: 'error',
                                 duration: 5000,
                             });
+                            return;
                         }
+
+                        this.$message({
+                            showClose: true,
+                            message: 'Start Stress',
+                            type: 'success',
+                            duration: 2000,
+                        });
                     });
 
                     let time_list = [], qps_list = [], lats_total = 0;
@@ -252,6 +259,23 @@
                         method: 'POST',
                         headers: contentType,
                         body: JSON.stringify(request_data)
+                    }).then(response => response.json()).then(data => {
+                        if (data.err_code != 0) {
+                            this.$message({
+                                showClose: true,
+                                message: 'error：' + data.err_msg,
+                                type: 'error',
+                                duration: 5000,
+                            });
+                            return;
+                        }
+
+                        this.$message({
+                            showClose: true,
+                            message: 'Stop Stress',
+                            type: 'success',
+                            duration: 2000,
+                        });
                     });
                 }
             }

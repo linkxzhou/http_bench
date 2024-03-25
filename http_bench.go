@@ -164,17 +164,18 @@ func (b *StressWorker) execute(n, sleep int, client *StressClient) {
 
 		var t = time.Now()
 		code, size, err := b.doClient(client)
-		if err != nil {
-			verbosePrint(vERROR, "err: %v", err)
-			b.Stop(false, err)
-			return
-		}
 
 		b.resultChan <- &result{
 			statusCode:    code,
 			duration:      time.Now().Sub(t),
 			err:           err,
 			contentLength: size,
+		}
+
+		if err != nil {
+			verbosePrint(vERROR, "err: %v", err)
+			b.Stop(false, err)
+			return
 		}
 	}
 }
@@ -354,8 +355,11 @@ func (b *StressWorker) asyncCollectResult() {
 		for {
 			select {
 			case res, ok := <-b.resultChan:
-				if !ok {
+				if !ok || (res != nil && res.err != nil) {
 					b.curResult.Duration = int64(b.totalTime.Seconds())
+					if res != nil && res.err != nil {
+						b.err = res.err
+					}
 					return
 				}
 				b.curResult.append(res)
