@@ -252,7 +252,6 @@ Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
 
 Body Request Example:  
-
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID | escape }}" -verbose 0
 ```
 
@@ -267,7 +266,6 @@ Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
 
 Body Request Example:  
-
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
 ```
 
@@ -282,6 +280,19 @@ Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ stringToHex 'hello world' }}" -verbose 0
 
 Body Request Example:  
-
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ stringToHex 'hello world' }}" -verbose 0
+```
+
+**(11) toString**  
+```
+Function: 
+  toString str(any variable to str and add quotes)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomNum 10 | toString }}" -verbose 0
+
+Body Request Example:  
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 | toString }}" -verbose 0
 ```

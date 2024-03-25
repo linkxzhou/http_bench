@@ -1,6 +1,9 @@
 {
     "aaaa": 1,
     "bbbb": 2,
-    "fn_randomString": "{{ randomString 20 }}",
-    "fn_randomNum": "{{ randomNum 10 }}"
+    "fn_randomString": {{ randomString 20 | toString }},
+    "fn_randomNum": {{ randomNum 10 | toString }},
+    "fn_printf_int": {{ printf "%d" 100 }},
+    "fn_printf_str": {{ printf "%s" "this is printf test" | toString }},
+    "fn_printf_float": {{ printf "%.3f" 3.1415926 }}
 }

@@ -93,7 +93,7 @@ var (
 		"getEnv":       getEnv,
 		"hexToString":  hexToString,
 		"stringToHex":  stringToHex,
-		"format":       format,
+		"toString":     toString,
 	}
 	fnUUID = randomString(10)
 )
@@ -178,8 +178,8 @@ func stringToHex(s string) string {
 	return hex.EncodeToString(data)
 }
 
-func format(f string, args ...interface{}) string {
-	return fmt.Sprintf(f, args...)
+func toString(args ...interface{}) string {
+	return fmt.Sprintf(`"%v"`, args...)
 }
 
 func parseTime(timeStr string) int64 {
