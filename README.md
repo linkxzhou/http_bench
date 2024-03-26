@@ -1,4 +1,4 @@
-## a HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC) stress testing tool, and support single and distributed.
+# a HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC) stress testing tool, and support single and distributed.
 
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.18.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.18.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.19.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.19.yml)
@@ -23,7 +23,7 @@ http_bench is a tiny program that sends some load to a web application, support 
 
 ![avatar](./demo.png)
 
-### Installation
+## Installation
 
 ```
 go get github.com/linkxzhou/http_bench
@@ -35,10 +35,10 @@ cd http_bench
 go build .
 ```
 
-### Architecture
+## Architecture
 ![avatar](./arch.png)
 
-### Basic Usage
+## Basic Usage
 
 ```
 ./http_bench http://127.0.0.1:8000 -c 1000 -d 60s
@@ -66,7 +66,7 @@ Latency distribution:
   99% in 0.262 secs
 ```
 
-### Command Line Options
+## Command Line Options
 
 ```
 -n  Number of requests to run.
@@ -141,7 +141,7 @@ Example stress test on browser:
 Open url(http://127.0.0.1:12345) on browser
 ```
 
-### Support Function and Variable
+## Support Function and Variable
 
 **(1) intSum**  
 ```

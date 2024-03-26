@@ -1,4 +1,4 @@
-## HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC)压测工具，并支持单机和分布式
+# HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC)压测工具，并支持单机和分布式
 
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.18.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.18.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.19.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.19.yml)
@@ -21,7 +21,7 @@
 
 ![avatar](./demo.png)
 
-### 安装
+## 安装
 
 ```
 go get github.com/linkxzhou/http_bench
@@ -33,10 +33,10 @@ cd http_bench
 go build .
 ```
 
-### 架构
+## 架构
 ![avatar](./arch.png)
 
-### 使用
+## 使用
 
 ```
 ./http_bench http://127.0.0.1:8000 -c 1000 -d 60s
@@ -64,7 +64,7 @@ Latency distribution:
   99% in 0.262 secs
 ```
 
-### 命令行解析
+## 命令行解析
 
 ```
 -n  请求HTTP的次数
