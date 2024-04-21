@@ -23,6 +23,7 @@ jobs:
       run: |
         echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
         echo "::set-output name=time::$(date +'%Y%m%d%H')"
+        echo "::set-output name=tag::${GITHUB_REF#refs/*/}"
 
     - name: Build
       run: go mod tidy && go build .
