@@ -37,7 +37,6 @@ import (
 
 //go:embed index.html
 var dashboardHtml string
-
 var globalStop int
 
 const (
@@ -87,7 +86,6 @@ func (p *StressParameters) String() string {
 	if err != nil {
 		return err.Error()
 	}
-
 	return string(body)
 }
 
@@ -162,7 +160,7 @@ func (b *StressWorker) execute(n, sleep int, client *StressClient) {
 		runCounts++
 		time.Sleep(time.Duration(sleep) * time.Microsecond)
 
-		var t = time.Now()
+		t := time.Now()
 		code, size, err := b.doClient(client)
 
 		b.resultChan <- &result{
@@ -494,12 +492,11 @@ func serveWorker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reqStr, err := io.ReadAll(r.Body)
-	if err == nil {
+	if reqStr, err := io.ReadAll(r.Body); err == nil {
 		var params StressParameters
 		var result *StressResult
 		if err := json.Unmarshal(reqStr, &params); err != nil {
-			fmt.Fprintf(os.Stderr, "unmarshal body err: %s\n", err.Error())
+			verbosePrint(vERROR, "unmarshal body err: %s", err.Error())
 			result = &StressResult{
 				ErrCode: -1,
 				ErrMsg:  err.Error(),
@@ -535,7 +532,7 @@ var waitWorkerListReq = func(paramsJson []byte) []StressResult {
 		go func(workerAddr string) {
 			defer wg.Done()
 			result, err := executeWorkerReq(workerAddr, paramsJson)
-			if err == nil {
+			if err == nil && result != nil {
 				stressResult = append(stressResult, *result)
 			}
 		}(addr)
@@ -549,7 +546,7 @@ func executeWorkerReq(uri string, body []byte) (*StressResult, error) {
 	verbosePrint(vDEBUG, "request body: %s", string(body))
 	resp, err := http.Post(uri, httpContentTypeJSON, bytes.NewBuffer(body)) // default not timeout
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "executeWorkerReq addr(%s), err: %s\n", uri, err.Error())
+		verbosePrint(vERROR, "executeWorkerReq addr(%s) err: %s", uri, err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -702,10 +699,10 @@ func main() {
 	}
 
 	var requestUrls []string
+	var err error
 	if *urlFile == "" && len(*urlstr) > 0 {
 		requestUrls = append(requestUrls, *urlstr)
 	} else if len(*urlFile) > 0 {
-		var err error
 		if requestUrls, err = parseFile(*urlFile, []rune{'\r', '\n'}); err != nil {
 			usageAndExit(*urlFile + " file read error(" + err.Error() + ").")
 		}
@@ -745,7 +742,6 @@ func main() {
 			params.RequestType = t
 		case typeHttp3:
 			params.RequestType = t
-			var err error
 			if http3Pool, err = x509.SystemCertPool(); err != nil {
 				panic(typeHttp3 + " err: " + err.Error())
 			}
@@ -777,7 +773,7 @@ func main() {
 		}
 	}
 
-	if *output != "csv" && *output != "" {
+	if *output != "" && *output != "csv" {
 		usageAndExit("invalid output type; only csv is supported.")
 	}
 
@@ -785,7 +781,6 @@ func main() {
 	params.Timeout = *t
 
 	if *proxyAddr != "" {
-		var err error
 		if proxyUrl, err = gourl.Parse(*proxyAddr); err != nil {
 			usageAndExit(err.Error())
 		}
@@ -799,6 +794,7 @@ func main() {
 	if n, err := strconv.ParseInt(stressGOGC, 2, 64); err == nil {
 		debug.SetGCPercent(int(n))
 	}
+
 	// cloud worker API
 	stressWorkerAPI := getEnv("STRESS_WORKERAPI")
 	if stressWorkerAPI != "" {
@@ -808,6 +804,7 @@ func main() {
 	if len(*dashboard) > 0 {
 		*listen = *dashboard
 	}
+
 	if len(*listen) > 0 {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -820,7 +817,7 @@ func main() {
 		}
 		println("listen %s, and you can open http://%s/index.html on browser", *listen, *listen)
 		if err := mainServer.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, "listen err: %s\n", err.Error())
+			verbosePrint(vERROR, "listen err: %s", err.Error())
 		}
 		return
 	}
