@@ -230,7 +230,7 @@ func TestStressWS(t *testing.T) {
 		isErr bool
 	}{
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url ws://%s/`, duration, name, listen),
+			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -url ws://%s/`, duration, name, listen),
 			isErr: false,
 		},
 	} {

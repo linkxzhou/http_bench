@@ -648,7 +648,7 @@ Options:
 	./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
 
 4.Example ws/wss test:
-	./http_bench -d 10s -c 10 -http ws -m POST "ws://127.0.0.1" -body "{}"
+	./http_bench -d 10s -c 10 -http ws "ws://127.0.0.1" -body "{}"
 
 5.Example dashboard test:
 	./http_bench -dashboard "127.0.0.1:12345" -verbose 1
