@@ -114,6 +114,11 @@ Latency distribution:
 ./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
+执行压测，使用ws/wss:
+```
+./http_bench -d 10s -c 10 -http ws -m POST "ws://127.0.0.1" -body "{}"
+```
+
 分布式压测样例(使用"-verbose 1"打印详细日志):
 ```
 (1) 第一步:

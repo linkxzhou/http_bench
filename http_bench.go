@@ -647,13 +647,16 @@ Options:
 3.Example http3 test:
 	./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
 
-4.Example dashboard test:
+4.Example ws/wss test:
+	./http_bench -d 10s -c 10 -http ws -m POST "ws://127.0.0.1" -body "{}"
+
+5.Example dashboard test:
 	./http_bench -dashboard "127.0.0.1:12345" -verbose 1
 
-5.Example support function and variable test:
+6.Example support function and variable test:
 	./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
 
-6.Example distributed stress test:
+7.Example distributed stress test:
 	(1) ./http_bench -listen "127.0.0.1:12710" -verbose 1
 	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose 1 -W "127.0.0.1:12710"`
 )

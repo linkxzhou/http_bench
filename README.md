@@ -122,6 +122,11 @@ Example stress test for http/3:
 ./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
+Example stress test for ws/wss:
+```
+./http_bench -d 10s -c 10 -http ws -m POST "ws://127.0.0.1" -body "{}"
+```
+
 Example distributed stress test(print detail info "-verbose 1"):
 ```
 (1) First step:
