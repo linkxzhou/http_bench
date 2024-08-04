@@ -1,8 +1,8 @@
 # HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC)压测工具，并支持单机和分布式
 
-[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.18.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.18.yml)
-[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.19.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.19.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml)
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
@@ -22,6 +22,8 @@
 ![avatar](./demo.png)
 
 ## 安装
+
+**注意：go version >= 1.20**
 
 ```
 go get github.com/linkxzhou/http_bench

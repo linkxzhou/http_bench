@@ -25,6 +25,8 @@ http_bench is a tiny program that sends some load to a web application, support 
 
 ## Installation
 
+**NOTICE：go version >= 1.20**
+
 ```
 go get github.com/linkxzhou/http_bench
 ```
