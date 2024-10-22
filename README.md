@@ -12,12 +12,12 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [x] HTTP/1 stress testing
 - [x] HTTP/2 stress testing
 - [x] HTTP/3 stress testing
-- [ ] TCP/UDP stress testing(beta)
 - [x] Websocket stress testing
 - [x] Distributed stress testing
 - [x] Support functions
 - [x] Support variable 
 - [x] Dashboard
+- [ ] TCP/UDP stress testing（beta）
 - [ ] Stepping stress testing
 - [ ] gRPC stress testing
 
