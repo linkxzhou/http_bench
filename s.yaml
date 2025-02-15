@@ -22,7 +22,7 @@ services:
         caPort: 9000
         customRuntimeConfig:
           command:
-            - ./http_bench
+            - /code/http_bench
             - -dashboard
             - 0.0.0.0:9000
         environmentVariables: {}
@@ -33,7 +33,7 @@ services:
         command: 
           - /bin/sh
           - -c
-          - 'go mod tidy && go build -o http_bench .'
+          - 'go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o /code/http_bench .'
         
       triggers:
         - name: httpTrigger
