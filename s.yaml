@@ -3,13 +3,14 @@ name: http-bench
 access: "default"
 
 services:
-  http-bench: 
+  http-bench:
     component: fc
     actions:
       pre-deploy:
-        - runtime: go
-          version: 1.20
-        - run: go mod tidy && go build -o http_bench .
+        - plugin: go1@1.9.12  # 使用阿里云官方Go插件管理环境
+          args:
+            runtime: Go1.20   # 明确指定Go版本，确保环境一致性
+        - run: go mod tidy && go build -o http_bench . && chmod +x http_bench  # 添加执行权限
           path: ./
     props:
       region: cn-hangzhou
@@ -21,19 +22,17 @@ services:
         name: http-bench
         description: 'HTTP/HTTPS/HTTP2/HTTP3/WS/gRPC Benchmark Tool'
         runtime: custom
-        handler: index.handler
         memorySize: 512
         timeout: 600
         instanceConcurrency: 100
         caPort: 9000
         customRuntimeConfig:
           command:
-            - ./http_bench
+            - ./http_bench   # 确保二进制文件在根目录
             - -dashboard
             - 0.0.0.0:9000
         environmentVariables: {}
         codeUri: ./
-        
       triggers:
         - name: httpTrigger
           type: http
@@ -46,7 +45,6 @@ services:
               - DELETE
               - HEAD
               - OPTIONS
-
       customDomains:
         - domainName: auto
           protocol: HTTP
