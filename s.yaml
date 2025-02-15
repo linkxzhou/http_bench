@@ -27,6 +27,13 @@ services:
             - 0.0.0.0:9000
         environmentVariables: {}
         codeUri: ./
+
+      customContainer:
+        image: golang:1.20
+        command: 
+          - /bin/sh
+          - -c
+          - 'go mod tidy && go build -o http_bench .'
         
       triggers:
         - name: httpTrigger
