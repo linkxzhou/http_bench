@@ -1,0 +1,55 @@
+edition: 1.0.0
+name: http-bench
+access: "default"
+
+services:
+  http-bench: 
+    component: fc
+    props:
+      region: cn-hangzhou
+      service:
+        name: http-bench-service
+        description: 'HTTP Benchmark Tool Service'
+        internetAccess: true
+      function:
+        name: http-bench
+        description: 'HTTP/HTTPS/HTTP2/HTTP3/WS/gRPC Benchmark Tool'
+        runtime: custom
+        handler: index.handler
+        memorySize: 512
+        timeout: 600
+        instanceConcurrency: 100
+        caPort: 9000
+        customRuntimeConfig:
+          command:
+            - ./http_bench
+            - -dashboard
+            - 0.0.0.0:9000
+        environmentVariables: {}
+        codeUri: ./
+        
+      triggers:
+        - name: httpTrigger
+          type: http
+          config:
+            authType: anonymous
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - HEAD
+              - OPTIONS
+
+      customDomains:
+        - domainName: auto
+          protocol: HTTP
+          routeConfigs:
+            - path: /*
+              methods:
+                - GET
+                - POST
+                - PUT
+                - DELETE
+                - HEAD
+                - OPTIONS

@@ -39,25 +39,35 @@ import (
 var dashboardHtml string
 var globalStop int
 
+// Command types for stress testing control
 const (
-	cmdStart int = iota
-	cmdStop
-	cmdMetrics
+	cmdStart   int = iota // Start stress testing
+	cmdStop              // Stop stress testing
+	cmdMetrics           // Get metrics of stress testing
+)
 
-	typeHttp1 = "http1"
-	typeHttp2 = "http2"
-	typeHttp3 = "http3"
-	typeWs    = "ws"
-	typeWss   = "wss"
-	typeTCP   = "tcp"  // TODO: fix next version
-	typeGrpc  = "grpc" // TODO: next version to support
+// Protocol types supported by the stress tester
+const (
+	typeHttp1 = "http1" // HTTP/1.1 protocol
+	typeHttp2 = "http2" // HTTP/2 protocol
+	typeHttp3 = "http3" // HTTP/3 protocol
+	typeWs    = "ws"    // WebSocket protocol
+	typeWss   = "wss"   // WebSocket Secure protocol
+	typeTCP   = "tcp"   // TCP protocol (beta)
+	typeGrpc  = "grpc"  // gRPC protocol (planned)
+)
 
-	bodyHex = "hex" // hex body to request
+// Body format types
+const (
+	bodyHex = "hex" // Hexadecimal body format
+)
 
-	vTRACE = 0
-	vDEBUG = 1
-	vINFO  = 2
-	vERROR = 3
+// Log levels for verbose output
+const (
+	vTRACE = iota // Trace level logging
+	vDEBUG        // Debug level logging
+	vINFO         // Info level logging
+	vERROR        // Error level logging
 )
 
 // StressParameters stress params for worker

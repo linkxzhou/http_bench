@@ -8,19 +8,98 @@
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script type="text/javascript">
+        // 添加语言包配置
+        const i18n = {
+            'zh-CN': {
+                title: 'HTTP 压力测试工具',
+                start: '开始压测',
+                stop: '停止压测',
+                metrics: {
+                    duration: '监控间隔',
+                    durationPlaceholder: '监控数据刷新间隔，默认2000ms'
+                },
+                request: {
+                    url: '请求地址',
+                    urlPlaceholder: '请输入压测目标URL',
+                    method: '请求方法',
+                    methodPlaceholder: '选择请求方法',
+                    body: '请求体',
+                    bodyPlaceholder: '请输入请求体',
+                    bodyType: '请求体类型',
+                    bodyTypePlaceholder: '空或hex，默认空',
+                    type: '协议类型',
+                    typePlaceholder: 'http1, http2, ws, wss，默认http1'
+                },
+                stress: {
+                    total: '总请求数',
+                    concurrent: '并发数',
+                    duration: '持续时间',
+                    timeout: '超时时间',
+                    qps: 'QPS限制',
+                    worker: 'Worker API'
+                },
+                message: {
+                    start: '开始压测',
+                    stop: '停止压测',
+                    error: '错误'
+                }
+            },
+            'en-US': {
+                title: 'HTTP Benchmark Tool',
+                start: 'Start Stress',
+                stop: 'Stop Stress',
+                metrics: {
+                    duration: 'Metrics Duration',
+                    durationPlaceholder: 'Metrics refresh interval, default 2000ms'
+                },
+                request: {
+                    url: 'Request URL',
+                    urlPlaceholder: 'Enter stress test target URL',
+                    method: 'Request Method',
+                    methodPlaceholder: 'Select request method',
+                    body: 'Request Body',
+                    bodyPlaceholder: 'Enter request body',
+                    bodyType: 'Body Type',
+                    bodyTypePlaceholder: 'empty or hex, default empty',
+                    type: 'Protocol Type',
+                    typePlaceholder: 'http1, http2, ws, wss, default http1'
+                },
+                stress: {
+                    total: 'Total Requests',
+                    concurrent: 'Concurrent',
+                    duration: 'Duration',
+                    timeout: 'Timeout',
+                    qps: 'QPS Limit',
+                    worker: 'Worker API'
+                },
+                message: {
+                    start: 'Start Stress',
+                    stop: 'Stop Stress',
+                    error: 'Error'
+                }
+            }
+        };
+    </script>
 </head>
 
 <body style="height: 100%; margin: 0">
     <div id="container"
         style="height: 70%; margin: auto; width:98%; padding: 10px; box-sizing: border-box; box-shadow: rgba(0, 0, 0, 0.3) 0px 0px 20px;">
     </div>
+
+    <!-- 修改表单标签为多语言 -->
     <div id="app" style="margin: 20px;">
+        <el-select v-model="currentLang" @change="changeLang" size="small" style="margin-right: 15px; margin-bottom: 10px;">
+            <el-option label="中文" value="zh-CN"></el-option>
+            <el-option label="English" value="en-US"></el-option>
+        </el-select>
         <el-row>
-            <el-button type="primary" :loading="g_running" @click="submitStart">Stress Start</el-button>
-            <el-button type="danger" @click="submitStop">Stress Stop</el-button>
+            <el-button type="primary" :loading="g_running" @click="submitStart">{{t('start')}}</el-button>
+            <el-button type="danger" @click="submitStop">{{t('stop')}}</el-button>
         </el-row>
-        <el-input placeholder="Metrics Duration, default 2000ms" v-model="time_metrics" style="margin: 4px 0;">
-            <template slot="prepend">Metrics Duration</template>
+        <el-input :placeholder="t('metrics.durationPlaceholder')" v-model="time_metrics" style="margin: 4px 0;">
+            <template slot="prepend">{{t('metrics.duration')}}</template>
         </el-input>
         <el-input placeholder="request url" v-model="url" style="margin: 4px 0;">
             <template slot="prepend">Stress Url</template>
@@ -134,6 +213,7 @@
         new Vue({
             el: '#app',
             data: {
+                currentLang: 'zh-CN',
                 time_metrics: 2000,
                 request_method: "GET",
                 request_body: "",
@@ -155,6 +235,20 @@
                 g_interval: undefined,
             },
             methods: {
+                // Add t method for i18n
+                t(key) {
+                    const keys = key.split('.');
+                    let value = i18n[this.currentLang];
+                    for (const k of keys) {
+                        value = value[k];
+                        if (!value) break;
+                    }
+                    return value || key;
+                },
+                changeLang(lang) {
+                    this.currentLang = lang;
+                    localStorage.setItem('preferred-lang', lang);
+                },
                 submitStart: function (e) {
                     let request_data = {
                         cmd: 0,
@@ -278,7 +372,14 @@
                         });
                     });
                 }
-            }
+            },
+            created() {
+                // 初始化时读取存储的语言设置
+                const savedLang = localStorage.getItem('preferred-lang');
+                if (savedLang && i18n[savedLang]) {
+                    this.currentLang = savedLang;
+                }
+            },
         })
     </script>
 </body>
