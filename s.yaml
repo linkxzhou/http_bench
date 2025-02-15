@@ -7,11 +7,13 @@ services:
     component: fc
     actions:
       pre-deploy:
-        - plugin: go1@1.9.12  # 使用阿里云官方Go插件管理环境
-          args:
-            runtime: Go1.20   # 明确指定Go版本，确保环境一致性
+        - run: go env -w GOPROXY=https://goproxy.cn,direct  # 设置国内代理加速
+          path: ./
         - run: go mod tidy && go build -o http_bench . && chmod +x http_bench  # 添加执行权限
           path: ./
+          env:
+            GOOS: linux   # 强制指定Linux编译环境
+            GOARCH: amd64  # 明确CPU架构
     props:
       region: cn-hangzhou
       service:
@@ -38,22 +40,10 @@ services:
           type: http
           config:
             authType: anonymous
-            methods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - HEAD
-              - OPTIONS
+            methods: [GET, POST, PUT, DELETE, HEAD, OPTIONS]
       customDomains:
         - domainName: auto
           protocol: HTTP
           routeConfigs:
             - path: /*
-              methods:
-                - GET
-                - POST
-                - PUT
-                - DELETE
-                - HEAD
-                - OPTIONS
+              methods: [GET, POST, PUT, DELETE, HEAD, OPTIONS]
