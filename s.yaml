@@ -29,11 +29,16 @@ services:
         codeUri: ./
 
       customContainer:
-        image: golang:1.20
-        command: 
-          - /bin/sh
-          - -c
-          - 'go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o /code/http_bench .'
+        dockerfile: |
+          FROM golang:1.20 AS builder
+          WORKDIR /build
+          COPY . .
+          RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o http_bench .
+
+          FROM debian:buster-slim
+          WORKDIR /code
+          COPY --from=builder /build/http_bench /code/
+          CMD ["/code/http_bench", "-dashboard", "0.0.0.0:9000"]
         
       triggers:
         - name: httpTrigger
