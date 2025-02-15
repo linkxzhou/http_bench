@@ -5,6 +5,12 @@ access: "default"
 services:
   http-bench: 
     component: fc
+    actions:
+      pre-deploy:
+        - runtime: go
+          version: 1.20
+        - run: go mod tidy && go build -o http_bench .
+          path: ./
     props:
       region: cn-hangzhou
       service:
@@ -22,23 +28,11 @@ services:
         caPort: 9000
         customRuntimeConfig:
           command:
-            - /code/http_bench
+            - ./http_bench
             - -dashboard
             - 0.0.0.0:9000
         environmentVariables: {}
         codeUri: ./
-
-      customContainer:
-        dockerfile: |
-          FROM golang:1.20 AS builder
-          WORKDIR /build
-          COPY . .
-          RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o http_bench .
-
-          FROM debian:buster-slim
-          WORKDIR /code
-          COPY --from=builder /build/http_bench /code/
-          CMD ["/code/http_bench", "-dashboard", "0.0.0.0:9000"]
         
       triggers:
         - name: httpTrigger
