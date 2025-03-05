@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -42,8 +41,8 @@ var globalStop int
 // Command types for stress testing control
 const (
 	cmdStart   int = iota // Start stress testing
-	cmdStop              // Stop stress testing
-	cmdMetrics           // Get metrics of stress testing
+	cmdStop               // Stop stress testing
+	cmdMetrics            // Get metrics of stress testing
 )
 
 // Protocol types supported by the stress tester
@@ -116,12 +115,22 @@ type (
 		totalTime                 time.Duration
 		err                       error
 		bodyTemplate, urlTemplate *template.Template
+		connPool                  *ConnPool
+		workerSem                 chan struct{}
 	}
 
 	StressClient struct {
 		httpClient *http.Client
 		wsClient   *websocket.Conn
 		tcpClient  *tcpConn
+	}
+
+	ConnPool struct {
+		clients chan *StressClient
+		factory func() *StressClient
+		mu      sync.Mutex  // Mutex to protect connection pool operations
+		active  int         // Track number of active connections
+		maxSize int         // Maximum pool size
 	}
 )
 
@@ -149,13 +158,13 @@ func (b *StressWorker) IsStop() bool {
 
 func (b *StressWorker) WaitResult() *StressResult {
 	b.resultWg.Wait()
-	return calMutliStressResult(nil, *b.curResult)
+	return calculateMultiStressResult(nil, *b.curResult)
 }
 
 func (b *StressWorker) WaitWorkersResult() *StressResult {
 	b.resultWg.Wait()
 	verbosePrint(vDEBUG, "result length = %d", len(b.workersResult))
-	return calMutliStressResult(nil, b.workersResult...)
+	return calculateMultiStressResult(nil, b.workersResult...)
 }
 
 func (b *StressWorker) execute(n, sleep int, client *StressClient) {
@@ -189,165 +198,11 @@ func (b *StressWorker) execute(n, sleep int, client *StressClient) {
 }
 
 func (b *StressWorker) getClient() *StressClient {
-	client := &StressClient{}
-	switch b.RequestParams.RequestType {
-	case typeHttp3:
-		client.httpClient = &http.Client{
-			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-			Transport: &http3.RoundTripper{
-				TLSClientConfig: &tls.Config{
-					RootCAs:            http3Pool,
-					InsecureSkipVerify: true,
-				},
-			},
-		}
-	case typeHttp2:
-		client.httpClient = &http.Client{
-			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-			Transport: &http2.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-				DisableCompression: b.RequestParams.DisableCompression,
-			},
-		}
-	case typeHttp1:
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-			DisableCompression:  b.RequestParams.DisableCompression,
-			DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
-			TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-			TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
-			DialContext: (&net.Dialer{
-				Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
-				KeepAlive: time.Duration(60) * time.Second,
-			}).DialContext,
-			MaxIdleConns:        10,
-			MaxIdleConnsPerHost: 10,
-			MaxConnsPerHost:     10,
-			IdleConnTimeout:     time.Duration(90) * time.Second,
-		}
-		if proxyUrl != nil {
-			tr.Proxy = http.ProxyURL(proxyUrl)
-		}
-		client.httpClient = &http.Client{
-			Timeout:   time.Duration(b.RequestParams.Timeout) * time.Millisecond,
-			Transport: tr,
-		}
-	case typeWs, typeWss:
-		c, _, err := websocket.DefaultDialer.Dial(b.RequestParams.Url, b.RequestParams.Headers)
-		if err != nil || c == nil {
-			verbosePrint(vERROR, "websocket err: %v", err)
-			return nil
-		}
-		client.wsClient = c
-	case typeTCP:
-		c, err := DialTCP(b.RequestParams.Url, ConnOption{
-			timeout:           time.Duration(b.RequestParams.Duration) * time.Second,
-			disableKeepAlives: b.RequestParams.DisableKeepAlives,
-		})
-		if err != nil || c == nil {
-			verbosePrint(vERROR, "tcp err: %s", err)
-			return nil
-		}
-		client.tcpClient = c
-	default:
-		verbosePrint(vERROR, "not support %s", b.RequestParams.RequestType)
-		return nil
-	}
-
-	return client
-}
-
-func (b *StressWorker) doClient(client *StressClient) (code int, size int64, err error) {
-	var urlBytes, bodyBytes bytes.Buffer
-	var url = b.RequestParams.Url
-
-	if b.urlTemplate != nil && len(url) > 0 {
-		b.urlTemplate.Execute(&urlBytes, nil)
-	} else {
-		urlBytes.WriteString(url)
-	}
-
-	switch b.RequestParams.RequestBodyType {
-	case bodyHex:
-		hexb, hexbErr := hex.DecodeString(b.RequestParams.RequestBody)
-		if hexbErr != nil {
-			return -1, 0, errors.New("invalid hex: " + hexbErr.Error())
-		}
-		bodyBytes.Write(hexb)
-	default:
-		if len(b.RequestParams.RequestBody) > 0 && b.bodyTemplate != nil {
-			b.bodyTemplate.Execute(&bodyBytes, nil)
-		} else {
-			bodyBytes.WriteString(b.RequestParams.RequestBody)
-		}
-	}
-
-	verbosePrint(vTRACE, "request url: %s, request type: %s, request bodytype: %s",
-		urlBytes.String(), b.RequestParams.RequestType, b.RequestParams.RequestBodyType)
-	verbosePrint(vTRACE, "request body: %s", bodyBytes.String())
-
-	switch b.RequestParams.RequestType {
-	case typeHttp1, typeHttp2, typeHttp3:
-		req, reqErr := http.NewRequest(b.RequestParams.RequestMethod, urlBytes.String(), strings.NewReader(bodyBytes.String()))
-		if reqErr != nil || req == nil {
-			err = errors.New("request err: " + err.Error())
-			code = -1 // has errors
-			return
-		}
-		req.Header = b.RequestParams.Headers
-		resp, respErr := client.httpClient.Do(req)
-		if respErr != nil {
-			err = respErr
-			code = -99 // has errors
-			return
-		}
-		size = resp.ContentLength
-		code = resp.StatusCode
-
-		defer resp.Body.Close()
-		if n, _ := fastRead(resp.Body, true); size <= 0 {
-			size = n
-		}
-	case typeWs:
-		if err = client.wsClient.WriteMessage(websocket.TextMessage, bodyBytes.Bytes()); err != nil {
-			return
-		}
-		messageType, message, readErr := client.wsClient.ReadMessage()
-		if readErr != nil {
-			err = readErr
-			code = -99 // has errors
-			return
-		}
-		size = int64(len(message))
-		code = messageType
-	case typeTCP:
-		if size, err = client.tcpClient.Do(bodyBytes.Bytes()); err != nil {
-			code = -99 // has errors
-			return
-		}
-		code = http.StatusOK
-	default:
-		code = -98 // invalid type
-	}
-
-	return
+	return b.connPool.Get()
 }
 
 func (b *StressWorker) closeClient(client *StressClient) {
-	switch b.RequestParams.RequestType {
-	case typeHttp1, typeHttp2, typeHttp3:
-		client.httpClient.CloseIdleConnections()
-	case typeWs:
-		client.wsClient.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	case typeTCP:
-		client.tcpClient.Close()
-	default:
-		// pass
-	}
+	b.connPool.Put(client)
 }
 
 func (b *StressWorker) asyncCollectResult() {
@@ -390,6 +245,14 @@ func (b *StressWorker) startClients() {
 		urlTemplateName  = fmt.Sprintf("URL-%d", b.RequestParams.SequenceId)
 	)
 
+	// Initialize connection pool
+	b.connPool = NewConnPool(b.RequestParams.C, func() *StressClient {
+		return b.createNewClient()
+	})
+
+	// Initialize worker semaphore
+	b.workerSem = make(chan struct{}, b.RequestParams.C)
+
 	if b.urlTemplate, err = template.New(urlTemplateName).Funcs(fnMap).Parse(b.RequestParams.Url); err != nil {
 		verbosePrint(vERROR, "parse urls function err: "+err.Error())
 	}
@@ -398,11 +261,13 @@ func (b *StressWorker) startClients() {
 		verbosePrint(vERROR, "parse request body function err: "+err.Error())
 	}
 
-	// ignore the case where b.RequestParams.N % b.RequestParams.C != 0.
 	for i := 0; i < b.RequestParams.C && !b.IsStop(); i++ {
 		wg.Add(1)
+		b.workerSem <- struct{}{}
+
 		go func() {
 			defer wg.Done()
+			defer func() { <-b.workerSem }()
 
 			client := b.getClient()
 			if client == nil {
@@ -418,7 +283,7 @@ func (b *StressWorker) startClients() {
 
 			sleep := 0
 			if b.RequestParams.Qps > 0 {
-				sleep = 1e6 / (b.RequestParams.C * b.RequestParams.Qps) // sleep XXus send request
+				sleep = 1e6 / (b.RequestParams.C * b.RequestParams.Qps)
 			}
 
 			b.execute(b.RequestParams.N/b.RequestParams.C, sleep, client)
@@ -427,9 +292,89 @@ func (b *StressWorker) startClients() {
 
 	wg.Wait()
 	b.Stop(false, nil)
-
 	b.totalTime = time.Now().Sub(startTime)
 	close(b.resultChan)
+}
+
+func (b *StressWorker) doClient(client *StressClient) (int, int64, error) {
+    if client == nil {
+        return 0, 0, fmt.Errorf("client is nil")
+    }
+
+    ctx, cancel := context.WithTimeout(context.Background(), 
+        time.Duration(b.RequestParams.Duration)*time.Second)
+    defer cancel()
+
+    req, err := http.NewRequestWithContext(ctx, 
+        b.RequestParams.RequestMethod, 
+        b.RequestParams.Url, 
+        b.getRequestBody())
+    if err != nil {
+        return 0, 0, fmt.Errorf("create request error: %v", err)
+    }
+
+    // Set headers
+    for k, v := range b.RequestParams.Headers {
+        req.Header[k] = v
+    }
+
+    // Execute request based on protocol type
+    switch b.RequestParams.RequestType {
+    case typeHttp1, typeHttp2, typeHttp3:
+        resp, err := client.httpClient.Do(req)
+        if err != nil {
+            return 0, 0, fmt.Errorf("http request error: %v", err)
+        }
+        defer resp.Body.Close()
+
+        contentLength := resp.ContentLength
+        if contentLength < 0 {
+            contentLength = 0
+        }
+
+        return resp.StatusCode, contentLength, nil
+
+    case typeWs, typeWss:
+        err := client.wsClient.WriteMessage(websocket.TextMessage, []byte(b.RequestParams.RequestBody))
+        if err != nil {
+            return 0, 0, fmt.Errorf("websocket write error: %v", err)
+        }
+
+        _, msg, err := client.wsClient.ReadMessage()
+        if err != nil {
+            return 0, 0, fmt.Errorf("websocket read error: %v", err)
+        }
+
+        return http.StatusOK, int64(len(msg)), nil
+
+    case typeTCP:
+        n, err := client.tcpClient.Do([]byte(b.RequestParams.RequestBody))
+        if err != nil {
+            return 0, 0, fmt.Errorf("tcp write error: %v", err)
+        }
+
+        return http.StatusOK, int64(n), nil
+
+    default:
+        return 0, 0, fmt.Errorf("unsupported protocol type: %s", b.RequestParams.RequestType)
+    }
+}
+
+func (b *StressWorker) getRequestBody() io.Reader {
+    if b.RequestParams.RequestBody == "" {
+        return nil
+    }
+
+    if b.RequestParams.RequestBodyType == bodyHex {
+        decoded, err := hex.DecodeString(b.RequestParams.RequestBody)
+        if err != nil {
+            verbosePrint(vERROR, "hex decode error: %v", err)
+            return nil
+        }
+        return bytes.NewReader(decoded)
+    }
+    
+    return strings.NewReader(b.RequestParams.RequestBody)
 }
 
 func executeStress(params StressParameters) (*StressWorker, *StressResult) {
@@ -477,10 +422,10 @@ func executeStress(params StressParameters) (*StressWorker, *StressResult) {
 	case cmdMetrics:
 		if isDistributedTesting {
 			workersResult := waitWorkerListReq(jsonBody)
-			stressResult = calMutliStressResult(nil, workersResult...)
+			stressResult = calculateMultiStressResult(nil, workersResult...)
 		} else {
 			if stressTesting.curResult != nil {
-				stressResult = calMutliStressResult(nil, *stressTesting.curResult)
+				stressResult = calculateMultiStressResult(nil, *stressTesting.curResult)
 			}
 		}
 	}
@@ -617,25 +562,24 @@ const (
 Options:
 	-n  Number of requests to run.
 	-c  Number of requests to run concurrently. Total number of requests cannot
-		be smaller than the concurency level.
-	-q  Rate limit, in seconds (QPS).
+		be smaller than the concurrency level.
+	-q  Rate limit, in queries per second (QPS).
 	-d  Duration of the stress test, e.g. 2s, 2m, 2h
 	-t  Timeout in ms (default 3000ms).
 	-o  Output type. If none provided, a summary is printed.
 		"csv" is the only supported alternative. Dumps the response
-		metrics in comma-seperated values format.
+		metrics in comma-separated values format.
 	-m  HTTP method, one of GET, POST, PUT, DELETE, HEAD, OPTIONS.
 	-H  Custom HTTP header. You can specify as many as needed by repeating the flag.
-		for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
-		but "Host: ***", replace that with -host.
-	-http  		Support protocol http1, http2, ws, wss (default http1).
+		For example, -H "Accept: text/html" -H "Content-Type: application/xml"
+	-http  		Support protocol http1, http2, http3, ws, wss (default http1).
 	-body  		Request body, default empty.
 	-bodytype   Request body type, support string, hex (default string).
 	-a  		Basic authentication, username:password.
 	-x  		HTTP Proxy address as host:port.
 	-disable-compression  Disable compression.
 	-disable-keepalive    Disable keep-alive, prevents re-use of TCP connections between different HTTP requests.
-	-cpus		Number of used cpu cores. (default for current machine is %d cores).
+	-cpus		Number of used CPU cores. (default for current machine is %d cores).
 	-url		Request single url.
 	-verbose 	Print detail logs, default 3(0:TRACE, 1:DEBUG, 2:INFO, 3:ERROR).
 	-url-file 	Read url list from file and random stress test.
@@ -646,29 +590,35 @@ Options:
 	-example 	Print some stress test examples (default false).`
 
 	examples = `
-1.Example stress test:
+1. Basic stress test:
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1"
 	./http_bench -n 1000 -c 10 -t 3000 -m GET "http://127.0.0.1/test1" -url-file urls.txt
-	./http_bench -d 10s -c 10 -m POST -body "{}" -url-file urls.txt
+	./http_bench -d 10s -c 10 -m POST -body '{"key":"value"}' -url-file urls.txt
 
-2.Example http2 test:
-	./http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1/test1" -body "{}"
+2. HTTP/2 test:
+	./http_bench -d 10s -c 10 -http http2 -m POST "https://127.0.0.1/test1" -body '{"key":"value"}'
 
-3.Example http3 test:
-	./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
+3. HTTP/3 test:
+	./http_bench -d 10s -c 10 -http http3 -m POST "https://127.0.0.1/test1" -body '{"key":"value"}'
 
-4.Example ws/wss test:
-	./http_bench -d 10s -c 10 -http ws "ws://127.0.0.1" -body "{}"
+4. WebSocket test:
+	./http_bench -d 10s -c 10 -http ws "ws://127.0.0.1/ws" -body '{"message":"hello"}'
 
-5.Example dashboard test:
+5. Dashboard mode:
 	./http_bench -dashboard "127.0.0.1:12345" -verbose 1
 
-6.Example support function and variable test:
-	./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
+6. Template function test:
+	./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10 }}" -verbose 0
 
-7.Example distributed stress test:
-	(1) ./http_bench -listen "127.0.0.1:12710" -verbose 1
-	(2) ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -verbose 1 -W "127.0.0.1:12710"`
+7. Distributed stress test:
+	# Start worker node
+	./http_bench -listen "127.0.0.1:12710" -verbose 1
+	
+	# Start controller with worker reference
+	./http_bench -c 100 -d 10s "http://127.0.0.1:18090/test1" -body '{"key":"value"}' -verbose 1 -W "127.0.0.1:12710"
+
+8. Advanced options:
+	./http_bench -n 1000 -c 50 -q 100 -t 5000 -m POST -H "Content-Type: application/json" -H "Authorization: Bearer token123" "https://api.example.com/endpoint"`
 )
 
 func main() {
@@ -867,4 +817,134 @@ func main() {
 			stressResult.print()
 		}
 	}
+}
+
+func NewConnPool(maxSize int, factory func() *StressClient) *ConnPool {
+	return &ConnPool{
+		clients: make(chan *StressClient, maxSize),
+		factory: factory,
+		maxSize: maxSize,
+	}
+}
+
+func (p *ConnPool) Get() *StressClient {
+    p.mu.Lock()
+    defer p.mu.Unlock()
+    
+    select {
+    case client := <-p.clients:
+        if client != nil {
+            p.active++
+            return client
+        }
+    default:
+        if p.active < p.maxSize {
+            p.active++
+            return p.factory()
+        }
+    }
+    return nil
+}
+
+func (p *ConnPool) Put(client *StressClient) {
+    if client == nil {
+        return
+    }
+    
+    p.mu.Lock()
+    defer p.mu.Unlock()
+    
+    select {
+    case p.clients <- client:
+        // 成功放回连接池
+    default:
+        // 连接池满，关闭连接
+        p.closeClient(client)
+    }
+    p.active--
+}
+
+func (p *ConnPool) closeClient(client *StressClient) {
+    if client.httpClient != nil {
+        client.httpClient.CloseIdleConnections()
+    }
+    if client.wsClient != nil {
+        client.wsClient.Close()
+    }
+    if client.tcpClient != nil {
+        client.tcpClient.Close()
+    }
+}
+
+func (b *StressWorker) createNewClient() *StressClient {
+	client := &StressClient{}
+	switch b.RequestParams.RequestType {
+	case typeHttp3:
+		client.httpClient = &http.Client{
+			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			Transport: &http3.RoundTripper{
+				TLSClientConfig: &tls.Config{
+					RootCAs:            http3Pool,
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+	case typeHttp2:
+		client.httpClient = &http.Client{
+			Timeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			Transport: &http2.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+				DisableCompression: b.RequestParams.DisableCompression,
+			},
+		}
+	case typeHttp1:
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			DisableCompression:  b.RequestParams.DisableCompression,
+			DisableKeepAlives:   b.RequestParams.DisableKeepAlives,
+			TLSHandshakeTimeout: time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			TLSNextProto:        make(map[string]func(string, *tls.Conn) http.RoundTripper),
+			DialContext: (&net.Dialer{
+				Timeout:   time.Duration(b.RequestParams.Timeout) * time.Second,
+				KeepAlive: time.Duration(60) * time.Second,
+			}).DialContext,
+			MaxIdleConns:        10,
+			MaxIdleConnsPerHost: 10,
+			MaxConnsPerHost:     10,
+			IdleConnTimeout:     time.Duration(90) * time.Second,
+		}
+		if proxyUrl != nil {
+			tr.Proxy = http.ProxyURL(proxyUrl)
+		}
+		client.httpClient = &http.Client{
+			Timeout:   time.Duration(b.RequestParams.Timeout) * time.Millisecond,
+			Transport: tr,
+		}
+	case typeWs, typeWss:
+		c, _, err := websocket.DefaultDialer.Dial(b.RequestParams.Url, b.RequestParams.Headers)
+		if err != nil || c == nil {
+			verbosePrint(vERROR, "websocket err: %v", err)
+			return nil
+		}
+		client.wsClient = c
+	case typeTCP:
+		c, err := DialTCP(b.RequestParams.Url, ConnOption{
+			Timeout:           time.Duration(b.RequestParams.Duration) * time.Second,
+			DisableKeepAlives: b.RequestParams.DisableKeepAlives,
+		})
+		if err != nil || c == nil {
+			verbosePrint(vERROR, "tcp err: %s", err)
+			return nil
+		}
+		client.tcpClient = c
+	default:
+		verbosePrint(vERROR, "not support %s", b.RequestParams.RequestType)
+		return nil
+	}
+
+	return client
 }

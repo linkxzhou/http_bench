@@ -31,16 +31,24 @@ type StressResult struct {
 	Output         string           `json:"output"`
 }
 
+const (
+	GB = 1 << 30
+	MB = 1 << 20
+	KB = 1 << 10
+)
+
+// toByteSizeStr converts bytes to human readable string
 func toByteSizeStr(size float64) string {
 	switch {
-	case size > 1073741824:
-		return fmt.Sprintf("%4.3f GB", size/1073741824)
-	case size > 1048576:
-		return fmt.Sprintf("%4.3f MB", size/1048576)
-	case size > 1024:
-		return fmt.Sprintf("%4.3f KB", size/1024)
+	case size >= GB:
+		return fmt.Sprintf("%4.3f GB", size/GB)
+	case size >= MB:
+		return fmt.Sprintf("%4.3f MB", size/MB)
+	case size >= KB:
+		return fmt.Sprintf("%4.3f KB", size/KB)
+	default:
+		return fmt.Sprintf("%4.3f bytes", size)
 	}
-	return fmt.Sprintf("%4.3f bytes", size)
 }
 
 func println(vfmt string, args ...interface{}) {
@@ -49,9 +57,9 @@ func println(vfmt string, args ...interface{}) {
 
 func GetStressResult() *StressResult {
 	return &StressResult{
-		ErrorDist:      make(map[string]int, 0),
-		StatusCodeDist: make(map[int]int, 0),
-		Lats:           make(map[string]int64, 0),
+		ErrorDist:      make(map[string]int),
+		StatusCodeDist: make(map[int]int),
+		Lats:           make(map[string]int64),
 		Slowest:        int64(IntMin),
 		Fastest:        int64(IntMax),
 	}
@@ -88,25 +96,26 @@ func (result *StressResult) print() {
 
 // printLatencies Print latency distribution.
 func (result *StressResult) printLatencies() {
-	data := make([]string, len(pctls))
-	durationLats := make([]string, 0)
+	pctlData := make([]string, len(pctls))
+	durationLats := make([]string, 0, len(result.Lats)) // 预分配容量
+
 	for duration := range result.Lats {
 		durationLats = append(durationLats, duration)
 	}
-
 	sort.Strings(durationLats)
 
-	for i, j, dCounts := 0, 0, int64(0); i < len(durationLats) && j < len(pctls); i = i + 1 {
-		dCounts = dCounts + result.Lats[durationLats[i]]
-		if int(dCounts*100/result.LatsTotal) >= pctls[j] {
-			data[j] = durationLats[i]
+	var dCounts int64
+	for i, j := 0, 0; i < len(durationLats) && j < len(pctls); i++ {
+		dCounts += result.Lats[durationLats[i]]
+		if percentage := dCounts * 100 / result.LatsTotal; int(percentage) >= pctls[j] {
+			pctlData[j] = durationLats[i]
 			j++
 		}
 	}
 
 	println("\nLatency distribution:")
-	for i := 0; i < len(pctls); i++ {
-		println("  %v%% in %s secs", pctls[i], data[i])
+	for i, pctl := range pctls {
+		println("  %v%% in %s secs", pctl, pctlData[i])
 	}
 }
 
@@ -122,7 +131,7 @@ func (result *StressResult) printStatusCodes() {
 func (result *StressResult) printErrors() {
 	println("\nError distribution:")
 	for err, num := range result.ErrorDist {
-		fmt.Printf("  [%d]\t%s", num, err)
+		println("  [%d]\t%s", num, err)
 	}
 }
 
@@ -139,60 +148,53 @@ func (result *StressResult) append(res *result) {
 
 	if res.err != nil {
 		result.ErrorDist[res.err.Error()]++
-	} else {
-		result.Lats[fmt.Sprintf("%4.3f", res.duration.Seconds())]++
-		duration := int64(res.duration.Seconds() * scaleNum)
-		result.LatsTotal++
-		if result.Slowest < duration {
-			result.Slowest = duration
-		}
-		if result.Fastest > duration {
-			result.Fastest = duration
-		}
-		result.AvgTotal += duration
-		result.StatusCodeDist[res.statusCode]++
-		if res.contentLength > 0 {
-			result.SizeTotal += res.contentLength
-		}
+		return 
+	}
+
+	result.Lats[fmt.Sprintf("%4.3f", res.duration.Seconds())]++
+	duration := int64(res.duration.Seconds() * scaleNum)
+	result.LatsTotal++
+	result.Slowest = max(result.Slowest, duration)
+	result.Fastest = min(result.Fastest, duration)
+	result.AvgTotal += duration
+	result.StatusCodeDist[res.statusCode]++
+	if res.contentLength > 0 {
+		result.SizeTotal += res.contentLength
 	}
 }
 
-// calMutliStressResult calculate mutli stress result
-func calMutliStressResult(result *StressResult, resultList ...StressResult) *StressResult {
+// calculateMultiStressResult calculate multi stress result
+func calculateMultiStressResult(result *StressResult, resultList ...StressResult) *StressResult {
 	if result == nil {
 		result = GetStressResult()
 	}
 
-	var duration int64 = result.Duration
-
+	duration := result.Duration
+	
+	// 使用更高效的方式合并结果
 	for _, v := range resultList {
-		if result.Slowest < v.Slowest {
-			result.Slowest = v.Slowest
-		}
-		if result.Fastest > v.Fastest {
-			result.Fastest = v.Fastest
-		}
+		result.Slowest = max(result.Slowest, v.Slowest)
+		result.Fastest = min(result.Fastest, v.Fastest)
 		result.LatsTotal += v.LatsTotal
 		result.AvgTotal += v.AvgTotal
-		for code, c := range v.StatusCodeDist {
-			result.StatusCodeDist[code] += c
-		}
 		result.SizeTotal += v.SizeTotal
-		for code, c := range v.ErrorDist {
-			result.ErrorDist[code] += c
-		}
-		for lats, c := range v.Lats {
-			result.Lats[lats] += c
-		}
 
-		if duration < v.Duration {
-			duration = v.Duration
+		// 合并映射
+		for code, count := range v.StatusCodeDist {
+			result.StatusCodeDist[code] += count
 		}
+		for errMsg, count := range v.ErrorDist {
+			result.ErrorDist[errMsg] += count
+		}
+		for lats, count := range v.Lats {
+			result.Lats[lats] += count
+		}
+		duration = max(duration, v.Duration)
 	}
 
 	if duration > 0 {
 		result.Duration = duration
-		result.Rps = int64((result.LatsTotal * scaleNum) / duration)
+		result.Rps = (result.LatsTotal * scaleNum) / duration
 	}
 
 	if result.LatsTotal > 0 {

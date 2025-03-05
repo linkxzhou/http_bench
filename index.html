@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" style="height: 100%">
+<html :lang="currentLang" style="height: 100%">
 
 <head>
     <meta charset="utf-8">
@@ -81,6 +81,7 @@
             }
         };
     </script>
+    <title id="page-title">HTTP 压力测试工具</title>
 </head>
 
 <body style="height: 100%; margin: 0">
@@ -96,44 +97,44 @@
         </el-select>
         <el-row>
             <el-button type="primary" :loading="g_running" @click="submitStart">{{t('start')}}</el-button>
-            <el-button type="danger" @click="submitStop">{{t('stop')}}</el-button>
+            <el-button type="danger" @click="submitStop" :disabled="!g_running">{{t('stop')}}</el-button>
         </el-row>
         <el-input :placeholder="t('metrics.durationPlaceholder')" v-model="time_metrics" style="margin: 4px 0;">
             <template slot="prepend">{{t('metrics.duration')}}</template>
         </el-input>
         <el-input placeholder="request url" v-model="url" style="margin: 4px 0;">
-            <template slot="prepend">Stress Url</template>
+            <template slot="prepend">{{t('request.url')}}</template>
         </el-input>
         <el-input placeholder="GET, POST, PUT, DELETE, HEAD, OPTIONS" v-model="request_method" style="margin: 4px 0;">
-            <template slot="prepend">Request method</template>
+            <template slot="prepend">{{t('request.method')}}</template>
         </el-input>
         <el-input placeholder="Request body" v-model="request_body" type="textarea"
             :autosize="{ minRows: 5, maxRows: 100}" style="margin: 4px 0;">
-            <template slot="prepend">Request body</template>
+            <template slot="prepend">{{t('request.body')}}</template>
         </el-input>
         <el-input placeholder="empty, hex, default empty" v-model="request_bodytype" style="margin: 4px 0;">
-            <template slot="prepend">Request bodytype</template>
+            <template slot="prepend">{{t('request.bodyType')}}</template>
         </el-input>
         <el-input placeholder="http1, http2, ws, wss, default http1" v-model="request_type" style="margin: 4px 0;">
-            <template slot="prepend">Request type</template>
+            <template slot="prepend">{{t('request.type')}}</template>
         </el-input>
         <el-input placeholder="n" v-model="n" style="margin: 4px 0;">
-            <template slot="prepend">N</template>
+            <template slot="prepend">{{t('stress.total')}}</template>
         </el-input>
         <el-input placeholder="c" v-model="c" style="margin: 4px 0;">
-            <template slot="prepend">C</template>
+            <template slot="prepend">{{t('stress.concurrent')}}</template>
         </el-input>
         <el-input placeholder="duration(s)" v-model="duration" style="margin: 4px 0;">
-            <template slot="prepend">Duration</template>
+            <template slot="prepend">{{t('stress.duration')}}</template>
         </el-input>
         <el-input placeholder="timeout(ms)" v-model="timeout" style="margin: 4px 0;">
-            <template slot="prepend">Timeout</template>
+            <template slot="prepend">{{t('stress.timeout')}}</template>
         </el-input>
         <el-input placeholder="qps" v-model="qps" style="margin: 4px 0;">
-            <template slot="prepend">QPS</template>
+            <template slot="prepend">{{t('stress.qps')}}</template>
         </el-input>
         <el-input placeholder="/api" v-model="worker_api" style="margin: 4px 0;">
-            <template slot="prepend">Worker API</template>
+            <template slot="prepend">{{t('stress.worker')}}</template>
         </el-input>
     </div>
     <script type="text/javascript">
@@ -207,7 +208,9 @@
                 stressChart.setOption(option);
             }
         }
-        metricsLoad([new Date().format("hh:mm:ss")], [0])
+        
+        // Initialize chart
+        metricsLoad([new Date().format("hh:mm:ss")], [0]);
         window.addEventListener('resize', stressChart.resize);
 
         new Vue({
@@ -235,7 +238,7 @@
                 g_interval: undefined,
             },
             methods: {
-                // Add t method for i18n
+                // i18n translation method
                 t(key) {
                     const keys = key.split('.');
                     let value = i18n[this.currentLang];
@@ -245,35 +248,30 @@
                     }
                     return value || key;
                 },
+                // Switch language
                 changeLang(lang) {
                     this.currentLang = lang;
                     localStorage.setItem('preferred-lang', lang);
+                    // 更新页面标题
+                    document.getElementById('page-title').innerText = this.t('title');
+                    // 更新 HTML lang 属性
+                    document.documentElement.setAttribute('lang', lang);
                 },
+                // Show message
+                showMessage(message, type = 'success', duration = 2000) {
+                    this.$message({
+                        showClose: true,
+                        message: this.t(`message.${message}`) || message,
+                        type: type,
+                        duration: duration,
+                    });
+                },
+                // Start stress test
                 submitStart: function (e) {
-                    let request_data = {
-                        cmd: 0,
-                        sequence_id: this.g_seqid,
-                        request_method: this.request_method,
-                        request_body: this.request_body,
-                        request_bodytype: this.request_bodytype,
-                        request_type: this.request_type,
-                        n: parseInt(this.n),
-                        c: parseInt(this.c),
-                        duration: parseInt(this.duration),
-                        timeout: parseInt(this.timeout),
-                        qps: parseInt(this.qps),
-                        disable_compression: this.disable_compression || this.disable_compression == "true" ? true : false,
-                        disable_keepalives: this.disable_keepalives || this.disable_keepalives == "true" ? true : false,
-                        auth_username: this.auth_username,
-                        auth_password: this.auth_password,
-                        url: this.url,
-                    };
-
-                    let worker_api = workerApiPath;
-                    if (this.worker_api.length > 0) {
-                        worker_api = this.worker_api;
-                    }
-
+                    // Build request data
+                    let request_data = this.buildRequestData(0);
+                    let worker_api = this.getWorkerApi();
+                    // Send start stress test request
                     fetch(worker_api, {
                         method: 'POST',
                         headers: contentType,
@@ -282,103 +280,119 @@
                         if (data.err_code != 0) {
                             this.g_running = false;
                             this.g_interval && clearInterval(this.g_interval);
-
-                            this.$message({
-                                showClose: true,
-                                message: 'error：' + data.err_msg,
-                                type: 'error',
-                                duration: 5000,
-                            });
+                            this.showMessage(data.err_msg, 'error', 5000);
                             return;
                         }
 
-                        this.$message({
-                            showClose: true,
-                            message: 'Start Stress',
-                            type: 'success',
-                            duration: 2000,
-                        });
+                        this.showMessage('start');
+                    }).catch(err => {
+                        this.showMessage(err.message, 'error', 5000);
+                        this.g_running = false;
                     });
-
+                    // Setup monitoring
+                    this.setupMetricsMonitoring(request_data, worker_api);
+                },
+                // Build request data
+                buildRequestData(cmd) {
+                    return {
+                        cmd: cmd,
+                        sequence_id: this.g_seqid,
+                        request_method: this.request_method,
+                        request_body: this.request_body,
+                        request_bodytype: this.request_bodytype,
+                        request_type: this.request_type,
+                        n: parseInt(this.n) || 0,
+                        c: parseInt(this.c) || 1,
+                        duration: parseInt(this.duration) || 1000,
+                        timeout: parseInt(this.timeout) || 3000,
+                        qps: parseInt(this.qps) || 0,
+                        disable_compression: this.disable_compression || this.disable_compression == "true" ? true : false,
+                        disable_keepalives: this.disable_keepalives || this.disable_keepalives == "true" ? true : false,
+                        auth_username: this.auth_username,
+                        auth_password: this.auth_password,
+                        url: this.url,
+                    };
+                },
+                // Get Worker API address
+                getWorkerApi() {
+                    return this.worker_api.length > 0 ? this.worker_api : workerApiPath;
+                },
+                // Setup monitoring
+                setupMetricsMonitoring(request_data, worker_api) {
                     let time_list = [], qps_list = [], lats_total = 0;
                     let status_code_list = {}, lats_status_code_list = {};
                     let time_metrics = this.time_metrics > 0 ? this.time_metrics : 2000;
 
                     this.g_running = true;
-                    this.g_interval = setInterval(function () {
+                    this.g_interval = setInterval(() => {
                         request_data.cmd = 2; // get metrics
                         fetch(worker_api, {
                             method: 'POST',
                             headers: contentType,
                             body: JSON.stringify(request_data)
                         }).then(response => response.json()).then(data => {
-                            if (data && data.lats_total && (data.lats_total - lats_total) >= 0) {
-                                time_list.push(new Date().format("hh:mm:ss"));
-                                qps_list.push((data.lats_total - lats_total) * 1000 / time_metrics);
-                                lats_total = data.lats_total;
-
-                                if (data.status_code_dist) {
-                                    for (let key in data.status_code_dist) {
-                                        if (!status_code_list.hasOwnProperty(key)) {
-                                            status_code_list[key] = [];
-                                        }
-                                        if (!lats_status_code_list.hasOwnProperty(key)) {
-                                            lats_status_code_list[key] = 0;
-                                        }
-                                        status_code_list[key].push(
-                                            (data.status_code_dist[key] - lats_status_code_list[key]) * 1000 / time_metrics)
-                                    }
-                                    lats_status_code_list = data.status_code_dist;
-                                }
-                            }
-                            metricsLoad(time_list, qps_list, status_code_list);
-                        })
+                            this.processMetricsData(data, time_list, qps_list, lats_total, status_code_list, lats_status_code_list, time_metrics);
+                            console.log("lats_status_code_list: ", lats_status_code_list);
+                        }).catch(err => {
+                            console.error("获取监控数据失败:", err);
+                        });
                     }, time_metrics);
                 },
+                // Process monitoring data
+                processMetricsData(data, time_list, qps_list, lats_total, status_code_list, lats_status_code_list, time_metrics) {
+                    if (data && data.lats_total && (data.lats_total - lats_total) >= 0) {
+                        time_list.push(new Date().format("hh:mm:ss"));
+                        qps_list.push((data.lats_total - lats_total) * 1000 / time_metrics);
+                        lats_total = data.lats_total;
+
+                        if (data.status_code_dist) {
+                            for (let key in data.status_code_dist) {
+                                if (!status_code_list.hasOwnProperty(key)) {
+                                    status_code_list[key] = [];
+                                }
+                                if (!lats_status_code_list.hasOwnProperty(key)) {
+                                    lats_status_code_list[key] = 0;
+                                }
+                                status_code_list[key].push(
+                                    (data.status_code_dist[key] - lats_status_code_list[key]) * 1000 / time_metrics)
+                            }
+                            lats_status_code_list = {...data.status_code_dist};
+                        }
+                    }
+                    metricsLoad(time_list, qps_list, status_code_list);
+                },
+                // Stop stress test
                 submitStop: function (e) {
                     this.g_running = false;
                     this.g_interval && clearInterval(this.g_interval);
-
                     let request_data = {
                         cmd: 1, // stop
                         sequence_id: this.g_seqid,
                     };
-
-                    let worker_api = workerApiPath;
-                    if (this.worker_api.length > 0) {
-                        worker_api = this.worker_api;
-                    }
-
+                    let worker_api = this.getWorkerApi();
                     fetch(worker_api, {
                         method: 'POST',
                         headers: contentType,
                         body: JSON.stringify(request_data)
                     }).then(response => response.json()).then(data => {
                         if (data.err_code != 0) {
-                            this.$message({
-                                showClose: true,
-                                message: 'error：' + data.err_msg,
-                                type: 'error',
-                                duration: 5000,
-                            });
+                            this.showMessage(data.err_msg, 'error', 10000);
                             return;
                         }
-
-                        this.$message({
-                            showClose: true,
-                            message: 'Stop Stress',
-                            type: 'success',
-                            duration: 2000,
-                        });
+                        this.showMessage('stop');
+                    }).catch(err => {
+                        this.showMessage(err.message, 'error', 10000);
                     });
                 }
             },
             created() {
-                // 初始化时读取存储的语言设置
+                // Read stored language settings on initialization
                 const savedLang = localStorage.getItem('preferred-lang');
                 if (savedLang && i18n[savedLang]) {
                     this.currentLang = savedLang;
                 }
+                // Set page title
+                document.getElementById('page-title').innerText = this.t('title');
             },
         })
     </script>

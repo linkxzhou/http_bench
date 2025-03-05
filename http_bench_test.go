@@ -11,6 +11,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"io"
 
 	"github.com/gorilla/websocket"
 	"github.com/quic-go/quic-go/http3"
@@ -19,10 +20,15 @@ import (
 const (
 	gopath   = "./http_bench"
 	duration = 10
+	testTimeout = 30 * time.Second // 测试超时时间
 )
 
 type command struct {
 	cmder *exec.Cmd
+}
+
+func withPrintln(format string, args ...interface{}) {
+	fmt.Printf(format+"\n", args...)
 }
 
 func (c *command) init(cmd string, args []string) {
@@ -49,25 +55,101 @@ func (c *command) stop() error {
 	return c.cmder.Process.Kill()
 }
 
+// setupServer 创建并启动一个通用服务器
+func setupServer(name, listen string, serverType string) (interface{}, *sync.WaitGroup) {
+	var wg sync.WaitGroup
+	mux := http.NewServeMux()
+	
+	switch serverType {
+	case "ws":
+		var upgrader = websocket.Upgrader{}
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			c, err := upgrader.Upgrade(w, r, nil)
+			if err != nil {
+				return
+			}
+			defer c.Close()
+			for {
+				mt, message, err := c.ReadMessage()
+				if err != nil {
+					break
+				}
+				err = c.WriteMessage(mt, message)
+				if err != nil {
+					break
+				}
+			}
+		})
+	default: // http1, http2, http3
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			defer r.Body.Close()
+			if len(body) == 0 {
+				w.Write([]byte(fmt.Sprintf("this is empty body, type: %s", name)))
+			}
+			w.Write(body)
+		})
+	}
+
+	switch serverType {
+	case "http3":
+		srv := &http3.Server{Addr: listen, Handler: mux}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := srv.ListenAndServeTLS("./test/server.crt", "./test/server.key"); err != nil {
+				fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
+			}
+			fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
+		}()
+		return srv, &wg
+	case "ws":
+		fallthrough
+	default:
+		srv := &http.Server{Addr: listen, Handler: mux}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var err error
+			if serverType == "http2" {
+				err = srv.ListenAndServeTLS("./test/server.crt", "./test/server.key")
+			} else {
+				err = srv.ListenAndServe()
+			}
+			if err != nil && err != http.ErrServerClosed {
+				fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
+			}
+			fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
+		}()
+		return srv, &wg
+	}
+}
+
+// runCommand 执行命令并检查结果
+func runCommand(t *testing.T, name, args string, expectError bool) string {
+	cmder := command{}
+	cmder.init(gopath, strings.Split(args, " "))
+	result, err := cmder.startup()
+	if err != nil || (strings.Contains(result, "err") || 
+		strings.Contains(result, "error") || 
+		strings.Contains(result, "ERROR")) {
+		if !expectError {
+			t.Errorf("startup error: %v, result: %v", err, result)
+		}
+	}
+	fmt.Println(name+" | result: ", result)
+	return result
+}
+
 func TestStressHTTP1(t *testing.T) {
 	name := "http1"
 	listen := "127.0.0.1:18091"
-
-	var wg sync.WaitGroup
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`This is ` + name + ` Echo Server`))
-	})
-	srv := &http.Server{Addr: listen, Handler: mux}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := srv.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
-		}
-		fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
-	}()
+	srv, wg := setupServer(name, listen, "http1")
+	http1Srv := srv.(*http.Server)
 
 	for _, v := range []struct {
 		args  string
@@ -82,22 +164,18 @@ func TestStressHTTP1(t *testing.T) {
 			isErr: false,
 		},
 		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' http://%s/`, duration, name, `{"key":"value"}`, listen),
+			isErr: false,
+		},
+		{
 			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s http://%s/`, duration, name, `./test/body.txt`, listen),
 			isErr: false,
 		},
 	} {
-		cmder := command{}
-		cmder.init(gopath, strings.Split(v.args, " "))
-		result, err := cmder.startup()
-		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
-			if !v.isErr {
-				t.Errorf("startup error: %v, result: %v", err, result)
-			}
-		}
-		fmt.Println(name+" | result: ", result)
+		runCommand(t, name, v.args, v.isErr)
 	}
 
-	srv.Close()
+	http1Srv.Close()
 	wg.Wait()
 }
 
@@ -105,22 +183,8 @@ func TestStressHTTP1(t *testing.T) {
 func TestStressHTTP2(t *testing.T) {
 	name := "http2"
 	listen := "127.0.0.1:18091"
-
-	var wg sync.WaitGroup
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`This is ` + name + ` Echo Server`))
-	})
-	srv := &http.Server{Addr: listen, Handler: mux}
-
-	go func() {
-		wg.Add(1)
-		defer wg.Done()
-		if err := srv.ListenAndServeTLS("./test/server.crt", "./test/server.key"); err != nil {
-			fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
-		}
-		fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
-	}()
+	srv, wg := setupServer(name, listen, "http2")
+	http2Srv := srv.(*http.Server)
 
 	for _, v := range []struct {
 		args  string
@@ -130,41 +194,27 @@ func TestStressHTTP2(t *testing.T) {
 			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url https://%s/`, duration, name, listen),
 			isErr: false,
 		},
+		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' http://%s/`, duration, name, `{"key":"value"}`, listen),
+			isErr: false,
+		},
+		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s http://%s/`, duration, name, `./test/body.txt`, listen),
+			isErr: false,
+		},
 	} {
-		cmder := command{}
-		cmder.init(gopath, strings.Split(v.args, " "))
-		result, err := cmder.startup()
-		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
-			if !v.isErr {
-				t.Errorf("startup error: %v, result: %v", err, result)
-			}
-		}
-		fmt.Println(name+" | result: ", result)
+		runCommand(t, name, v.args, v.isErr)
 	}
 
-	srv.Close()
+	http2Srv.Close()
 	wg.Wait()
 }
 
 func TestStressHTTP3(t *testing.T) {
 	name := "http3"
 	listen := "127.0.0.1:18091"
-
-	var wg sync.WaitGroup
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`This is ` + name + ` Echo Server`))
-	})
-	srv := &http3.Server{Addr: listen, Handler: mux}
-
-	go func() {
-		wg.Add(1)
-		defer wg.Done()
-		if err := srv.ListenAndServeTLS("./test/server.crt", "./test/server.key"); err != nil {
-			fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
-		}
-		fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
-	}()
+	srv, wg := setupServer(name, listen, "http3")
+	http3Srv := srv.(*http3.Server)
 
 	for _, v := range []struct {
 		args  string
@@ -174,56 +224,27 @@ func TestStressHTTP3(t *testing.T) {
 			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url https://%s/`, duration, name, listen),
 			isErr: false,
 		},
+		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' http://%s/`, duration, name, `{"key":"value"}`, listen),
+			isErr: false,
+		},
+		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s http://%s/`, duration, name, `./test/body.txt`, listen),
+			isErr: false,
+		},
 	} {
-		cmder := command{}
-		cmder.init(gopath, strings.Split(v.args, " "))
-		result, err := cmder.startup()
-		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
-			if !v.isErr {
-				t.Errorf("startup error: %v, result: %v", err, result)
-			}
-		}
-		fmt.Println(name+" | result: ", result)
+		runCommand(t, name, v.args, v.isErr)
 	}
 
-	srv.Close()
+	http3Srv.Close()
 	wg.Wait()
 }
 
 func TestStressWS(t *testing.T) {
 	name := "ws"
 	listen := "127.0.0.1:18091"
-	var upgrader = websocket.Upgrader{} // use default options
-
-	var wg sync.WaitGroup
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		c, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			return
-		}
-		defer c.Close()
-		for {
-			mt, message, err := c.ReadMessage()
-			if err != nil {
-				break
-			}
-			err = c.WriteMessage(mt, message)
-			if err != nil {
-				break
-			}
-		}
-	})
-	srv := &http.Server{Addr: listen, Handler: mux}
-
-	go func() {
-		wg.Add(1)
-		defer wg.Done()
-		if err := srv.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
-		}
-		fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
-	}()
+	srv, wg := setupServer(name, listen, "ws")
+	wsSrv := srv.(*http.Server)
 
 	for _, v := range []struct {
 		args  string
@@ -233,42 +254,28 @@ func TestStressWS(t *testing.T) {
 			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -url ws://%s/`, duration, name, listen),
 			isErr: false,
 		},
+		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' ws://%s/`, duration, name, `{"key":"value"}`, listen),
+			isErr: false,
+		},
+		{
+			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s ws://%s/`, duration, name, `./test/body.txt`, listen),
+			isErr: false,
+		},
 	} {
-		cmder := command{}
-		cmder.init(gopath, strings.Split(v.args, " "))
-		result, err := cmder.startup()
-		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
-			if !v.isErr {
-				t.Errorf("startup error: %v, result: %v", err, result)
-			}
-		}
-		fmt.Println(name+" | result: ", result)
+		runCommand(t, name, v.args, v.isErr)
 	}
 
-	srv.Close()
+	wsSrv.Close()
 	wg.Wait()
 }
 
 // TODO: github ci has error and run local.
-func TestStressHTTP1MultipleWorker(t *testing.T) {
+func TestStressMultipleWorkerHTTP1(t *testing.T) {
 	name := "http1"
 	listen := "127.0.0.1:18091"
-
-	var wg sync.WaitGroup
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`This is ` + name + ` Echo Server`))
-	})
-	srv := &http.Server{Addr: listen, Handler: mux}
-
-	go func() {
-		wg.Add(1)
-		defer wg.Done()
-		if err := srv.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, name+" ListenAndServe err: %s\n", err.Error())
-		}
-		fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
-	}()
+	srv, wg := setupServer(name, listen, "http1")
+	http1Srv := srv.(*http.Server)
 
 	workerList := []string{"127.0.0.1:12710", "127.0.0.1:12711"}
 	for _, v := range []struct {
@@ -303,15 +310,7 @@ func TestStressHTTP1MultipleWorker(t *testing.T) {
 
 		time.Sleep(10 * time.Second) // wait for 10s
 
-		cmder := command{}
-		cmder.init(gopath, strings.Split(v.args, " "))
-		result, err := cmder.startup()
-		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
-			if !v.isErr {
-				t.Errorf("startup error: %v, result: %v", err, result)
-			}
-		}
-		fmt.Println(name+" | result: ", result)
+		runCommand(t, name, v.args, v.isErr)
 
 		// stop all workers
 		for _, workerCmd := range cmderList {
@@ -320,7 +319,7 @@ func TestStressHTTP1MultipleWorker(t *testing.T) {
 		cmderCg.Wait()
 	}
 
-	srv.Close()
+	http1Srv.Close()
 	wg.Wait()
 }
 
@@ -373,7 +372,7 @@ func TestStressTCP(t *testing.T) {
 			wg.Add(1)
 			go func(c net.Conn) {
 				defer wg.Done()
-				err = tcpHandleConnection(conn)
+				err = tcpHandleConnection(c) // 修改这里，使用传入的参数c而不是外部的conn
 				fmt.Println("tcpHandleConnection err: ", err)
 			}(conn)
 		}
@@ -392,15 +391,7 @@ func TestStressTCP(t *testing.T) {
 			isErr: false,
 		},
 	} {
-		cmder := command{}
-		cmder.init(gopath, strings.Split(v.args, " "))
-		result, err := cmder.startup()
-		if err != nil || (strings.Contains(result, "err") || strings.Contains(result, "error") || strings.Contains(result, "ERROR")) {
-			if !v.isErr {
-				t.Errorf("startup error: %v, result: %v", err, result)
-			}
-		}
-		fmt.Println(name+" | result: ", result)
+		runCommand(t, name, v.args, v.isErr)
 	}
 
 	tcpHandleStop = true // stop server

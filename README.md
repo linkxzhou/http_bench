@@ -303,3 +303,7 @@ Client Request Example:
 Body Request Example:  
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 | toString }}" -verbose 0
 ```
+
+## TODO
+（1）go build error: `pointer is missing a nullability type specifier when building on catalina`
+export CGO_CPPFLAGS="-Wno-error -Wno-nullability-completeness -Wno-expansion-to-defined"
