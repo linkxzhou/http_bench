@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html :lang="currentLang" style="height: 100%">
-
 <head>
+    <!-- Meta tags for responsive design -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    
+    <!-- External dependencies -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
     <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    
     <script type="text/javascript">
-        // 添加语言包配置
+        // i18n configuration for multilingual support
         const i18n = {
             'zh-CN': {
                 title: 'HTTP 压力测试工具',
@@ -85,20 +88,24 @@
 </head>
 
 <body style="height: 100%; margin: 0">
-    <div id="container"
-        style="height: 70%; margin: auto; width:98%; padding: 10px; box-sizing: border-box; box-shadow: rgba(0, 0, 0, 0.3) 0px 0px 20px;">
-    </div>
+    <!-- Chart container -->
+    <div id="container" style="height: 70%; margin: auto; width:98%; padding: 10px; box-sizing: border-box; box-shadow: rgba(0, 0, 0, 0.3) 0px 0px 20px;"></div>
 
-    <!-- 修改表单标签为多语言 -->
+    <!-- Main application container -->
     <div id="app" style="margin: 20px;">
+        <!-- Language selector -->
         <el-select v-model="currentLang" @change="changeLang" size="small" style="margin-right: 15px; margin-bottom: 10px;">
             <el-option label="中文" value="zh-CN"></el-option>
             <el-option label="English" value="en-US"></el-option>
         </el-select>
+
+        <!-- Control buttons -->
         <el-row>
             <el-button type="primary" :loading="g_running" @click="submitStart">{{t('start')}}</el-button>
             <el-button type="danger" @click="submitStop" :disabled="!g_running">{{t('stop')}}</el-button>
         </el-row>
+
+        <!-- Form inputs -->
         <el-input :placeholder="t('metrics.durationPlaceholder')" v-model="time_metrics" style="margin: 4px 0;">
             <template slot="prepend">{{t('metrics.duration')}}</template>
         </el-input>
@@ -138,6 +145,7 @@
         </el-input>
     </div>
     <script type="text/javascript">
+        // Date formatting utility
         Date.prototype.format = function (fmt) {
             let o = {
                 "M+": this.getMonth() + 1,
@@ -159,15 +167,18 @@
             return fmt;
         }
 
+        // Constants
         const contentType = { 'Content-Type': 'application/json;charset=utf-8' };
         const workerApiPath = "/api";
 
+        // Initialize chart
         let dom = document.getElementById('container');
         let stressChart = echarts.init(dom, 'dark', {
             renderer: 'canvas',
             useDirtyRect: false
         });
 
+        // Chart rendering function
         function metricsLoad(timeList, qpsList, codeList) {
             let option = {
                 legend: {
@@ -209,13 +220,24 @@
             }
         }
         
-        // Initialize chart
+        // Initialize chart with empty data
         metricsLoad([new Date().format("hh:mm:ss")], [0]);
-        window.addEventListener('resize', stressChart.resize);
 
+        // Optimize chart resize handler with debouncing
+        const debounce = (fn, delay) => {
+            let timer = null;
+            return function() {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, arguments), delay);
+            };
+        };
+        window.addEventListener('resize', debounce(() => stressChart.resize(), 250));
+
+        // Vue application instance
         new Vue({
             el: '#app',
             data: {
+                // Application state
                 currentLang: 'zh-CN',
                 time_metrics: 2000,
                 request_method: "GET",
@@ -397,5 +419,4 @@
         })
     </script>
 </body>
-
 </html>

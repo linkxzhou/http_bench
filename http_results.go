@@ -37,17 +37,26 @@ const (
 	KB = 1 << 10
 )
 
+// Pre-allocate common string formats to avoid repeated allocations
+var (
+    durationFormat = "%4.3f"
+    bytesFormat    = "%4.3f bytes"
+    kbFormat       = "%4.3f KB"
+    mbFormat       = "%4.3f MB"
+    gbFormat       = "%4.3f GB"
+)
+
 // toByteSizeStr converts bytes to human readable string
 func toByteSizeStr(size float64) string {
 	switch {
 	case size >= GB:
-		return fmt.Sprintf("%4.3f GB", size/GB)
+		return fmt.Sprintf(gbFormat, size/GB)
 	case size >= MB:
-		return fmt.Sprintf("%4.3f MB", size/MB)
+		return fmt.Sprintf(mbFormat, size/MB)
 	case size >= KB:
-		return fmt.Sprintf("%4.3f KB", size/KB)
+		return fmt.Sprintf(kbFormat, size/KB)
 	default:
-		return fmt.Sprintf("%4.3f bytes", size)
+		return fmt.Sprintf(bytesFormat, size)
 	}
 }
 
@@ -55,11 +64,12 @@ func println(vfmt string, args ...interface{}) {
 	fmt.Printf(vfmt+"\n", args...)
 }
 
+// GetStressResult creates and initializes a new StressResult
 func GetStressResult() *StressResult {
 	return &StressResult{
-		ErrorDist:      make(map[string]int),
-		StatusCodeDist: make(map[int]int),
-		Lats:           make(map[string]int64),
+		ErrorDist:      make(map[string]int, 10),      // Pre-allocate with expected capacity
+		StatusCodeDist: make(map[int]int, 5),          // Most APIs use few status codes
+		Lats:           make(map[string]int64, 100),   // Pre-allocate for latency buckets
 		Slowest:        int64(IntMin),
 		Fastest:        int64(IntMax),
 	}
@@ -97,7 +107,7 @@ func (result *StressResult) print() {
 // printLatencies Print latency distribution.
 func (result *StressResult) printLatencies() {
 	pctlData := make([]string, len(pctls))
-	durationLats := make([]string, 0, len(result.Lats)) // 预分配容量
+	durationLats := make([]string, 0, len(result.Lats)) // Pre-allocate capacity
 
 	for duration := range result.Lats {
 		durationLats = append(durationLats, duration)
@@ -142,6 +152,7 @@ func (result *StressResult) marshal() ([]byte, error) {
 	return json.Marshal(result)
 }
 
+// append adds a result to the StressResult with proper locking
 func (result *StressResult) append(res *result) {
 	resultRdMutex.Lock()
 	defer resultRdMutex.Unlock()
@@ -151,7 +162,10 @@ func (result *StressResult) append(res *result) {
 		return 
 	}
 
-	result.Lats[fmt.Sprintf("%4.3f", res.duration.Seconds())]++
+	// Format duration once and reuse
+	durationStr := fmt.Sprintf(durationFormat, res.duration.Seconds())
+	result.Lats[durationStr]++
+	
 	duration := int64(res.duration.Seconds() * scaleNum)
 	result.LatsTotal++
 	result.Slowest = max(result.Slowest, duration)
@@ -171,7 +185,7 @@ func calculateMultiStressResult(result *StressResult, resultList ...StressResult
 
 	duration := result.Duration
 	
-	// 使用更高效的方式合并结果
+	// Use more efficient way to merge results
 	for _, v := range resultList {
 		result.Slowest = max(result.Slowest, v.Slowest)
 		result.Fastest = min(result.Fastest, v.Fastest)
@@ -179,7 +193,7 @@ func calculateMultiStressResult(result *StressResult, resultList ...StressResult
 		result.AvgTotal += v.AvgTotal
 		result.SizeTotal += v.SizeTotal
 
-		// 合并映射
+		// Merge maps
 		for code, count := range v.StatusCodeDist {
 			result.StatusCodeDist[code] += count
 		}

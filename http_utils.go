@@ -45,7 +45,7 @@ var logLevels = map[int]string{
 	vINFO:  "INFO",
 }
 
-// 优化 verbosePrint 函数，避免不必要的格式化
+// Optimize verbosePrint function to avoid unnecessary formatting
 func verbosePrint(level int, vfmt string, args ...interface{}) {
 	if *verbose > level {
 		return
@@ -56,7 +56,7 @@ func verbosePrint(level int, vfmt string, args ...interface{}) {
 		prefix = "[" + l + "]"
 	}
 
-	// 当没有参数时避免不必要的 Sprintf 调用
+	// Avoid unnecessary Sprintf calls when there are no arguments
 	if len(args) == 0 {
 		fmt.Println(prefix + " " + vfmt)
 	} else {
@@ -115,10 +115,10 @@ func intSum(v ...int64) int64 {
 	return r
 }
 
-// 添加一个互斥锁来保护 fnSrc 的并发访问
+// Add a mutex to protect concurrent access to fnSrc
 var fnSrcMutex sync.Mutex
 
-// 优化 random 函数，确保线程安全
+// Optimize random function to ensure thread safety
 func random(min, max int64) int64 {
 	fnSrcMutex.Lock()
 	defer fnSrcMutex.Unlock()
@@ -141,7 +141,7 @@ func date(fmt string) string {
 	return formatTime(time.Now(), fmt)
 }
 
-// 优化 randomDate 函数，确保线程安全
+// Optimize randomDate function to ensure thread safety
 func randomDate(fmt string) string {
 	fnSrcMutex.Lock()
 	randomTime := time.Unix(rand.Int63n(time.Now().Unix()-94608000)+94608000, 0)
@@ -153,30 +153,22 @@ func escape(u string) string {
 	return gourl.QueryEscape(u)
 }
 
-// 优化 randomN 函数，使用更高效的随机数生成
+// Optimize randomN function for more efficient random number generation
 func randomN(n int, letter string) string {
-	if n <= 0 {
-		return ""
-	}
+    if n <= 0 {
+        return ""
+    }
 
-	b := make([]byte, n)
-	letterLen := len(letter)
-	// 使用互斥锁保护 fnSrc 以确保线程安全
-	r := rand.New(fnSrc)
+    b := make([]byte, n)
+    letterLen := int64(len(letter))
 
-	// 批量生成随机索引以提高性能
-	for i, cache, remain := 0, r.Int63(), letterIdxMax; i < n; {
-		if remain == 0 {
-			cache, remain = r.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < letterLen {
-			b[i] = letter[idx]
-			i++
-		}
-		cache >>= letterIdxBits
-		remain--
-	}
-	return string(b)
+    fnSrcMutex.Lock()
+    for i := 0; i < n; i++ {
+        b[i] = letter[rand.Int63n(letterLen)%letterLen]
+    }
+    fnSrcMutex.Unlock()
+
+    return string(b)
 }
 
 // randomString generates a random string of length n
@@ -199,7 +191,7 @@ func getEnv(key string) string {
 	return os.Getenv(key)
 }
 
-// 优化 hexToString 函数，添加错误处理
+// Optimize hexToString function with error handling
 func hexToString(hexStr string) string {
 	data, err := hex.DecodeString(hexStr)
 	if err != nil {
@@ -218,7 +210,7 @@ func toString(args ...interface{}) string {
 	return fmt.Sprintf(`"%v"`, args...)
 }
 
-// 优化 parseTime 函数，支持更多时间单位和更好的错误处理
+// Optimize parseTime function to support more time units and better error handling
 func parseTime(timeStr string) int64 {
 	if len(timeStr) == 0 {
 		usageAndExit("empty time string")
@@ -242,7 +234,7 @@ func parseTime(timeStr string) int64 {
 		multi = 86400
 	}
 
-	// 如果最后一个字符不是有效的时间单位，则假设单位是秒
+	// If the last character is not a valid time unit, assume seconds
 	if unit >= '0' && unit <= '9' {
 		valueStr = timeStr
 	}
@@ -261,19 +253,19 @@ var bytePool = sync.Pool{
 	},
 }
 
-// 优化 fastRead 函数，添加缓冲区大小限制
+// Optimize fastRead function with buffer size limit
 func fastRead(r io.Reader, cycleRead bool) (int64, error) {
 	buf := bytePool.Get().(*bytes.Buffer)
 	buf.Reset()
 	defer bytePool.Put(buf)
 
-	// 设置最大读取大小，防止内存溢出
+	// Set maximum read size to prevent memory overflow
 	const maxReadSize = 10 * 1024 * 1024 // 10MB
 	
 	var n int64
 	var err error
 	
-	// 使用 LimitReader 限制单次读取大小
+	// Use LimitReader to restrict single read size
 	limitedReader := io.LimitReader(r, maxReadSize)
 	n, err = io.Copy(buf, limitedReader)
 	
@@ -281,9 +273,9 @@ func fastRead(r io.Reader, cycleRead bool) (int64, error) {
 		return n, err
 	}
 	
-	// 如果读取达到限制且需要继续读取
+	// If reading reaches the limit and needs to continue reading
 	if n == maxReadSize && cycleRead {
-		// 继续读取剩余数据但不保存，只计算大小
+		// Continue reading remaining data without saving, only calculate size
 		for {
 			nn, err := io.Copy(io.Discard, io.LimitReader(r, maxReadSize))
 			n += nn
@@ -305,7 +297,7 @@ func parseInputWithRegexp(input, regx string) ([]string, error) {
 	return matches, nil
 }
 
-// 优化 parseFile 函数，使用更高效的行分割方法
+// Optimize parseFile function with more efficient line splitting
 func parseFile(fileName string, delimiter []rune) ([]string, error) {
 	content, err := os.ReadFile(fileName)
 	if err != nil {
@@ -316,12 +308,12 @@ func parseFile(fileName string, delimiter []rune) ([]string, error) {
 		return []string{string(content)}, nil
 	}
 
-	// 预分配足够的容量以减少重新分配
+	// Pre-allocate sufficient capacity to reduce reallocation
 	contentStr := string(content)
-	estimatedLines := min(int64(len(contentStr)/30), 1000) // 估计行数
+	estimatedLines := min(int64(len(contentStr)/30), 1000) // Estimate line count
 	result := make([]string, 0, estimatedLines)
 	
-	// 创建分隔符集合用于快速查找
+	// Create delimiter set for quick lookup
 	delimSet := make(map[rune]struct{}, len(delimiter))
 	for _, d := range delimiter {
 		delimSet[d] = struct{}{}
@@ -332,7 +324,7 @@ func parseFile(fileName string, delimiter []rune) ([]string, error) {
 		return ok
 	})
 
-	// 过滤空行
+	// Filter empty lines
 	for _, line := range lines {
 		if line != "" {
 			result = append(result, line)
@@ -351,32 +343,10 @@ type tcpConn struct {
 	tcpClient net.Conn
 	uri       string
 	option    ConnOption
+	lastUsed  time.Time  // Add lastUsed field to track when the connection was last used
 }
 
-// 优化 tcpConn.Do 方法，添加写入超时控制
-func (tcp *tcpConn) Do(body []byte) (int64, error) {
-	if tcp.tcpClient == nil {
-		return 0, ErrInitTcpClient
-	}
-
-	// 设置写入超时
-	if err := tcp.tcpClient.SetWriteDeadline(time.Now().Add(tcp.option.Timeout)); err != nil {
-		return 0, fmt.Errorf("set write deadline failed: %w", err)
-	}
-	
-	if _, err := tcp.tcpClient.Write(body); err != nil {
-		return 0, fmt.Errorf("write failed: %w", err)
-	}
-
-	// 设置读取超时
-	if err := tcp.tcpClient.SetReadDeadline(time.Now().Add(tcp.option.Timeout)); err != nil {
-		return 0, fmt.Errorf("set read deadline failed: %w", err)
-	}
-	
-	return fastRead(tcp.tcpClient, false)
-}
-
-// 添加一个缓存池来重用 TCP 连接
+// Add a connection pool to reuse TCP connections
 var tcpConnPool = sync.Pool{
 	New: func() interface{} {
 		return &tcpConn{}
@@ -385,17 +355,17 @@ var tcpConnPool = sync.Pool{
 
 // DialTCP creates a new TCP connection with timeout control and connection pooling
 func DialTCP(uri string, option ConnOption) (*tcpConn, error) {
-	// 从连接池获取 TCP 连接对象
+	// Get TCP connection object from pool
 	tcpConn := tcpConnPool.Get().(*tcpConn)
 	
-	// 添加连接超时控制
+	// Add connection timeout control
 	dialer := net.Dialer{
 		Timeout: option.Timeout,
 	}
 	
 	conn, err := dialer.Dial("tcp", uri)
 	if err != nil {
-		// 连接失败时将对象放回池中
+		// Put the object back to the pool when connection fails
 		tcpConnPool.Put(tcpConn)
 		return nil, fmt.Errorf("failed to dial TCP: %w", err)
 	}
@@ -406,15 +376,42 @@ func DialTCP(uri string, option ConnOption) (*tcpConn, error) {
 		return nil, fmt.Errorf("failed to set deadline: %w", err)
 	}
 
-	// 重用连接对象
+	// Reuse connection object
 	tcpConn.tcpClient = conn
 	tcpConn.uri = uri
 	tcpConn.option = option
+	tcpConn.lastUsed = time.Now()  // Initialize lastUsed with current time
 	
 	return tcpConn, nil
 }
 
-// 优化 tcpConn.Close 方法，支持连接池
+// Optimize tcpConn.Do method with write timeout control
+func (tcp *tcpConn) Do(body []byte) (int64, error) {
+	if tcp.tcpClient == nil {
+		return 0, ErrInitTcpClient
+	}
+
+	// Set write timeout
+	if err := tcp.tcpClient.SetWriteDeadline(time.Now().Add(tcp.option.Timeout)); err != nil {
+		return 0, fmt.Errorf("set write deadline failed: %w", err)
+	}
+	
+	if _, err := tcp.tcpClient.Write(body); err != nil {
+		return 0, fmt.Errorf("write failed: %w", err)
+	}
+
+	// Set read timeout
+	if err := tcp.tcpClient.SetReadDeadline(time.Now().Add(tcp.option.Timeout)); err != nil {
+		return 0, fmt.Errorf("set read deadline failed: %w", err)
+	}
+	
+	// Update lastUsed time after successful operation
+	tcp.lastUsed = time.Now()
+	
+	return fastRead(tcp.tcpClient, false)
+}
+
+// Optimize tcpConn.Close method with connection pool support
 func (tcp *tcpConn) Close() error {
 	if tcp.tcpClient == nil {
 		return ErrInitTcpClient
@@ -423,7 +420,7 @@ func (tcp *tcpConn) Close() error {
 	err := tcp.tcpClient.Close()
 	tcp.tcpClient = nil
 	
-	// 将连接对象放回池中以便重用
+	// Put the connection object back to the pool for reuse
 	tcpConnPool.Put(tcp)
 	
 	if err != nil {
@@ -431,6 +428,20 @@ func (tcp *tcpConn) Close() error {
 	}
 	
 	return nil
+}
+
+// Add connection status check method
+func (tcp *tcpConn) isExpired() bool {
+    if tcp.tcpClient == nil {
+        return true
+    }
+    
+    if time.Since(tcp.lastUsed) > tcp.option.Timeout {
+        tcp.Close()
+        return true
+    }
+    
+    return false
 }
 
 // Helper functions
