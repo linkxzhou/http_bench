@@ -1,47 +1,60 @@
-# HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC)压测工具，并支持单机和分布式
+# HTTP Bench - 强大的 HTTP 压力测试工具
 
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml)
 
-[English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
-[中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
+**HTTP Bench** 是一个轻量级、高性能的压力测试工具，支持多种协议和分布式测试能力。
 
-- [x] HTTP/1 压测
-- [x] HTTP/2 压测
-- [x] HTTP/3 压测
-- [x] Websocket 压测
-- [x] 分布式压测
-- [x] 支持函数
-- [x] 支持变量
-- [x] Dashboard
-- [ ] TCP/UDP 压测（beta版本）
-- [ ] 阶梯压力测试
-- [ ] gRPC 压测
+[English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md) | 
+[中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)
 
-![avatar](./demo.png)
+## 功能特点
+
+- ✅ **多协议支持**：HTTP/1、HTTP/2、HTTP/3、WebSocket 和 gRPC（即将推出）
+- ✅ **分布式测试**：跨多台机器运行测试，实现更高负载
+- ✅ **模板函数**：使用内置函数和变量动态生成请求
+- ✅ **Web 仪表盘**：通过浏览器界面监控和控制测试
+- ✅ **全面的指标**：详细的性能统计和延迟分布
+- ✅ **灵活配置**：丰富的命令行选项，可自定义测试场景
+
+![仪表盘演示](./demo.png)
 
 ## 安装
 
-**注意：go version >= 1.20**
+**要求：Go 版本 1.20 或更高**
 
-```
+### 方式一：使用 Go Get
+
+```bash
 go get github.com/linkxzhou/http_bench
 ```
-或者
-```
+
+### 方式二：从源码构建
+
+```bash
 git clone git@github.com:linkxzhou/http_bench.git
 cd http_bench
 go build .
 ```
 
 ## 架构
-![avatar](./arch.png)
 
-## 使用
+以下图表说明了 HTTP Bench 的架构：
+
+![架构图](./arch.png)
+
+## 基本用法
+
+运行一个简单的压力测试，使用 1000 个并发连接持续 60 秒：
+
+```bash
+./http_bench http://127.0.0.1:8000 -c 1000 -d 60s
+```
+
+输出示例：
 
 ```
-./http_bench http://127.0.0.1:8000 -c 1000 -d 60s
 Running 1000 connections, @ http://127.0.0.1:8000
 
 Summary:
@@ -66,231 +79,244 @@ Latency distribution:
   99% in 0.262 secs
 ```
 
-## 命令行解析
+## 命令行选项
 
 ```
--n  请求HTTP的次数
--c  并发的客户端数量，但是不能大于HTTP的请求次数
--q  频率限制，每秒的请求数
--d  压测持续时间，默认10秒，例如：2s, 2m, 2h（s:秒，m:分钟，h:小时）
--t  设置请求的超时时间，默认3s
--o  输出结果格式，可以为CSV，也可以直接打印
--m  HTTP方法，包括GET, POST, PUT, DELETE, HEAD, OPTIONS.
--H  请求发起的HTTP的头部信息，例如：-H "Accept: text/html" -H "Content-Type: application/xml"
--body  HTTP发起POST请求的body数据
--a  HTTP的鉴权请求, 例如：http://username:password@xxx/
--http  支持http1, http2, http3, ws和wss, 默认http1
--x  HTTP的代理IP和端口
--disable-compression  不启用压缩
--disable-keepalive    不开启keepalive
--cpus                 使用cpu的内核数
--url                  压测单个URL
--verbose              打印详细日志，默认等级：3(0:TRACE, 1:DEBUG, 2:INFO, 3:ERROR)
--url-file   读取文件中的URL，格式为一行一个URL，发起请求每次随机选择发送的URL
--body-file  从文件中读取请求的body数据
--listen 分布式压测任务机器监听IP:PORT，例如： "127.0.0.1:12710".
--dashboard 监听端口，浏览器发起压测和查看QPS曲线.
--W  分布式压测执行任务的机器列表，例如： -W "127.0.0.1:12710" -W "127.0.0.1:12711".
--example 	打印样例信息.
+-n  请求 HTTP 的次数
+-c  并发的客户端数量（不能大于 HTTP 的请求次数）
+-q  频率限制，每秒的请求数 (QPS)
+-d  压测持续时间（例如：2s, 2m, 2h）
+-t  请求超时时间（毫秒）
+-o  输出类型（默认：摘要，可选：'csv'）
+-m  HTTP 方法（GET, POST, PUT, DELETE, HEAD, OPTIONS）
+-H  自定义 HTTP 头部（例如：-H "Accept: text/html" -H "Content-Type: application/xml"）
+-http  支持 http1, http2, http3, ws, wss，默认 http1
+-body  HTTP 请求体，默认为空
+-a  HTTP 基本认证，格式：username:password
+-x  HTTP 代理地址，格式：host:port
+-disable-compression  禁用压缩
+-disable-keepalive    禁用 keep-alive，防止在不同 HTTP 请求之间重用 TCP 连接
+-cpus     使用的 CPU 核心数（默认为当前机器的核心数）
+-url      请求单个 URL
+-verbose  打印详细日志，默认级别：2（0:TRACE, 1:DEBUG, 2:INFO ~ ERROR）
+-url-file 从文件读取 URL 列表并随机压测
+-body-file 从文件读取请求体
+-listen   监听 IP:PORT 用于分布式压测和工作机器（默认为空）。例如："127.0.0.1:12710"
+-dashboard 监听仪表盘 IP:PORT 并在浏览器上操作压测参数
+-W  运行分布式压测的工作机器列表
+      例如：-W "127.0.0.1:12710" -W "127.0.0.1:12711"
+-example  打印压测示例（默认为 false）
 ```
 
-执行压测样例(使用"-verbose 1"打印详细日志):
-```
+## 使用示例
+
+### 单 URL 测试
+
+```bash
+# 基本 GET 请求，1000 次请求，10 个并发连接
 ./http_bench -n 1000 -c 10 -m GET -url "http://127.0.0.1/test1"
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1"
 ```
 
-执行压测按照文件随机压测(使用"-verbose 1"打印详细日志):
-```
+### 从文件测试 URL 列表
+
+```bash
+# 从文件随机选择 URL，1000 次请求，10 个并发连接
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -url-file urls.txt
-./http_bench -d10s -c 10 -m POST "http://127.0.0.1/test1" -body "{}" -url-file urls.txt
+
+# 基于持续时间的测试，使用 POST 请求和请求体
+./http_bench -d 10s -c 10 -m POST -body "{}" -url-file urls.txt
 ```
 
-执行压测，使用http/2:
-```
+### HTTP/2 测试
+
+```bash
 ./http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
-执行压测，使用http/3:
-```
+### HTTP/3 测试
+
+```bash
 ./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
-执行压测，使用ws/wss:
-```
+### WebSocket 测试
+
+```bash
 ./http_bench -d 10s -c 10 -http ws "ws://127.0.0.1" -body "{}"
 ```
 
-分布式压测样例(使用"-verbose 1"打印详细日志):
-```
-(1) 第一步:
+### 分布式压力测试
+
+```bash
+# 步骤 1：在不同机器上启动工作实例
 ./http_bench -listen "127.0.0.1:12710" -verbose 1
 ./http_bench -listen "127.0.0.1:12711" -verbose 1
 
-(2) 第二步:
+# 步骤 2：运行控制器协调测试
 ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose 1
 ```
 
-浏览器发起压测:
+### Web 仪表盘
+
+```bash
+# 步骤 1：启动仪表盘服务器
+./http_bench -dashboard "127.0.0.1:12345" -verbose 1
+
+# 步骤 2：在浏览器中打开仪表盘 URL
+# http://127.0.0.1:12345
 ```
-(1) 第一步:
-./http_bench -dashboard 127.0.0.1:12345 -verbose 1
 
-(2) 第二步:
-在浏览器打开地址(http://127.0.0.1:12345)
-```
+## 模板函数和变量
 
-## 支持函数和变量
-**(1) 计算整数之和**  
-```
-Function: 
-  intSum number1 number2 number3 ...
+HTTP Bench 支持使用模板函数动态生成请求。这些函数可以在 URL 参数和请求体中使用。
 
-Example:  
+### 1. 整数求和
 
-Client Request Example:
+计算多个整数的和。
+
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ intSum 1 2 3 4}}" -verbose 0
 
-Body Request Example:
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ intSum 1 2 3 4 }}" -verbose 0
 ```
 
-**(2) 生成随机整数**  
-```
-Function: 
-  random min_value max_value 
+### 2. 随机整数
 
-Example:  
+生成介于最小值和最大值之间的随机整数。
 
-Client Request Example:
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ random 1 100000}}" -verbose 0
 
-Body Request Example:
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ random 1 100000 }}" -verbose 0
 ```
 
-**(3) 生成随机日期**  
-```
-Function: 
-  randomDate format(random date string: YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
+### 3. 随机日期
 
-Example:  
+生成指定格式的随机日期字符串。
 
-Client Request Example:
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate 'YMD' }}" -verbose 0
 
-Body Request Example:
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate 'YMD' }}" -verbose 0
 ```
 
-**(4) 生成指定大小的随机字符串**  
-```
-Function: 
-  randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
+### 4. 随机字符串
 
-Example:  
+生成指定长度的随机字母数字字符串。
 
-Client Request Example:
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
 
-Body Request Example:
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
 ```
 
-**(5) 生成指定大小的随机数字字符串**  
-```
-Function: 
-  randomNum count(random string: 0123456789)
+### 5. 随机数字字符串
 
-Example:  
+生成指定长度的随机数字字符串。
 
-Client Request Example:
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomNum 10}}" -verbose 0
 
-Body Request Example:
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 }}" -verbose 0
 ```
 
-**(6) 输出当前日期**  
-```
-Function: 
-  date format(YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss) 
+### 6. 当前日期
 
-Example:  
+输出指定格式的当前日期。
 
-Client Request Example:
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date 'YMD' }}" -verbose 0
 
-Body Request Example:
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date 'YMD' }}" -verbose 0
 ```
 
-**(7) UUID标识（如果异常返回一个唯一随机字符串）**  
-```
-Function: 
-  UUID 
+### 7. UUID
 
-Example:  
+生成 UUID。
 
-Client Request Example:
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
 
-Body Request Example:
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID }}" -verbose 0
 ```
 
-**(8) 字符串转换**  
-```
-Function: 
-  escape str(pipeline with other functions)
+### 8. 字符串转义
 
-Example:  
+转义字符串中的特殊字符。
 
-Client Request Example:
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
 
-Body Request Example:
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID | escape }}" -verbose 0
 ```
 
-**(9) 16进制转换字符串**  
-```
-Function: 
-  hexToString str(hex to string)
+### 9. 十六进制转字符串
 
-Example:  
+将十六进制字符串转换为普通字符串。
 
-Client Request Example:
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
 
-Body Request Example:  
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
 ```
 
-**(10) 字符串转换16进制**  
-```
-Function: 
-  stringToHex str(string to hex, pipeline with other functions)
+### 10. 字符串转十六进制
 
-Example:  
+将字符串转换为其十六进制表示。
 
-Client Request Example:
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ stringToHex 'hello world' }}" -verbose 0
 
-Body Request Example:  
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ stringToHex 'hello world' }}" -verbose 0
 ```
 
-**(11) 转换其他值为字符串，加上引号**  
-```
-Function: 
-  toString str(any variable to str and add quotes)
+### 11. 转为字符串
 
-Example:  
+将值转换为带引号的字符串。
 
-Client Request Example:
+```bash
+# URL 参数
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomNum 10 | toString }}" -verbose 0
 
-Body Request Example:  
+# 请求体
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 | toString }}" -verbose 0
 ```
+
+## 故障排除
+
+### macOS Catalina 构建错误
+
+如果遇到错误 `pointer is missing a nullability type specifier when building on catalina`，请使用以下解决方法：
+
+```bash
+export CGO_CPPFLAGS="-Wno-error -Wno-nullability-completeness -Wno-expansion-to-defined"
+```
+
+## 贡献
+
+欢迎贡献！请随时提出问题或提交拉取请求。
+
+## 许可证
+
+本项目采用 MIT 许可证 - 详情请参阅 LICENSE 文件。

@@ -17,7 +17,7 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [x] Support functions
 - [x] Support variable 
 - [x] Dashboard
-- [ ] TCP/UDP stress testing（beta）
+- [ ] TCP/UDP stress testing
 - [ ] Stepping stress testing
 - [ ] gRPC stress testing
 
@@ -40,270 +40,215 @@ go build .
 ## Architecture
 ![avatar](./arch.png)
 
-## Basic Usage
+## Example Usage
 
-```
-./http_bench http://127.0.0.1:8000 -c 1000 -d 60s
-Running 1000 connections, @ http://127.0.0.1:8000
+### Single URL Testing
 
-Summary:
-  Total:        63.031 secs
-  Slowest:      0.640 secs
-  Fastest:      0.000 secs
-  Average:      0.072 secs
-  Requests/sec: 12132.423
-  Total data:   8.237 GB
-  Size/request: 11566 bytes
-
-Status code distribution:
-  [200] 764713 responses
-
-Latency distribution:
-  10% in 0.014 secs
-  25% in 0.030 secs
-  50% in 0.060 secs
-  75% in 0.097 secs
-  90% in 0.149 secs
-  95% in 0.181 secs
-  99% in 0.262 secs
-```
-
-## Command Line Options
-
-```
--n  Number of requests to run.
--c  Number of requests to run concurrently. Total number of requests cannot
-  be smaller than the concurency level.
--q  Rate limit, in seconds (QPS).
--d  Duration of the stress test, e.g. 2s, 2m, 2h
--t  Timeout in ms.
--o  Output type. If none provided, a summary is printed.
-  "csv" is the only supported alternative. Dumps the response
-  metrics in comma-seperated values format.
--m  HTTP method, one of GET, POST, PUT, DELETE, HEAD, OPTIONS.
--H  Custom HTTP header. You can specify as many as needed by repeating the flag.
-  for example, -H "Accept: text/html" -H "Content-Type: application/xml", 
-  but "Host: ***", replace that with -host.
--http  Support http1, http2, http3, ws, wss, default http1.
--body  Request body, default empty.
--a  Basic authentication, username:password.
--x  HTTP Proxy address as host:port.
--disable-compression  Disable compression.
--disable-keepalive    Disable keep-alive, prevents re-use of TCP connections between different HTTP requests.
--cpus     Number of used cpu cores. (default for current machine is %d cores).
--url 		Request single url.
--verbose 	Print detail logs, default 2(0:TRACE, 1:DEBUG, 2:INFO ~ ERROR).
--url-file 	Read url list from file and random stress test.
--body-file  Request body from file.
--listen 	Listen IP:PORT for distributed stress test and worker mechine (default empty). e.g. "127.0.0.1:12710".
--dashboard 	Listen dashboard IP:PORT and operate stress params on browser.
--W  Running distributed stress test worker mechine list.
-      for example, -W "127.0.0.1:12710" -W "127.0.0.1:12711". 
--example 	Print some stress test examples (default false).
-```
-
-Example stress test for url(print detail info "-verbose 1"):
-```
+```bash
+# Basic GET request with 1000 requests and 10 concurrent connections
 ./http_bench -n 1000 -c 10 -m GET -url "http://127.0.0.1/test1"
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1"
 ```
 
-Example stress test for file(print detail info "-verbose 1"):
-```
+### Testing with URL List from File
+
+```bash
+# Random URL selection from a file with 1000 requests and 10 concurrent connections
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -url-file urls.txt
+
+# Duration-based test with POST requests and body payload
 ./http_bench -d 10s -c 10 -m POST -body "{}" -url-file urls.txt
 ```
 
-Example stress test for http/2:
-```
+### HTTP/2 Testing
+
+```bash
 ./http_bench -d 10s -c 10 -http http2 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
-Example stress test for http/3:
-```
+### HTTP/3 Testing
+
+```bash
 ./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
-Example stress test for ws/wss:
-```
+### WebSocket Testing
+
+```bash
 ./http_bench -d 10s -c 10 -http ws "ws://127.0.0.1" -body "{}"
 ```
 
-Example distributed stress test(print detail info "-verbose 1"):
-```
-(1) First step:
+### Distributed Stress Testing
+
+```bash
+# Step 1: Start worker instances on different machines
 ./http_bench -listen "127.0.0.1:12710" -verbose 1
 ./http_bench -listen "127.0.0.1:12711" -verbose 1
 
-(2) Second step:
+# Step 2: Run the controller to coordinate the test
 ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose 1
 ```
 
-Example stress test on browser:
-```
-(1) First step:
+### Web Dashboard
+
+```bash
+# Step 1: Start the dashboard server
 ./http_bench -dashboard "127.0.0.1:12345" -verbose 1
 
-(2) Second step:
-Open url(http://127.0.0.1:12345) on browser
+# Step 2: Open the dashboard URL in your browser
+# http://127.0.0.1:12345
 ```
 
-## Support Function and Variable
+## Template Functions and Variables
 
-**(1) intSum**  
-```
-Function: 
-  intSum number1 number2 number3 ...
+HTTP Bench supports dynamic request generation using template functions. These can be used in both URL parameters and request bodies.
 
-Example:  
+### 1. Integer Sum
 
-Client Request Example:
+Calculates the sum of multiple integers.
+
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ intSum 1 2 3 4}}" -verbose 0
 
-Body Request Example:
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ intSum 1 2 3 4 }}" -verbose 0
 ```
 
-**(2) random**  
-```
-Function: 
-  random min_value max_value 
+### 2. Random Integer
 
-Example:  
+Generates a random integer between min and max values.
 
-Client Request Example:
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ random 1 100000}}" -verbose 0
 
-Body Request Example:
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ random 1 100000 }}" -verbose 0
 ```
 
-**(3) randomDate**  
-```
-Function: 
-  randomDate format(random date string: YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
+### 3. Random Date
 
-Example:  
+Generates a random date string in the specified format.
 
-Client Request Example:
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate 'YMD' }}" -verbose 0
 
-Body Request Example:
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate 'YMD' }}" -verbose 0
 ```
 
-**(4) randomString**  
-```
-Function: 
-  randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
+### 4. Random String
 
-Example:  
+Generates a random alphanumeric string of specified length.
 
-Client Request Example:
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
 
-Body Request Example:
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
 ```
 
-**(5) randomNum**  
-```
-Function: 
-  randomNum count(random string: 0123456789)
+### 5. Random Number String
 
-Example:  
+Generates a random numeric string of specified length.
 
-Client Request Example:
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomNum 10}}" -verbose 0
 
-Body Request Example:
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 }}" -verbose 0
 ```
 
-**(6) date** 
-```
-Function: 
-  date format(YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss) 
+### 6. Current Date
 
-Example:  
+Outputs the current date in the specified format.
 
-Client Request Example:
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date 'YMD' }}" -verbose 0
 
-Body Request Example:
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date 'YMD' }}" -verbose 0
 ```
 
-**(7) UUID**  
-```
-Function: 
-  UUID 
+### 7. UUID
 
-Example:  
+Generates a UUID.
 
-Client Request Example:
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
 
-Body Request Example:
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID }}" -verbose 0
 ```
 
-**(8) escape**  
-```
-Function: 
-  escape str(pipeline with other functions)
+### 8. String Escape
 
-Example:  
+Escapes special characters in a string.
 
-Client Request Example:
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
 
-Body Request Example:  
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID | escape }}" -verbose 0
 ```
 
-**(9) hexToString**  
-```
-Function: 
-  hexToString str(hex to string)
+### 9. Hex to String
 
-Example:  
+Converts a hexadecimal string to a regular string.
 
-Client Request Example:
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
 
-Body Request Example:  
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
 ```
 
-**(10) stringToHex**  
-```
-Function: 
-  stringToHex str(string to hex, pipeline with other functions)
+### 10. String to Hex
 
-Example:  
+Converts a string to its hexadecimal representation.
 
-Client Request Example:
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ stringToHex 'hello world' }}" -verbose 0
 
-Body Request Example:  
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ stringToHex 'hello world' }}" -verbose 0
 ```
 
-**(11) toString**  
-```
-Function: 
-  toString str(any variable to str and add quotes)
+### 11. To String
 
-Example:  
+Converts a value to a quoted string.
 
-Client Request Example:
+```bash
+# URL parameter
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomNum 10 | toString }}" -verbose 0
 
-Body Request Example:  
+# Request body
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 | toString }}" -verbose 0
 ```
 
-## TODO
-（1）go build error: `pointer is missing a nullability type specifier when building on catalina`
+## Troubleshooting
+
+### macOS Catalina Build Error
+
+If you encounter the error `pointer is missing a nullability type specifier when building on catalina`, use the following workaround:
+
+```bash
 export CGO_CPPFLAGS="-Wno-error -Wno-nullability-completeness -Wno-expansion-to-defined"
+```
+
+## Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

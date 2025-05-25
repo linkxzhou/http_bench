@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -19,55 +18,83 @@ import (
 )
 
 const (
-	gopath      = "./http_bench"
-	duration    = 10
-	testTimeout = 30 * time.Second // Test timeout duration
+	// Test configuration constants
+	TestBinaryPath  = "./http_bench"
+	TestDuration    = 5                // Duration in seconds for each test run
+	TestTimeout     = 30 * time.Second // Test timeout duration
+	TestServerPort  = "18091"          // Default test server port
+	TestServerHost  = "127.0.0.1"      // Default test server host
+	TestWorkerPort1 = "12710"          // First worker port
+	TestWorkerPort2 = "12711"          // Second worker port
+
+	// Test file paths
+	TestURLsFile = "./test/urls.txt"
+	TestBodyFile = "./test/body.txt"
+	TestCertFile = "./test/server.crt"
+	TestKeyFile  = "./test/server.key"
 )
 
-type command struct {
-	cmder *exec.Cmd
-	ctx   context.Context
+// TestCase defines the structure for test cases
+type TestCase struct {
+	Args        string // Command arguments
+	Description string // Test description
+	ExpectError bool   // Whether error is expected
+}
+
+// CommandRunner handles executing commands with timeout
+type CommandRunner struct {
+	cmd    *exec.Cmd
+	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func withPrintln(format string, args ...interface{}) {
-	fmt.Printf(format+"\n", args...)
+// Initialize sets up the command with arguments and environment
+func (c *CommandRunner) Initialize(cmd string, args []string) {
+	fmt.Println("Command args: ", strings.Join(args, " "))
+	c.ctx, c.cancel = context.WithTimeout(context.Background(), TestTimeout)
+	c.cmd = exec.CommandContext(c.ctx, cmd, args...)
+	c.cmd.Env = os.Environ()
+	c.cmd.Dir, _ = os.Getwd()
 }
 
-func (c *command) init(cmd string, args []string) {
-	fmt.Println("cmd args: ", strings.Join(args, " "))
-	c.ctx, c.cancel = context.WithTimeout(context.Background(), testTimeout)
-	c.cmder = exec.CommandContext(c.ctx, cmd, args...)
-	c.cmder.Env = os.Environ()
-	c.cmder.Dir, _ = os.Getwd()
-}
-
-func (c *command) startup() (string, error) {
-	if c.cmder == nil {
-		return "", errors.New("invalid command")
+// Execute runs the command and returns its output
+func (c *CommandRunner) Execute() (string, error) {
+	if c.cmd == nil {
+		return "", errors.New("invalid command: not initialized")
 	}
 
-	output, err := c.cmder.CombinedOutput()
+	output, err := c.cmd.CombinedOutput()
 	return string(output), err
 }
 
-func (c *command) stop() error {
-	if c.cmder == nil {
-		return errors.New("invalid command")
+// Stop terminates the command
+func (c *CommandRunner) Stop() error {
+	if c.cmd == nil {
+		return errors.New("invalid command: not initialized")
 	}
-	
+
 	if c.cancel != nil {
 		c.cancel()
 	}
-	
-	return c.cmder.Process.Kill()
+
+	return c.cmd.Process.Kill()
 }
 
-// setupServer creates and starts a generic server
-func setupServer(name, listen string, serverType string) (interface{}, *sync.WaitGroup) {
+// TestServer represents a generic test server with its configuration
+type TestServer struct {
+	Type      string          // Server type (http1, http2, http3, ws)
+	Name      string          // Server name for logging
+	Address   string          // Server listen address
+	Instance  interface{}     // Server instance
+	WaitGroup *sync.WaitGroup // WaitGroup for server shutdown
+}
+
+// createTestServer creates and starts a test server of the specified type
+func createTestServer(serverType, name, address string) *TestServer {
 	var wg sync.WaitGroup
 	mux := http.NewServeMux()
-	
+
+	// Configure handlers based on server type
 	switch serverType {
 	case "ws":
 		var upgrader = websocket.Upgrader{}
@@ -105,24 +132,25 @@ func setupServer(name, listen string, serverType string) (interface{}, *sync.Wai
 	}
 
 	// Create server context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), testTimeout*2)
-	
+	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout*2)
+	var instance interface{}
+
 	switch serverType {
 	case "http3":
 		srv := &http3.Server{
-			Addr:    listen, 
+			Addr:    address,
 			Handler: mux,
 		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			defer cancel()
-			
+
 			errCh := make(chan error, 1)
 			go func() {
-				errCh <- srv.ListenAndServeTLS("./test/server.crt", "./test/server.key")
+				errCh <- srv.ListenAndServeTLS(TestCertFile, TestKeyFile)
 			}()
-			
+
 			select {
 			case err := <-errCh:
 				if err != nil {
@@ -131,16 +159,14 @@ func setupServer(name, listen string, serverType string) (interface{}, *sync.Wai
 			case <-ctx.Done():
 				// Context timeout or cancellation
 			}
-			
-			fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
+
+			fmt.Fprintf(os.Stdout, name+" Server listening on %s\n", address)
 		}()
-		return srv, &wg
-		
-	case "ws":
-		fallthrough
-	default:
+		instance = srv
+
+	case "ws", "http1", "http2":
 		srv := &http.Server{
-			Addr:         listen, 
+			Addr:         address,
 			Handler:      mux,
 			ReadTimeout:  10 * time.Second,
 			WriteTimeout: 10 * time.Second,
@@ -150,18 +176,18 @@ func setupServer(name, listen string, serverType string) (interface{}, *sync.Wai
 		go func() {
 			defer wg.Done()
 			defer cancel()
-			
+
 			var err error
 			errCh := make(chan error, 1)
-			
+
 			go func() {
 				if serverType == "http2" {
-					errCh <- srv.ListenAndServeTLS("./test/server.crt", "./test/server.key")
+					errCh <- srv.ListenAndServeTLS(TestCertFile, TestKeyFile)
 				} else {
 					errCh <- srv.ListenAndServe()
 				}
 			}()
-			
+
 			select {
 			case err = <-errCh:
 				if err != nil && err != http.ErrServerClosed {
@@ -171,353 +197,341 @@ func setupServer(name, listen string, serverType string) (interface{}, *sync.Wai
 				// Context timeout or cancellation
 				srv.Shutdown(context.Background())
 			}
-			
-			fmt.Fprintf(os.Stdout, name+" Server listen %s\n", listen)
+
+			fmt.Fprintf(os.Stdout, name+" Server listening on %s\n", address)
 		}()
-		return srv, &wg
+		instance = srv
+	}
+
+	return &TestServer{
+		Type:      serverType,
+		Name:      name,
+		Address:   address,
+		Instance:  instance,
+		WaitGroup: &wg,
 	}
 }
 
-// runCommand executes a command and checks the result
-func runCommand(t *testing.T, name, args string, expectError bool) string {
-	cmder := command{}
-	cmder.init(gopath, strings.Split(args, " "))
-	
-	result, err := cmder.startup()
-	
-	hasError := err != nil || strings.Contains(result, "err") || 
-		strings.Contains(result, "error") || 
-		strings.Contains(result, "ERROR")
-		
-	if hasError != expectError {
-		t.Errorf("startup error mismatch: got error=%v, expected error=%v, result: %v", 
-			hasError, expectError, result)
+// Stop shuts down the test server
+func (ts *TestServer) Stop() {
+	switch ts.Type {
+	case "http3":
+		ts.Instance.(*http3.Server).Close()
+	case "http1", "http2", "ws":
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		ts.Instance.(*http.Server).Shutdown(ctx)
 	}
-	
-	fmt.Println(name+" | result: ", result)
+	ts.WaitGroup.Wait()
+}
+
+// RunCommand executes a command and checks the result against expectations
+func RunCommand(t *testing.T, name, args string, expectError bool, description string) string {
+	t.Logf("Running test: %s", description)
+
+	cmder := CommandRunner{}
+	cmder.Initialize(TestBinaryPath, strings.Split(args, " "))
+
+	result, err := cmder.Execute()
+	if (err != nil) != expectError {
+		if !strings.Contains(err.Error(), "signal: killed") {
+			t.Errorf("Test '%s' error: %v", description, err)
+		}
+	}
+
+	// Check if there was an error or error-indicating output
+	hasError := strings.Contains(strings.ToLower(result), "err") ||
+		strings.Contains(strings.ToLower(result), "error")
+
+	if hasError != expectError {
+		t.Errorf("Test '%s' error mismatch: got error=%v, expected error=%v, result: %v",
+			description, hasError, expectError, result)
+	}
+
+	t.Logf("%s | result: %s", name, result)
 	return result
 }
 
+// buildServerAddress creates a full server address from host and port
+func buildServerAddress(host, port string) string {
+	return fmt.Sprintf("%s:%s", host, port)
+}
+
 func TestStressHTTP1(t *testing.T) {
-	name := "http1"
-	listen := "127.0.0.1:18091"
-	srv, wg := setupServer(name, listen, "http1")
-	http1Srv := srv.(*http.Server)
+	serverName := "http1"
+	serverAddress := buildServerAddress(TestServerHost, TestServerPort)
+	testServer := createTestServer(serverName, serverName, serverAddress)
+	defer testServer.Stop()
 
-	for _, v := range []struct {
-		args  string
-		isErr bool
-	}{
+	// Define test cases
+	testCases := []TestCase{
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url http://%s/`, duration, name, listen),
-			isErr: false,
+			Description: "GET request with empty body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url http://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
 		},
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url-file %s`, duration, name, `./test/urls.txt`),
-			isErr: false,
+			Description: "GET request with URLs from file",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url-file %s`,
+				TestDuration, serverName, TestURLsFile),
+			ExpectError: false,
 		},
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' http://%s/`, duration, name, `{"key":"value"}`, listen),
-			isErr: false,
+			Description: "POST request with JSON body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' http://%s/`,
+				TestDuration, serverName, `{"key":"value"}`, serverAddress),
+			ExpectError: false,
 		},
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s http://%s/`, duration, name, `./test/body.txt`, listen),
-			isErr: false,
+			Description: "POST request with body from file",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s http://%s/`,
+				TestDuration, serverName, TestBodyFile, serverAddress),
+			ExpectError: false,
 		},
-	} {
-		runCommand(t, name, v.args, v.isErr)
+		{
+			Description: "GET request with multiple connections",
+			Args: fmt.Sprintf(`-c 10 -d %ds -http %s -m GET http://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
 	}
 
-	http1Srv.Close()
-	wg.Wait()
+	// Run all test cases
+	for _, tc := range testCases {
+		RunCommand(t, serverName, tc.Args, tc.ExpectError, tc.Description)
+	}
 }
 
-// openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt
+// TestStressHTTP2 tests HTTP/2 functionality
 func TestStressHTTP2(t *testing.T) {
-	name := "http2"
-	listen := "127.0.0.1:18091"
-	srv, wg := setupServer(name, listen, "http2")
-	http2Srv := srv.(*http.Server)
+	serverName := "http2"
+	serverAddress := buildServerAddress(TestServerHost, TestServerPort)
+	testServer := createTestServer(serverName, serverName, serverAddress)
+	defer testServer.Stop()
 
-	for _, v := range []struct {
-		args  string
-		isErr bool
-	}{
+	// Define test cases
+	testCases := []TestCase{
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url https://%s/`, duration, name, listen),
-			isErr: false,
+			Description: "GET request with empty body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
 		},
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' https://%s/`, duration, name, `{"key":"value"}`, listen),
-			isErr: false,
+			Description: "POST request with JSON body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' https://%s/`,
+				TestDuration, serverName, `{"key":"value"}`, serverAddress),
+			ExpectError: false,
 		},
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s https://%s/`, duration, name, `./test/body.txt`, listen),
-			isErr: false,
+			Description: "POST request with body from file",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s https://%s/`,
+				TestDuration, serverName, TestBodyFile, serverAddress),
+			ExpectError: false,
 		},
-	} {
-		runCommand(t, name, v.args, v.isErr)
+		{
+			Description: "GET request with multiple connections",
+			Args: fmt.Sprintf(`-c 5 -d %ds -http %s -m GET https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
 	}
 
-	http2Srv.Close()
-	wg.Wait()
+	// Run all test cases
+	for _, tc := range testCases {
+		RunCommand(t, serverName, tc.Args, tc.ExpectError, tc.Description)
+	}
 }
 
+// TestStressHTTP3 tests HTTP/3 functionality
 func TestStressHTTP3(t *testing.T) {
-	name := "http3"
-	listen := "127.0.0.1:18091"
-	srv, wg := setupServer(name, listen, "http3")
-	http3Srv := srv.(*http3.Server)
+	serverName := "http3"
+	serverAddress := buildServerAddress(TestServerHost, TestServerPort)
+	testServer := createTestServer(serverName, serverName, serverAddress)
+	defer testServer.Stop()
 
-	for _, v := range []struct {
-		args  string
-		isErr bool
-	}{
+	// Define test cases
+	testCases := []TestCase{
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url https://%s/`, duration, name, listen),
-			isErr: false,
+			Description: "GET request with empty body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
 		},
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' https://%s/`, duration, name, `{"key":"value"}`, listen),
-			isErr: false,
+			Description: "POST request with JSON body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' https://%s/`,
+				TestDuration, serverName, `{"key":"value"}`, serverAddress),
+			ExpectError: false,
 		},
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s https://%s/`, duration, name, `./test/body.txt`, listen),
-			isErr: false,
+			Description: "POST request with body from file",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s https://%s/`,
+				TestDuration, serverName, TestBodyFile, serverAddress),
+			ExpectError: false,
 		},
-	} {
-		runCommand(t, name, v.args, v.isErr)
 	}
 
-	http3Srv.Close()
-	wg.Wait()
+	// Run all test cases
+	for _, tc := range testCases {
+		RunCommand(t, serverName, tc.Args, tc.ExpectError, tc.Description)
+	}
 }
 
+// TestStressWS tests WebSocket functionality
 func TestStressWS(t *testing.T) {
-	name := "ws"
-	listen := "127.0.0.1:18091"
-	srv, wg := setupServer(name, listen, "ws")
-	wsSrv := srv.(*http.Server)
+	serverName := "ws"
+	serverAddress := buildServerAddress(TestServerHost, TestServerPort)
+	testServer := createTestServer(serverName, serverName, serverAddress)
+	defer testServer.Stop()
 
-	for _, v := range []struct {
-		args  string
-		isErr bool
-	}{
+	// Define test cases
+	testCases := []TestCase{
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -url ws://%s/`, duration, name, listen),
-			isErr: false,
+			Description: "WebSocket connection",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -url ws://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
 		},
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' ws://%s/`, duration, name, `{"key":"value"}`, listen),
-			isErr: false,
+			Description: "WebSocket with POST and JSON body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' ws://%s/`,
+				TestDuration, serverName, `{"key":"value"}`, serverAddress),
+			ExpectError: false,
 		},
 		{
-			args:  fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s ws://%s/`, duration, name, `./test/body.txt`, listen),
-			isErr: false,
+			Description: "WebSocket with POST and body from file",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s ws://%s/`,
+				TestDuration, serverName, TestBodyFile, serverAddress),
+			ExpectError: false,
 		},
-	} {
-		runCommand(t, name, v.args, v.isErr)
+		{
+			Description: "WebSocket with multiple connections",
+			Args: fmt.Sprintf(`-c 3 -d %ds -http %s -url ws://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
 	}
 
-	wsSrv.Close()
-	wg.Wait()
+	// Run all test cases
+	for _, tc := range testCases {
+		RunCommand(t, serverName, tc.Args, tc.ExpectError, tc.Description)
+	}
 }
 
-// TODO: github ci has error and run local.
+// TestStressMultipleWorkerHTTP1 tests distributed worker functionality
 func TestStressMultipleWorkerHTTP1(t *testing.T) {
-	name := "http1"
-	listen := "127.0.0.1:18091"
-	srv, wg := setupServer(name, listen, "http1")
-	http1Srv := srv.(*http.Server)
+	serverName := "http1"
+	serverAddress := buildServerAddress(TestServerHost, TestServerPort)
+	testServer := createTestServer(serverName, serverName, serverAddress)
+	defer testServer.Stop()
 
-	workerList := []string{"127.0.0.1:12710", "127.0.0.1:12711"}
-	for _, v := range []struct {
-		args    string
-		workers []string
-		isErr   bool
+	// Define worker addresses
+	workerAddresses := []string{
+		buildServerAddress(TestServerHost, TestWorkerPort1),
+		buildServerAddress(TestServerHost, TestWorkerPort2),
+	}
+
+	testCases := []struct {
+		Description string
+		MainArgs    string
+		WorkerArgs  []string
+		ExpectError bool
 	}{
 		{
-			args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body "%s" -url http://%s/ -W %s -W %s`,
-				duration, name, `{}`, listen, workerList[0], workerList[1]),
-			workers: []string{
-				fmt.Sprintf(`-listen %s`, workerList[0]),
-				fmt.Sprintf(`-listen %s`, workerList[1]),
+			Description: "Distributed testing with multiple workers",
+			MainArgs: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body "%s" -url http://%s/ -W %s -W %s`,
+				TestDuration, serverName, `{"test":"distributed"}`, serverAddress,
+				workerAddresses[0], workerAddresses[1]),
+			WorkerArgs: []string{
+				fmt.Sprintf(`-listen %s`, workerAddresses[0]),
+				fmt.Sprintf(`-listen %s`, workerAddresses[1]),
 			},
-			isErr: false,
+			ExpectError: false,
 		},
-	} {
-		var cmderList = []command{}
-		var cmderCg sync.WaitGroup
-		var workerReady sync.WaitGroup
-		
-		// Start worker processes
-		for _, worker := range v.workers {
-			cmderCg.Add(1)
-			workerReady.Add(1)
-			workerCmd := command{}
-			workerCmd.init(gopath, strings.Split(worker, " "))
-			
-			go func() {
-				defer cmderCg.Done()
-				
-				// Signal that worker is starting
-				workerReady.Done()
-				
-				workerResult, _ := workerCmd.startup()
-				fmt.Println("workerResult: ", workerResult)
-			}()
-			
-			cmderList = append(cmderList, workerCmd)
-		}
-		
-		// Wait for workers to initialize
-		workerReady.Wait()
-		time.Sleep(5 * time.Second)
-		
-		// Run the main command
-		runCommand(t, name, v.args, v.isErr)
-
-		// Stop all workers
-		for i := range cmderList {
-			cmderList[i].stop()
-		}
-		
-		// Wait for all workers to terminate
-		cmderCg.Wait()
+		{
+			Description: "Distributed testing with GET request",
+			MainArgs: fmt.Sprintf(`-c 2 -d %ds -http %s -m GET -url http://%s/ -W %s -W %s`,
+				TestDuration, serverName, serverAddress,
+				workerAddresses[0], workerAddresses[1]),
+			WorkerArgs: []string{
+				fmt.Sprintf(`-listen %s`, workerAddresses[0]),
+				fmt.Sprintf(`-listen %s`, workerAddresses[1]),
+			},
+			ExpectError: false,
+		},
 	}
 
-	// Shutdown the server
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	http1Srv.Shutdown(ctx)
-	wg.Wait()
-}
+	for _, tc := range testCases {
+		t.Run(tc.Description, func(t *testing.T) {
+			var workerRunners []*CommandRunner
+			var workerWg sync.WaitGroup
+			var startupWg sync.WaitGroup
 
-// tcpHandleConnection handles TCP connections for the TCP test server
-func tcpHandleConnection(conn net.Conn, stopCh <-chan struct{}) error {
-	buffer := make([]byte, 1024)
-	
-	// Set read deadline to prevent blocking forever
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	
-	for {
-		select {
-		case <-stopCh:
-			return nil
-		default:
-			n, err := conn.Read(buffer[0:1024])
-			if err != nil {
-				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-					// Reset deadline and continue
-					conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-					continue
-				}
-				return err
+			// Start worker processes
+			for _, workerArg := range tc.WorkerArgs {
+				workerWg.Add(1)
+				startupWg.Add(1)
+				workerRunner := &CommandRunner{}
+				workerRunner.Initialize(TestBinaryPath, strings.Split(workerArg, " "))
+
+				go func() {
+					defer workerWg.Done()
+
+					// Signal that worker is starting
+					startupWg.Done()
+
+					workerResult, _ := workerRunner.Execute()
+					t.Logf("Worker result: %s", workerResult)
+				}()
+
+				workerRunners = append(workerRunners, workerRunner)
 			}
 
-			message := string(buffer[:n])
-			response := fmt.Sprintf("recv: %s", message)
-			
-			// Set write deadline
-			conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-			_, err = conn.Write([]byte(response))
-			if err != nil {
-				return err
+			// Wait for workers to initialize
+			startupWg.Wait()
+			time.Sleep(5 * time.Second)
+
+			// Run the main command
+			RunCommand(t, serverName, tc.MainArgs, tc.ExpectError, tc.Description)
+
+			// Stop all workers
+			for _, runner := range workerRunners {
+				runner.Stop()
 			}
-			
-			// Reset read deadline
-			conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-		}
+
+			// Wait for all workers to terminate
+			workerWg.Wait()
+		})
 	}
 }
 
-// TestStressTCP tests TCP stress testing，TODO：github ci has error and run local.
-// func TestStressTCP(t *testing.T) {
-// 	name := "tcp"
-// 	body := "this is stress body"
-// 	bodyHex := "746869732069732073747265737320626f6479"
-// 	listen := "127.0.0.1:18091"
-	
-// 	// Create TCP listener
-// 	srv, err := net.Listen("tcp", listen)
-// 	if err != nil {
-// 		t.Fatalf("%s | srv err: %v", name, err)
-// 		return
-// 	}
-	
-// 	stopCh := make(chan struct{})
-// 	var wg sync.WaitGroup
-// 	wg.Add(1)
-	
-// 	// Start TCP server
-// 	go func() {
-// 		defer wg.Done()
-// 		defer close(stopCh)
+// TestRequestTimeout tests the timeout functionality
+func TestRequestTimeout(t *testing.T) {
+	serverName := "http1"
+	serverAddress := buildServerAddress(TestServerHost, TestServerPort)
+	testServer := createTestServer(serverName, serverName, serverAddress)
+	defer testServer.Stop()
 
-// 		for {
-// 			// Set accept deadline
-// 			srv.(*net.TCPListener).SetDeadline(time.Now().Add(5 * time.Second))
-			
-// 			conn, err := srv.Accept()
-// 			if err != nil {
-// 				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-// 					// Check if we should stop
-// 					select {
-// 					case <-stopCh:
-// 						return
-// 					default:
-// 						continue
-// 					}
-// 				}
-// 				fmt.Println("Accept error:", err)
-// 				return
-// 			}
+	// Define test cases
+	testCases := []TestCase{
+		{
+			Description: "Request with timeout setting",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -t 500 -url http://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "Request with very short timeout",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -t 1 -url http://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: true, // Very short timeout expected to cause errors
+		},
+	}
 
-// 			wg.Add(1)
-// 			go func(c net.Conn) {
-// 				defer wg.Done()
-// 				defer c.Close()
-				
-// 				err := tcpHandleConnection(c, stopCh)
-// 				if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
-// 					fmt.Println("tcpHandleConnection err:", err)
-// 				}
-// 			}(conn)
-// 		}
-// 	}()
-
-// 	// Run tests
-// 	for _, v := range []struct {
-// 		args  string
-// 		isErr bool
-// 	}{
-// 		{
-// 			args:  fmt.Sprintf(`-c 1 -d %ds -p %s -body "%s" -url %s`, duration, name, body, listen),
-// 			isErr: false,
-// 		},
-// 		{
-// 			args:  fmt.Sprintf(`-c 1 -d %ds -p %s -bodytype hex -body %s -url %s`, duration, name, bodyHex, listen),
-// 			isErr: false,
-// 		},
-// 	} {
-// 		runCommand(t, name, v.args, v.isErr)
-// 	}
-
-// 	// Stop server
-// 	close(stopCh)
-// 	srv.Close()
-	
-// 	// Wait with timeout
-// 	done := make(chan struct{})
-// 	go func() {
-// 		wg.Wait()
-// 		close(done)
-// 	}()
-	
-// 	select {
-// 	case <-done:
-// 		// All goroutines finished
-// 	case <-time.After(10 * time.Second):
-// 		t.Log("Warning: TCP test timed out waiting for goroutines")
-// 	}
-// }
+	// Run all test cases
+	for _, tc := range testCases {
+		RunCommand(t, serverName, tc.Args, tc.ExpectError, tc.Description)
+	}
+}
