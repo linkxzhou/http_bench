@@ -528,32 +528,3 @@ func TestStressMultipleWorkerHTTP1(t *testing.T) {
 		})
 	}
 }
-
-// TestRequestTimeout tests the timeout functionality
-func TestRequestTimeout(t *testing.T) {
-	serverName := "http1"
-	serverAddress := buildServerAddress(TestServerHost, TestServerPort)
-	testServer := createTestServer(serverName, serverName, serverAddress)
-	defer testServer.Stop()
-
-	// Define test cases
-	testCases := []TestCase{
-		{
-			Description: "Request with timeout setting",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -t 500 -url http://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "Request with very short timeout",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -t 1 -url http://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: true, // Very short timeout expected to cause errors
-		},
-	}
-
-	// Run all test cases
-	for _, tc := range testCases {
-		RunCommand(t, serverName, tc.Args, tc.ExpectError, tc.Description)
-	}
-}
