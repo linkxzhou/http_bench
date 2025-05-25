@@ -21,7 +21,7 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [ ] Stepping stress testing
 - [ ] gRPC stress testing
 
-![avatar](./demo.png)
+![avatar](./docs/demo.png)
 
 ## Installation
 
@@ -38,7 +38,7 @@ go build .
 ```
 
 ## Architecture
-![avatar](./arch.png)
+![avatar](./docs/arch.png)
 
 ## Example Usage
 
