@@ -233,19 +233,18 @@ func RunCommand(t *testing.T, name, args string, expectError bool, description s
 	cmder.Initialize(TestBinaryPath, strings.Split(args, " "))
 
 	result, err := cmder.Execute()
-	if (err != nil) != expectError {
-		if !strings.Contains(err.Error(), "signal: killed") {
-			t.Errorf("Test '%s' error: %v", description, err)
-		}
-	}
 
 	// Check if there was an error or error-indicating output
-	hasError := strings.Contains(strings.ToLower(result), "err") ||
+	hasError := (err != nil) || strings.Contains(strings.ToLower(result), "err") ||
 		strings.Contains(strings.ToLower(result), "error")
 
 	if hasError != expectError {
-		t.Errorf("Test '%s' error mismatch: got error=%v, expected error=%v, result: %v",
-			description, hasError, expectError, result)
+		if err != nil && strings.Contains(err.Error(), "signal: killed") {
+			// pass
+		} else {
+			t.Errorf("Test '%s' error mismatch: got error=%v, expected error=%v, result: %v",
+				description, hasError, expectError, result)
+		}
 	}
 
 	t.Logf("%s | result: %s", name, result)
