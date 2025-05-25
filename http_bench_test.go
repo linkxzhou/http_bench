@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -345,6 +346,28 @@ func TestStressHTTP2(t *testing.T) {
 
 // TestStressHTTP3 tests HTTP/3 functionality
 func TestStressHTTP3(t *testing.T) {
+	// 捕获标准错误输出，以便我们可以忽略特定警告
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	// 在函数结束时恢复标准错误输出
+	defer func() {
+		os.Stderr = oldStderr
+	}()
+
+	// 在后台读取和过滤错误输出
+	go func() {
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			text := scanner.Text()
+			// 过滤掉 UDP 缓冲区大小警告
+			if !strings.Contains(text, "failed to sufficiently increase send buffer size") {
+				fmt.Fprintln(oldStderr, text)
+			}
+		}
+	}()
+
 	serverName := "http3"
 	serverAddress := buildServerAddress(TestServerHost, TestServerPort)
 	testServer := createTestServer(serverName, serverName, serverAddress)
