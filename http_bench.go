@@ -20,42 +20,71 @@ import (
 
 var workerAddrList flagSlice // Worker mechine addr list.
 
+// HttpBenchStartup starts HTTP benchmark testing
 func HttpBenchStartup(hbWorker *HttpbenchWorker, params HttpbenchParameters) (*CollectResult, error) {
-	var result *CollectResult = NewCollectResult()
+	result := NewCollectResult()
 
+	// Handle distributed worker nodes
 	if len(workerAddrList) > 0 {
-		verbosePrint(logLevelTrace, "worker list: %v", workerAddrList)
-		jsonBody, err := json.Marshal(params)
-		if err != nil {
-			verbosePrint(logLevelError, "invalid stress testing params")
-			return nil, fmt.Errorf("invalid stress testing params")
-		}
-		result, err = postAllDistributedWorkers(workerAddrList, jsonBody)
-		if err != nil {
-			result.ErrCode = -999
-			result.ErrMsg = err.Error()
-		}
-	} else {
-		verbosePrint(logLevelTrace, "single worker and cmd: %s", params.Cmd)
-		switch params.Cmd {
-		case cmdStart:
-			verbosePrint(logLevelInfo, "start worker!!!")
-			result = hbWorker.Start(params)
-			verbosePrint(logLevelInfo, "worker result: %v", result)
-		case cmdStop:
-			verbosePrint(logLevelInfo, "stop worker!!!")
-			hbWorker.Stop()
-			verbosePrint(logLevelInfo, "worker result: %v", result)
-			hbWorkerList.Delete(params.SequenceId)
-		case cmdMetrics:
-			verbosePrint(logLevelInfo, "get metrics!!!")
-			result = hbWorker.GetResult()
-		}
+		return handleDistributedWorkers(params)
+	}
 
-		if hbWorker.err != nil {
-			result.ErrCode = -1
-			result.ErrMsg = hbWorker.err.Error()
-		}
+	// Handle single worker node
+	return handleSingleWorker(hbWorker, params, result)
+}
+
+// handleDistributedWorkers handles distributed worker nodes
+func handleDistributedWorkers(params HttpbenchParameters) (*CollectResult, error) {
+	verbosePrint(logLevelTrace, "worker list: %v", workerAddrList)
+
+	jsonBody, err := json.Marshal(params)
+	if err != nil {
+		verbosePrint(logLevelError, "invalid stress testing params: %v", err)
+		return nil, fmt.Errorf("failed to marshal stress testing params: %w", err)
+	}
+
+	result, err := postAllDistributedWorkers(workerAddrList, jsonBody)
+	if err != nil {
+		result := NewCollectResult()
+		result.ErrCode = -999
+		result.ErrMsg = err.Error()
+		return result, nil
+	}
+
+	return result, nil
+}
+
+// handleSingleWorker handles single worker node
+func handleSingleWorker(hbWorker *HttpbenchWorker, params HttpbenchParameters, result *CollectResult) (*CollectResult, error) {
+	verbosePrint(logLevelTrace, "single worker and cmd: %s", params.Cmd)
+
+	switch params.Cmd {
+	case cmdStart:
+		verbosePrint(logLevelInfo, "starting worker...")
+		result = hbWorker.Start(params)
+		verbosePrint(logLevelInfo, "worker result: %v", result)
+
+	case cmdStop:
+		verbosePrint(logLevelInfo, "stopping worker...")
+		hbWorker.Stop()
+		verbosePrint(logLevelInfo, "worker stopped")
+		hbWorkerList.Delete(params.SequenceId)
+
+	case cmdMetrics:
+		verbosePrint(logLevelInfo, "getting metrics...")
+		result = hbWorker.GetResult()
+
+	default:
+		verbosePrint(logLevelWarn, "unknown command: %d", params.Cmd)
+		result.ErrCode = -2
+		result.ErrMsg = fmt.Sprintf("unknown command: %d", params.Cmd)
+		return result, nil
+	}
+
+	// Check worker errors
+	if hbWorker.err != nil {
+		result.ErrCode = -1
+		result.ErrMsg = hbWorker.err.Error()
 	}
 
 	return result, nil
@@ -118,7 +147,8 @@ func main() {
 	params.RequestBodyType = *bodyType
 
 	if *bodyFile != "" {
-		readBody, err := parseFile(*bodyFile, nil)
+		var readBody []string
+		readBody, err = parseFile(*bodyFile, nil)
 		if err != nil {
 			usageAndExit(*bodyFile + " file read error(" + err.Error() + ").")
 		}
@@ -128,7 +158,8 @@ func main() {
 	}
 
 	if *scriptFile != "" {
-		scriptBody, err := parseFile(*scriptFile, nil)
+		var scriptBody []string
+		scriptBody, err = parseFile(*scriptFile, nil)
 		if err != nil {
 			usageAndExit(*scriptFile + " file read error(" + err.Error() + ").")
 		}
@@ -145,7 +176,8 @@ func main() {
 
 	// set any other additional repeatable headers
 	for _, h := range headerslice {
-		match, err := parseInputWithRegexp(h, headerRegexp)
+		var match []string
+		match, err = parseInputWithRegexp(h, headerRegexp)
 		if err != nil {
 			usageAndExit(err.Error())
 		}
@@ -157,7 +189,8 @@ func main() {
 
 	// set basic auth if set
 	if *authHeader != "" {
-		match, err := parseInputWithRegexp(*authHeader, authRegexp)
+		var match []string
+		match, err = parseInputWithRegexp(*authHeader, authRegexp)
 		if err != nil {
 			usageAndExit(err.Error())
 		}
@@ -174,7 +207,7 @@ func main() {
 	params.Timeout = *t
 
 	if *proxyAddr != "" {
-		if _, err := gourl.Parse(*proxyAddr); err != nil {
+		if _, err = gourl.Parse(*proxyAddr); err != nil {
 			usageAndExit(err.Error())
 		}
 		params.ProxyUrl = *proxyAddr
@@ -184,7 +217,8 @@ func main() {
 
 	// decrease go gc rate
 	hbGOGC := getEnv("HTTPBENCH_GOGC")
-	if n, err := strconv.ParseInt(hbGOGC, 2, 64); err == nil {
+	var n int64
+	if n, err = strconv.ParseInt(hbGOGC, 2, 64); err == nil {
 		debug.SetGCPercent(int(n))
 	}
 
@@ -211,7 +245,7 @@ func main() {
 			Handler: mux,
 		}
 		println("worker listen: %s, and you can open http://%s/index.html on browser", *listen, *listen)
-		if err := hbServer.ListenAndServe(); err != nil {
+		if err = hbServer.ListenAndServe(); err != nil {
 			verbosePrint(logLevelError, "listen err: %s", err.Error())
 		}
 		return

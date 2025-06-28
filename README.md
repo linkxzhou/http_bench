@@ -17,7 +17,6 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [x] Support functions
 - [x] Support variable 
 - [x] Dashboard
-- [ ] TCP/UDP stress testing
 - [ ] Stepping stress testing
 - [ ] gRPC stress testing
 

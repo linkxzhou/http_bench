@@ -3,9 +3,7 @@ http_bench
 test/echo
 test/nohup.*
 arch.drawio
-./goscript/pprof.out
+*/**/pprof.out
 */**/.DS_Store
-./goscript/readme.md
-.DS_Store
 */**/nohup.out
 .vscode

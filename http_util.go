@@ -6,7 +6,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"math/rand"
 	gourl "net/url"
 	"os"
@@ -341,39 +340,4 @@ var bytePool = sync.Pool{
 	New: func() interface{} {
 		return &bytes.Buffer{}
 	},
-}
-
-// Optimize fastRead function with buffer size limit
-func fastRead(r io.Reader, cycleRead bool) (int64, error) {
-	buf := bytePool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer bytePool.Put(buf)
-
-	// Set maximum read size to prevent memory overflow
-	const maxReadSize = 10 * 1024 * 1024 // 10MB
-
-	var n int64
-	var err error
-
-	// Use LimitReader to restrict single read size
-	limitedReader := io.LimitReader(r, maxReadSize)
-	n, err = io.Copy(buf, limitedReader)
-
-	if err != nil && err != io.EOF {
-		return n, err
-	}
-
-	// If reading reaches the limit and needs to continue reading
-	if n == maxReadSize && cycleRead {
-		// Continue reading remaining data without saving, only calculate size
-		for {
-			nn, err := io.Copy(io.Discard, io.LimitReader(r, maxReadSize))
-			n += nn
-			if err != nil || nn < maxReadSize {
-				break
-			}
-		}
-	}
-
-	return n, nil
 }
