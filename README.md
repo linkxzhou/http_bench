@@ -7,7 +7,8 @@
 http_bench is a tiny program that sends some load to a web application, support single and distributed mechine, http/1, http/2, http/3, websocket, grpc.
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
-[中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
+[中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md) 
+[Example](https://github.com/linkxzhou/http_bench/blob/master/EXAMPLE.md)
 
 - [x] HTTP/1 stress testing
 - [x] HTTP/2 stress testing

@@ -6,8 +6,9 @@
 
 **HTTP Bench** 是一个轻量级、高性能的压力测试工具，支持多种协议和分布式测试能力。
 
-[English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md) | 
-[中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)
+[English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)   
+[中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)   
+[使用样例](https://github.com/linkxzhou/http_bench/blob/master/EXAMPLE_CN.md)
 
 ## 功能特点
 
