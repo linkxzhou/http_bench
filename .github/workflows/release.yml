@@ -63,15 +63,16 @@ jobs:
         sha256sum *.tar.gz *.zip > checksums.txt
 
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ steps.get_version.outputs.VERSION }}
-        release_name: Release ${{ steps.get_version.outputs.VERSION }}
+        name: Release ${{ steps.get_version.outputs.VERSION }}
         draft: false
         prerelease: false
+        files: |
+          dist/*.tar.gz
+          dist/*.zip
+          dist/checksums.txt
         body: |
           ## Changes in ${{ steps.get_version.outputs.VERSION }}
           
@@ -91,73 +92,5 @@ jobs:
           
           #### Verification
           - [checksums.txt](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/checksums.txt) - SHA256 checksums
-
-    - name: Upload Linux AMD64
-      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/http_bench-linux-amd64.tar.gz
-        asset_name: http_bench-linux-amd64.tar.gz
-        asset_content_type: application/gzip
-
-    - name: Upload Linux ARM64
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/http_bench-linux-arm64.tar.gz
-        asset_name: http_bench-linux-arm64.tar.gz
-        asset_content_type: application/gzip
-
-    - name: Upload macOS AMD64
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/http_bench-darwin-amd64.tar.gz
-        asset_name: http_bench-darwin-amd64.tar.gz
-        asset_content_type: application/gzip
-
-    - name: Upload macOS ARM64
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/http_bench-darwin-arm64.tar.gz
-        asset_name: http_bench-darwin-arm64.tar.gz
-        asset_content_type: application/gzip
-
-    - name: Upload Windows AMD64
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/http_bench-windows-amd64.zip
-        asset_name: http_bench-windows-amd64.zip
-        asset_content_type: application/zip
-
-    - name: Upload Windows ARM64
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/http_bench-windows-arm64.zip
-        asset_name: http_bench-windows-arm64.zip
-        asset_content_type: application/zip
-
-    - name: Upload Checksums
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/checksums.txt
-        asset_name: checksums.txt
-        asset_content_type: text/plain
