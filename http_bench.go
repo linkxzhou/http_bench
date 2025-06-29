@@ -45,7 +45,7 @@ func handleDistributedWorkers(params HttpbenchParameters) (*CollectResult, error
 
 	result, err := postAllDistributedWorkers(workerAddrList, jsonBody)
 	if err != nil {
-		result := NewCollectResult()
+		result = NewCollectResult()
 		result.ErrCode = -999
 		result.ErrMsg = err.Error()
 		return result, nil
@@ -62,6 +62,9 @@ func handleSingleWorker(hbWorker *HttpbenchWorker, params HttpbenchParameters, r
 	case cmdStart:
 		verbosePrint(logLevelInfo, "starting worker...")
 		result = hbWorker.Start(params)
+		if params.From != "" {
+			result.print()
+		}
 		verbosePrint(logLevelInfo, "worker result: %v", result)
 
 	case cmdStop:

@@ -144,8 +144,10 @@ func createTestServer(serverType, name, address string) *TestServer {
 		}
 		wg.Add(1)
 		go func() {
-			defer wg.Done()
-			defer cancel()
+			defer func() {
+				wg.Done()
+				cancel()
+			}()
 
 			errCh := make(chan error, 1)
 			go func() {

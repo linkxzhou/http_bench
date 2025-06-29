@@ -83,6 +83,10 @@ func (w *HttpbenchWorker) Stop() error {
 }
 
 func (w *HttpbenchWorker) GetResult() *CollectResult {
+	if w.isStop {
+		w.result.ErrCode = 1
+		w.result.ErrMsg = "http_bench stopped"
+	}
 	return w.result
 }
 

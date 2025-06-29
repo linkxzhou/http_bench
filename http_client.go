@@ -347,6 +347,7 @@ type HttpbenchParameters struct {
 	Headers            map[string][]string `json:"headers"`             // Custom HTTP header.
 	Url                string              `json:"url"`                 // Request url.
 	Output             string              `json:"output"`              // Output represents the output type. If "csv" is provided, the output will be dumped as a csv stream.
+	From               string              `json:"from"`                // request from
 }
 
 func (p *HttpbenchParameters) String() string {

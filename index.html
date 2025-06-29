@@ -300,7 +300,7 @@
                 showMessage(messageKey, type = 'success', duration = 2000) {
                     this.$message({
                         showClose: true,
-                        message: this.translate(`message.${messageKey}`) || messageKey,
+                        message: this.translate(`${messageKey}`) || messageKey,
                         type: type,
                         duration: duration,
                     });
@@ -357,6 +357,7 @@
                         auth_username: this.authUsername,
                         auth_password: this.authPassword,
                         url: this.requestUrl,
+                        from: 'browser',
                     };
                 },
                 
@@ -370,6 +371,7 @@
                     const timeLabels = [];
                     const qpsData = [];
                     let totalRequests = 0;
+                    let errTimes = 0;
                     const statusCodeData = {};
                     const previousStatusCodeCounts = {};
                     const interval = parseInt(this.metricsInterval) || DEFAULT_METRICS_INTERVAL;
@@ -385,6 +387,19 @@
                         })
                         .then(response => response.json())
                         .then(data => {
+                            // Check if the test is stopped
+                            if (data.err_code !== 0) {
+                                errTimes++;
+                                if (errTimes > 2) {
+                                    this.isRunning = false;
+                                    this.metricsTimer && clearInterval(this.metricsTimer);
+                                    this.showMessage(data.err_msg, 'error', 5000);
+                                    return;
+                                }
+                            } else {
+                                errTimes = 0;
+                            }
+
                             this.processMetricsData(
                                 data, 
                                 timeLabels, 

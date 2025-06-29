@@ -25,7 +25,6 @@ const (
 	protocolHTTP3 = "http3" // HTTP/3 protocol
 	protocolWS    = "ws"    // WebSocket protocol
 	protocolWSS   = "wss"   // WebSocket Secure protocol
-	protocolTCP   = "tcp"   // TCP protocol (beta)
 	protocolGRPC  = "grpc"  // gRPC protocol (planned)
 )
 
@@ -64,7 +63,7 @@ Options:
       --cpus           CPU cores to use (default %d)
       --url-file       File with list of URLs
       --body-file      File with request body
-      --dashboard      Dashboard mode listen addr
+      --dashboard      Dashboard mode listen address
       --listen         Worker mode listen addr
   -w, -W               Worker addresses for distributed test
       --verbose        Log level: 0 TRACE,1 DEBUG,2 INFO,3 ERROR
