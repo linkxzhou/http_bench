@@ -93,8 +93,8 @@ func (w *HttpbenchWorker) GetResult() *CollectResult {
 func (w *HttpbenchWorker) do(params HttpbenchParameters) error {
 	clientNum := params.C
 
-	println("running %d connections and duration %d secs, @ %s",
-		clientNum, params.Duration/1000, params.Url)
+	println("[%v][%v] running %d connections and duration %d secs, @ %s",
+		params.RequestType, params.RequestMethod, clientNum, params.Duration/1000, params.Url)
 
 	var (
 		wg               sync.WaitGroup

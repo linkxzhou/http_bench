@@ -304,7 +304,185 @@ HTTP Bench 支持使用模板函数动态生成请求。这些函数可以在 UR
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 | toString }}" -verbose 0
 ```
 
-## 故障排除
+### 12. Base64 编码
+
+将字符串编码为 Base64 格式。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ base64Encode 'hello world' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ base64Encode 'hello world' }}" -verbose 0
+```
+
+### 13. Base64 解码
+
+解码 Base64 编码的字符串。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ base64Decode 'aGVsbG8gd29ybGQ=' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ base64Decode 'aGVsbG8gd29ybGQ=' }}" -verbose 0
+```
+
+### 14. MD5 哈希
+
+生成字符串的 MD5 哈希值。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ md5 'hello world' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ md5 'hello world' }}" -verbose 0
+```
+
+### 15. SHA1 哈希
+
+生成字符串的 SHA1 哈希值。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ sha1 'hello world' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ sha1 'hello world' }}" -verbose 0
+```
+
+### 16. SHA256 哈希
+
+生成字符串的 SHA256 哈希值。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ sha256 'hello world' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ sha256 'hello world' }}" -verbose 0
+```
+
+### 17. HMAC 签名
+
+使用指定的哈希算法生成 HMAC 签名。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ hmac 'secret_key' 'message' 'sha256' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ hmac 'secret_key' 'message' 'sha256' }}" -verbose 0
+```
+
+### 18. 随机 IP 地址
+
+生成随机的 IP 地址。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomIP }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomIP }}" -verbose 0
+```
+
+### 19. 字符串截取
+
+从字符串中提取子字符串。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ substring 'hello world' 0 5 }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ substring 'hello world' 0 5 }}" -verbose 0
+```
+
+### 20. 字符串替换
+
+将字符串中所有出现的子字符串替换为另一个字符串。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ replace 'hello world' 'world' 'golang' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ replace 'hello world' 'world' 'golang' }}" -verbose 0
+```
+
+### 21. 转为大写
+
+将字符串转换为大写。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ upper 'hello world' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ upper 'hello world' }}" -verbose 0
+```
+
+### 22. 转为小写
+
+将字符串转换为小写。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ lower 'HELLO WORLD' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ lower 'HELLO WORLD' }}" -verbose 0
+```
+
+### 23. 去除空格
+
+去除字符串首尾的空白字符。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ trim '  hello world  ' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ trim '  hello world  ' }}" -verbose 0
+```
+
+### 24. 随机选择
+
+从多个选项中随机选择一个。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomChoice 'apple' 'banana' 'cherry' }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomChoice 'apple' 'banana' 'cherry' }}" -verbose 0
+```
+
+### 25. 随机浮点数
+
+生成介于最小值和最大值之间的随机浮点数。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomFloat 1.5 10.5 }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomFloat 1.5 10.5 }}" -verbose 0
+```
+
+### 26. 随机布尔值
+
+生成随机的布尔值（true 或 false）。
+
+```bash
+# URL 参数
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomBoolean }}" -verbose 0
+
+# 请求体
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomBoolean }}" -verbose 0
+```
 
 ### macOS Catalina 构建错误
 

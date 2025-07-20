@@ -1,18 +1,22 @@
 package main
 
 import (
-	"bytes"
+	"crypto/hmac"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
+	"hash"
 	"math/rand"
 	gourl "net/url"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"text/template"
 	"time"
 )
@@ -71,20 +75,35 @@ var (
 
 var (
 	fnMap = template.FuncMap{
-		"intSum":       intSum,
-		"random":       random,
-		"randomDate":   randomDate,
-		"randomString": randomString,
-		"randomNum":    randomNum,
-		"date":         date,
-		"UUID":         uuid,
-		"escape":       escape,
-		"getEnv":       getEnv,
-		"hexToString":  hexToString,
-		"stringToHex":  stringToHex,
-		"toString":     toString,
-		"max":          max,
-		"min":          min,
+		"intSum":        intSum,
+		"random":        random,
+		"randomDate":    randomDate,
+		"randomString":  randomString,
+		"randomNum":     randomNum,
+		"date":          date,
+		"UUID":          uuid,
+		"escape":        escape,
+		"getEnv":        getEnv,
+		"hexToString":   hexToString,
+		"stringToHex":   stringToHex,
+		"toString":      toString,
+		"max":           max,
+		"min":           min,
+		"base64Encode":  base64Encode,
+		"base64Decode":  base64Decode,
+		"md5":           md5Hash,
+		"sha1":          sha1Hash,
+		"sha256":        sha256Hash,
+		"hmac":          hmacSign,
+		"randomIP":      randomIP,
+		"substring":     substring,
+		"replace":       replace,
+		"upper":         upper,
+		"lower":         lower,
+		"trim":          trim,
+		"randomChoice":  randomChoice,
+		"randomFloat":   randomFloat,
+		"randomBoolean": randomBoolean,
 	}
 	fnUUID = randomString(10)
 )
@@ -336,8 +355,116 @@ func verbosePrint(level int, vfmt string, args ...interface{}) {
 	fmt.Printf(prefix+" "+vfmt+"\n", append([]interface{}{ts}, args...)...)
 }
 
-var bytePool = sync.Pool{
-	New: func() interface{} {
-		return &bytes.Buffer{}
-	},
+// Base64 encoding and decoding
+func base64Encode(s string) string {
+	return base64.StdEncoding.EncodeToString([]byte(s))
+}
+
+func base64Decode(s string) string {
+	data, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		verbosePrint(logLevelError, "base64 decode error: %v", err)
+		return ""
+	}
+	return string(data)
+}
+
+// MD5 hash
+func md5Hash(s string) string {
+	h := md5.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// SHA1 hash
+func sha1Hash(s string) string {
+	h := sha1.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// SHA256 hash
+func sha256Hash(s string) string {
+	h := sha256.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// HMAC signature
+func hmacSign(key, message, hashType string) string {
+	var h func() hash.Hash
+	switch strings.ToLower(hashType) {
+	case "md5":
+		h = md5.New
+	case "sha1":
+		h = sha1.New
+	case "sha256":
+		h = sha256.New
+	default:
+		h = sha256.New // Default to SHA256
+	}
+
+	mac := hmac.New(h, []byte(key))
+	mac.Write([]byte(message))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// Random IP address
+func randomIP() string {
+	return fmt.Sprintf("%d.%d.%d.%d",
+		randInt63n(256),
+		randInt63n(256),
+		randInt63n(256),
+		randInt63n(256))
+}
+
+// String substring
+func substring(s string, start, length int) string {
+	runes := []rune(s)
+	if start < 0 || start >= len(runes) {
+		return ""
+	}
+	end := start + length
+	if end > len(runes) {
+		end = len(runes)
+	}
+	return string(runes[start:end])
+}
+
+// String replacement
+func replace(s, old, new string) string {
+	return strings.ReplaceAll(s, old, new)
+}
+
+// Convert to uppercase
+func upper(s string) string {
+	return strings.ToUpper(s)
+}
+
+// Convert to lowercase
+func lower(s string) string {
+	return strings.ToLower(s)
+}
+
+// Trim whitespace
+func trim(s string) string {
+	return strings.TrimSpace(s)
+}
+
+// Random choice from array
+func randomChoice(choices ...string) string {
+	if len(choices) == 0 {
+		return ""
+	}
+	return choices[randInt63n(int64(len(choices)))]
+}
+
+// Random float number
+func randomFloat(min, max float64) float64 {
+	return min + rnd.Float64()*(max-min)
+}
+
+// Random boolean value
+func randomBoolean() bool {
+	return rnd.Intn(2) == 1
 }

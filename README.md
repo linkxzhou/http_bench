@@ -235,6 +235,186 @@ Converts a value to a quoted string.
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 | toString }}" -verbose 0
 ```
 
+### 12. Base64 Encode
+
+Encodes a string to Base64 format.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ base64Encode 'hello world' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ base64Encode 'hello world' }}" -verbose 0
+```
+
+### 13. Base64 Decode
+
+Decodes a Base64 encoded string.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ base64Decode 'aGVsbG8gd29ybGQ=' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ base64Decode 'aGVsbG8gd29ybGQ=' }}" -verbose 0
+```
+
+### 14. MD5 Hash
+
+Generates MD5 hash of a string.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ md5 'hello world' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ md5 'hello world' }}" -verbose 0
+```
+
+### 15. SHA1 Hash
+
+Generates SHA1 hash of a string.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ sha1 'hello world' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ sha1 'hello world' }}" -verbose 0
+```
+
+### 16. SHA256 Hash
+
+Generates SHA256 hash of a string.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ sha256 'hello world' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ sha256 'hello world' }}" -verbose 0
+```
+
+### 17. HMAC Signature
+
+Generates HMAC signature with specified hash algorithm.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ hmac 'secret_key' 'message' 'sha256' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ hmac 'secret_key' 'message' 'sha256' }}" -verbose 0
+```
+
+### 18. Random IP Address
+
+Generates a random IP address.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomIP }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomIP }}" -verbose 0
+```
+
+### 19. Substring
+
+Extracts a substring from a string.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ substring 'hello world' 0 5 }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ substring 'hello world' 0 5 }}" -verbose 0
+```
+
+### 20. String Replace
+
+Replaces all occurrences of a substring with another string.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ replace 'hello world' 'world' 'golang' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ replace 'hello world' 'world' 'golang' }}" -verbose 0
+```
+
+### 21. Uppercase
+
+Converts a string to uppercase.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ upper 'hello world' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ upper 'hello world' }}" -verbose 0
+```
+
+### 22. Lowercase
+
+Converts a string to lowercase.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ lower 'HELLO WORLD' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ lower 'HELLO WORLD' }}" -verbose 0
+```
+
+### 23. Trim Whitespace
+
+Removes leading and trailing whitespace from a string.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ trim '  hello world  ' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ trim '  hello world  ' }}" -verbose 0
+```
+
+### 24. Random Choice
+
+Randomly selects one item from multiple options.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomChoice 'apple' 'banana' 'cherry' }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomChoice 'apple' 'banana' 'cherry' }}" -verbose 0
+```
+
+### 25. Random Float
+
+Generates a random floating-point number between min and max values.
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomFloat 1.5 10.5 }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomFloat 1.5 10.5 }}" -verbose 0
+```
+
+### 26. Random Boolean
+
+Generates a random boolean value (true or false).
+
+```bash
+# URL parameter
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomBoolean }}" -verbose 0
+
+# Request body
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomBoolean }}" -verbose 0
+```
+
 ## Troubleshooting
 
 ### macOS Catalina Build Error

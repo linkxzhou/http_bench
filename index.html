@@ -19,7 +19,7 @@
                 start: '开始压测',
                 stop: '停止压测',
                 metrics: {
-                    duration: '监控间隔',
+                    duration: '采集间隔（毫秒）',
                     durationPlaceholder: '监控数据刷新间隔，默认2000ms'
                 },
                 request: {
@@ -37,8 +37,8 @@
                 stress: {
                     total: '总请求数',
                     concurrent: '并发数',
-                    duration: '持续时间',
-                    timeout: '超时时间',
+                    duration: '持续时间（毫秒）',
+                    timeout: '超时时间（毫秒）',
                     qps: 'QPS限制',
                     worker: 'Worker API'
                 },
@@ -53,7 +53,7 @@
                 start: 'Start Test',
                 stop: 'Stop Test',
                 metrics: {
-                    duration: 'Metrics Interval',
+                    duration: 'Metrics Interval(MS)',
                     durationPlaceholder: 'Metrics refresh interval, default 2000ms'
                 },
                 request: {
@@ -71,8 +71,8 @@
                 stress: {
                     total: 'Total Requests',
                     concurrent: 'Concurrent',
-                    duration: 'Duration',
-                    timeout: 'Timeout',
+                    duration: 'Duration(MS)',
+                    timeout: 'Timeout(MS)',
                     qps: 'QPS Limit',
                     worker: 'Worker API'
                 },
@@ -106,24 +106,36 @@
         </el-row>
 
         <!-- Form inputs -->
+        <el-select v-model="protocolType" :placeholder="translate('request.typePlaceholder')" style="margin: 4px 0; width: 100%;">
+            <template slot="prepend">{{translate('request.type')}}</template>
+            <el-option
+                v-for="protocol in protocolOptions"
+                :key="protocol.value"
+                :label="protocol.label"
+                :value="protocol.value">
+            </el-option>
+        </el-select>
         <el-input :placeholder="translate('metrics.durationPlaceholder')" v-model="metricsInterval" style="margin: 4px 0;">
             <template slot="prepend">{{translate('metrics.duration')}}</template>
         </el-input>
         <el-input :placeholder="translate('request.urlPlaceholder')" v-model="requestUrl" style="margin: 4px 0;">
             <template slot="prepend">{{translate('request.url')}}</template>
         </el-input>
-        <el-input :placeholder="translate('request.methodPlaceholder')" v-model="requestMethod" style="margin: 4px 0;">
+        <el-select v-model="requestMethod" :placeholder="translate('request.methodPlaceholder')" style="margin: 4px 0; width: 100%;">
             <template slot="prepend">{{translate('request.method')}}</template>
-        </el-input>
+            <el-option
+                v-for="method in httpMethods"
+                :key="method.value"
+                :label="method.label"
+                :value="method.value">
+            </el-option>
+        </el-select>
         <el-input :placeholder="translate('request.bodyPlaceholder')" v-model="requestBody" type="textarea"
             :autosize="{ minRows: 5, maxRows: 100}" style="margin: 4px 0;">
             <template slot="prepend">{{translate('request.body')}}</template>
         </el-input>
         <el-input :placeholder="translate('request.bodyTypePlaceholder')" v-model="requestBodyType" style="margin: 4px 0;">
             <template slot="prepend">{{translate('request.bodyType')}}</template>
-        </el-input>
-        <el-input :placeholder="translate('request.typePlaceholder')" v-model="protocolType" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('request.type')}}</template>
         </el-input>
         <el-input placeholder="n" v-model="totalRequests" style="margin: 4px 0;">
             <template slot="prepend">{{translate('stress.total')}}</template>
@@ -258,6 +270,23 @@
                 requestBody: "",
                 requestBodyType: "",
                 protocolType: "http1",
+                protocolOptions: [
+                    { value: 'http1', label: 'HTTP(s)/1.1' },
+                    { value: 'http2', label: 'HTTP(s)/2' },
+                    { value: 'http3', label: 'HTTP(s)/3' },
+                    { value: 'ws', label: 'WebSocket(ws://)' },
+                    { value: 'wss', label: 'WebSocket Secure(wss://)' }
+                ],
+                httpMethods: [
+                    { value: 'OPTIONS', label: 'OPTIONS' },
+                    { value: 'GET', label: 'GET' },
+                    { value: 'HEAD', label: 'HEAD' },
+                    { value: 'POST', label: 'POST' },
+                    { value: 'PUT', label: 'PUT' },
+                    { value: 'DELETE', label: 'DELETE' },
+                    { value: 'TRACE', label: 'TRACE' },
+                    { value: 'CONNECT', label: 'CONNECT' }
+                ],
                 totalRequests: 0,
                 concurrentConnections: 1,
                 testDuration: 10000,
