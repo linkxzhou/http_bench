@@ -170,7 +170,7 @@ func (w *HttpbenchWorker) doClient(client *Client, n, sleep int) {
 			time.Sleep(time.Duration(sleep) * time.Microsecond)
 		}
 
-		// 执行模板
+		// Execute template
 		urlBuf := &bytes.Buffer{}
 		if err := w.urlTmpl.Execute(urlBuf, nil); err != nil {
 			verbosePrint(logLevelError, "execute url template err: %v", err)

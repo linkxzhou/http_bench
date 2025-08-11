@@ -21,12 +21,12 @@ import (
 	"golang.org/x/net/http2"
 )
 
-// 优化：使用原子操作和更高效的连接池设计
+// Optimization: Use atomic operations and more efficient connection pool design
 type ClientPool struct {
 	clients chan *Client
 	maxSize int32
-	active  int32 // 使用原子操作
-	closed  int32 // 使用原子操作标记池是否关闭
+	active  int32 // Use atomic operations
+	closed  int32 // Use atomic operations to mark whether the pool is closed
 }
 
 func NewClientPool(maxSize int) *ClientPool {
@@ -36,7 +36,7 @@ func NewClientPool(maxSize int) *ClientPool {
 	}
 }
 
-// 优化：减少锁使用，使用原子操作
+// Optimization: Reduce lock usage, use atomic operations
 func (p *ClientPool) Get() *Client {
 	if atomic.LoadInt32(&p.closed) == 1 {
 		return nil
@@ -49,7 +49,7 @@ func (p *ClientPool) Get() *Client {
 			return client
 		}
 	default:
-		// 非阻塞获取失败，检查是否可以创建新连接
+		// Non-blocking get failed, check if new connection can be created
 		if atomic.LoadInt32(&p.active) < p.maxSize {
 			atomic.AddInt32(&p.active, 1)
 			return &Client{}
@@ -66,9 +66,9 @@ func (p *ClientPool) Put(client *Client) {
 
 	select {
 	case p.clients <- client:
-		// 成功放回连接池
+		// Successfully returned to connection pool
 	default:
-		// 连接池已满，关闭连接
+		// Connection pool is full, close connection
 		p.Close(client)
 	}
 	atomic.AddInt32(&p.active, -1)
@@ -80,12 +80,12 @@ func (p *ClientPool) Close(client *Client) {
 	}
 }
 
-// 优化：添加连接池关闭方法
+// Optimization: Add connection pool shutdown method
 func (p *ClientPool) Shutdown() {
 	atomic.StoreInt32(&p.closed, 1)
 	close(p.clients)
 
-	// 清理剩余连接
+	// Clean up remaining connections
 	for client := range p.clients {
 		if client != nil {
 			client.Close()
@@ -98,7 +98,7 @@ type (
 		httpClient *http.Client
 		wsClient   *websocket.Conn
 		opts       ClientOpts
-		// 优化：添加复用标记
+		// Optimization: Add reuse flag
 		reused bool
 	}
 
@@ -113,7 +113,7 @@ var (
 	http3PoolOnce sync.Once
 )
 
-// 优化：使用sync.Once确保http3Pool只初始化一次
+// Optimization: Use sync.Once to ensure http3Pool is initialized only once
 func initHTTP3Pool() {
 	http3PoolOnce.Do(func() {
 		var err error
@@ -127,7 +127,7 @@ func (c *Client) Init(opts ClientOpts) (err error) {
 	verbosePrint(logLevelDebug, "client Init opts: %v", opts)
 	c.opts = opts
 
-	// 如果客户端已经初始化且类型相同，直接复用
+	// If client is already initialized and type is the same, reuse directly
 	if c.reused && c.httpClient != nil && c.opts.typ == opts.typ {
 		return nil
 	}
@@ -155,14 +155,14 @@ func (c *Client) Init(opts ClientOpts) (err error) {
 				AllowHTTP:                  true,
 				MaxReadFrameSize:           1 << 20, // 1MB
 				StrictMaxConcurrentStreams: true,
-				// 优化：添加连接池配置
+				// Optimization: Add connection pool configuration
 				MaxHeaderListSize: 1 << 20, // 1MB
 				ReadIdleTimeout:   30 * time.Second,
 				PingTimeout:       15 * time.Second,
 			},
 		}
 	case protocolHTTP1:
-		// 优化：HTTP/1.1传输层设置
+		// Optimization: HTTP/1.1 transport layer settings
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
@@ -174,19 +174,19 @@ func (c *Client) Init(opts ClientOpts) (err error) {
 			DialContext: (&net.Dialer{
 				Timeout:   time.Duration(c.opts.params.Timeout) * time.Millisecond,
 				KeepAlive: 60 * time.Second,
-				// 优化：添加更多网络优化参数
+				// Optimization: Add more network optimization parameters
 				DualStack: true,
 			}).DialContext,
-			// 优化：调整连接池参数以提高性能
-			MaxIdleConns:          200, // 增加最大空闲连接数
-			MaxIdleConnsPerHost:   100, // 增加每个主机的最大空闲连接数
-			MaxConnsPerHost:       200, // 增加每个主机的最大连接数
+			// Optimization: Adjust connection pool parameters to improve performance
+			MaxIdleConns:          200, // Increase maximum idle connections
+			MaxIdleConnsPerHost:   100, // Increase maximum idle connections per host
+			MaxConnsPerHost:       200, // Increase maximum connections per host
 			IdleConnTimeout:       90 * time.Second,
 			ResponseHeaderTimeout: time.Duration(c.opts.params.Timeout) * time.Millisecond,
 			ExpectContinueTimeout: 1 * time.Second,
-			// 优化：启用HTTP/2支持但禁用升级
+			// Optimization: Enable HTTP/2 support but disable upgrade
 			ForceAttemptHTTP2: false,
-			// 优化：设置写缓冲区大小
+			// Optimization: Set write buffer size
 			WriteBufferSize: 32 * 1024, // 32KB
 			ReadBufferSize:  32 * 1024, // 32KB
 		}
@@ -199,7 +199,7 @@ func (c *Client) Init(opts ClientOpts) (err error) {
 			Transport: tr,
 		}
 	case protocolWS, protocolWSS:
-		// 优化：WebSocket连接配置
+		// Optimization: WebSocket connection configuration
 		dialer := websocket.Dialer{
 			HandshakeTimeout:  time.Duration(c.opts.params.Timeout) * time.Millisecond,
 			ReadBufferSize:    32 * 1024, // 32KB
@@ -220,11 +220,11 @@ func (c *Client) Init(opts ClientOpts) (err error) {
 	return nil
 }
 
-// 优化：使用对象池减少内存分配
+// Optimization: Use object pool to reduce memory allocation
 var (
 	bufferPool = sync.Pool{
 		New: func() interface{} {
-			return make([]byte, 32*1024) // 32KB缓冲区
+			return make([]byte, 32*1024) // 32KB buffer
 		},
 	}
 	readerPool = sync.Pool{
@@ -245,7 +245,7 @@ func (c *Client) Do(url, reqBody []byte, timeoutMs int) (int, int64, error) {
 
 	switch c.opts.typ {
 	case protocolHTTP1, protocolHTTP2, protocolHTTP3:
-		// 优化：复用Reader对象
+		// Optimization: Reuse Reader object
 		reader := readerPool.Get().(*bytes.Reader)
 		reader.Reset(reqBody)
 		defer readerPool.Put(reader)
@@ -256,7 +256,7 @@ func (c *Client) Do(url, reqBody []byte, timeoutMs int) (int, int64, error) {
 			return 0, 0, fmt.Errorf("create request error: %v", err)
 		}
 
-		// 设置请求头
+		// Set request headers
 		for k, v := range c.opts.params.Headers {
 			req.Header[k] = v
 		}
@@ -267,12 +267,12 @@ func (c *Client) Do(url, reqBody []byte, timeoutMs int) (int, int64, error) {
 		}
 		defer resp.Body.Close()
 
-		// 优化：内容长度处理
+		// Optimization: Content length handling
 		contentLength := resp.ContentLength
 		if contentLength < 0 {
-			// 如果Content-Length未知，使用缓冲区读取并计算大小
+			// If Content-Length is unknown, use buffer to read and calculate size
 			buf := bufferPool.Get().([]byte)
-			defer bufferPool.Put(buf)
+			defer bufferPool.Put(&buf)
 
 			var totalSize int64
 			for {
@@ -287,7 +287,7 @@ func (c *Client) Do(url, reqBody []byte, timeoutMs int) (int, int64, error) {
 			}
 			contentLength = totalSize
 		} else {
-			// 优化：直接丢弃响应体以释放连接
+			// Optimization: Directly discard response body to release connection
 			_, _ = io.Copy(io.Discard, resp.Body)
 		}
 		return resp.StatusCode, contentLength, nil
@@ -359,7 +359,7 @@ func (p *HttpbenchParameters) String() string {
 	return string(body)
 }
 
-// 优化：使用对象池优化请求体处理
+// Optimization: Use object pool to optimize request body processing
 func (p *HttpbenchParameters) GetRequestBody() ([]byte, io.Reader) {
 	if p.RequestBody == "" {
 		return nil, nil

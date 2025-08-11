@@ -14,6 +14,7 @@ func serveDistributedWorker(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.Header().Set("Content-Type", httpContentTypeJSON)
 
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
@@ -64,9 +65,10 @@ func serveDistributedWorker(w http.ResponseWriter, r *http.Request) {
 	w.Write(respStr)
 }
 
+// postDistributedWorker post request to distributed worker
 func postDistributedWorker(uri string, body []byte) (*CollectResult, error) {
 	verbosePrint(logLevelDebug, "request body: %s", string(body))
-	// default not timeout
+	// default no timeout
 	resp, err := http.Post(uri, httpContentTypeJSON, bytes.NewBuffer(body))
 	if err != nil {
 		verbosePrint(logLevelError, "executeWorkerReq addr(%s) err: %s", uri, err.Error())
@@ -80,6 +82,7 @@ func postDistributedWorker(uri string, body []byte) (*CollectResult, error) {
 	return &result, err
 }
 
+// postAllDistributedWorkers post request to all distributed workers
 func postAllDistributedWorkers(workAddrs flagSlice, jsonParams []byte) (*CollectResult, error) {
 	var wg sync.WaitGroup
 	var resultList []*CollectResult
@@ -87,11 +90,7 @@ func postAllDistributedWorkers(workAddrs flagSlice, jsonParams []byte) (*Collect
 	for _, v := range workAddrs {
 		wg.Add(1)
 
-		addr := fmt.Sprintf("http://%s%s", v, httpWorkerApiPath)
-		if strings.Contains(v, "http://") || strings.Contains(v, "https://") {
-			addr = fmt.Sprintf("%s%s", v, httpWorkerApiPath)
-		}
-
+		addr := buildWorkerURL(v)
 		verbosePrint(logLevelDebug, "request addr: %s", addr)
 
 		go func(workerAddr string) {
@@ -105,4 +104,11 @@ func postAllDistributedWorkers(workAddrs flagSlice, jsonParams []byte) (*Collect
 
 	wg.Wait()
 	return mergeCollectResult(nil, resultList...), nil
+}
+
+func buildWorkerURL(workerAddr string) string {
+	if strings.Contains(workerAddr, "http://") || strings.Contains(workerAddr, "https://") {
+		return fmt.Sprintf("%s%s", workerAddr, httpWorkerApiPath)
+	}
+	return fmt.Sprintf("http://%s%s", workerAddr, httpWorkerApiPath)
 }
