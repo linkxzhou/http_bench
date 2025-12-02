@@ -13,7 +13,7 @@ func TestPostDistributedWorker_Success(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		resp := CollectResult{ErrCode: 0, ErrMsg: "ok", Rps: 123}
-		data, _ := json.Marshal(resp)
+		data, _ := json.Marshal(&resp)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(data)
 	})
@@ -50,7 +50,7 @@ func TestPostAllDistributedWorker_mergeCollectResult(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
 			resp := CollectResult{ErrCode: int(code), ErrMsg: "", SizeTotal: size}
-			data, _ := json.Marshal(resp)
+			data, _ := json.Marshal(&resp)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
 		})

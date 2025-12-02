@@ -11,13 +11,260 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
     <script src="https://unpkg.com/element-ui/lib/index.js"></script>
     
+    <!-- Custom Styles -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .page-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+        
+        .page-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .page-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            padding: 20px;
+            margin-bottom: 30px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .chart-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .chart-card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .control-panel {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            padding: 30px;
+            animation: fadeInUp 0.6s ease-out 0.1s;
+            animation-fill-mode: both;
+        }
+        
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .control-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .button-group .el-button {
+            flex: 1;
+            height: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .button-group .el-button--primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        
+        .button-group .el-button--primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .button-group .el-button--danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+        }
+        
+        .button-group .el-button--danger:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
+        }
+        
+        .form-section {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .form-item-full {
+            grid-column: 1 / -1;
+        }
+        
+        .el-input, .el-select {
+            margin: 0 !important;
+        }
+        
+        .el-input__inner, .el-textarea__inner {
+            border-radius: 8px;
+            border: 2px solid #e8e8e8;
+            transition: all 0.3s ease;
+        }
+        
+        .el-input__inner:focus, .el-textarea__inner:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .el-input-group__prepend {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-weight: 600;
+            border-radius: 8px 0 0 8px;
+            min-width: 140px;
+        }
+        
+        .el-select .el-input__inner {
+            border-radius: 8px;
+        }
+        
+        .language-selector {
+            min-width: 120px;
+        }
+        
+        .language-selector .el-input__inner {
+            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-weight: 600;
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-panel {
+                padding: 20px;
+            }
+        }
+        
+        .el-button.is-loading::before {
+            animation: rotating 2s linear infinite;
+        }
+        
+        @keyframes rotating {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    
     <script type="text/javascript">
         // i18n configuration for multilingual support
         const translations = {
             'zh-CN': {
-                title: 'HTTP 压力测试工具',
+                title: '🚀 HTTP 压力测试工具',
+                subtitle: '专业的HTTP性能测试工具',
                 start: '开始压测',
                 stop: '停止压测',
+                chart: {
+                    title: '📊 实时性能指标',
+                    qps: 'QPS',
+                    statusCode: '状态码'
+                },
+                section: {
+                    testConfig: '⚙️ 测试配置',
+                    requestConfig: '🌐 请求配置',
+                    stressParams: '⚡ 压测参数',
+                    advancedSettings: '🔧 高级设置'
+                },
                 metrics: {
                     duration: '采集间隔（毫秒）',
                     durationPlaceholder: '监控数据刷新间隔，默认2000ms'
@@ -28,7 +275,7 @@
                     method: '请求方法',
                     methodPlaceholder: '选择请求方法',
                     body: '请求体',
-                    bodyPlaceholder: '请输入请求体',
+                    bodyPlaceholder: '请输入请求体内容',
                     bodyType: '请求体类型',
                     bodyTypePlaceholder: '空或hex，默认空',
                     type: '协议类型',
@@ -36,33 +283,67 @@
                 },
                 stress: {
                     total: '总请求数',
+                    totalPlaceholder: '0 = 无限制',
                     concurrent: '并发数',
+                    concurrentPlaceholder: '1-10000',
                     duration: '持续时间（毫秒）',
+                    durationPlaceholder: '毫秒',
                     timeout: '超时时间（毫秒）',
+                    timeoutPlaceholder: '毫秒',
                     qps: 'QPS限制',
-                    worker: 'Worker API'
+                    qpsPlaceholder: '0 = 无限制',
+                    worker: 'Worker API',
+                    workerPlaceholder: '/api 或自定义端点'
+                },
+                advanced: {
+                    compression: '禁用压缩',
+                    keepalive: '禁用Keep-Alive',
+                    auth: '认证信息',
+                    username: '用户名',
+                    password: '密码'
                 },
                 message: {
-                    start: '开始压测',
-                    stop: '停止压测',
-                    error: '错误'
+                    start: '压测已开始',
+                    stop: '压测已停止',
+                    error: '压测错误',
+                    success: '操作成功',
+                    warning: '警告',
+                    info: '提示'
+                },
+                validation: {
+                    urlRequired: '请输入请求地址',
+                    urlInvalid: '请输入有效的URL',
+                    concurrentInvalid: '并发数必须在1-10000之间',
+                    durationInvalid: '持续时间必须大于0'
                 }
             },
             'en-US': {
-                title: 'HTTP Benchmark Tool',
-                start: 'Start Benchmark Test',
-                stop: 'Stop Benchmark Test',
+                title: '🚀 HTTP Benchmark Tool',
+                subtitle: 'Professional HTTP Performance Testing Tool',
+                start: 'Start Test',
+                stop: 'Stop Test',
+                chart: {
+                    title: '📊 Real-time Performance Metrics',
+                    qps: 'QPS',
+                    statusCode: 'Status Code'
+                },
+                section: {
+                    testConfig: '⚙️ Test Configuration',
+                    requestConfig: '🌐 Request Configuration',
+                    stressParams: '⚡ Stress Test Parameters',
+                    advancedSettings: '🔧 Advanced Settings'
+                },
                 metrics: {
-                    duration: 'Metrics Interval(MS)',
+                    duration: 'Metrics Interval (MS)',
                     durationPlaceholder: 'Metrics refresh interval, default 2000ms'
                 },
                 request: {
                     url: 'Request URL',
-                    urlPlaceholder: 'Enter stress test target URL',
+                    urlPlaceholder: 'Enter target URL for stress test',
                     method: 'Request Method',
-                    methodPlaceholder: 'Select request method',
+                    methodPlaceholder: 'Select HTTP method',
                     body: 'Request Body',
-                    bodyPlaceholder: 'Enter request body',
+                    bodyPlaceholder: 'Enter request body content',
                     bodyType: 'Body Type',
                     bodyTypePlaceholder: 'empty or hex, default empty',
                     type: 'Protocol Type',
@@ -70,16 +351,38 @@
                 },
                 stress: {
                     total: 'Total Requests',
-                    concurrent: 'Concurrent',
-                    duration: 'Duration(MS)',
-                    timeout: 'Timeout(MS)',
+                    totalPlaceholder: '0 = unlimited',
+                    concurrent: 'Concurrent Connections',
+                    concurrentPlaceholder: '1-10000',
+                    duration: 'Duration (MS)',
+                    durationPlaceholder: 'milliseconds',
+                    timeout: 'Timeout (MS)',
+                    timeoutPlaceholder: 'milliseconds',
                     qps: 'QPS Limit',
-                    worker: 'Worker API'
+                    qpsPlaceholder: '0 = unlimited',
+                    worker: 'Worker API',
+                    workerPlaceholder: '/api or custom endpoint'
+                },
+                advanced: {
+                    compression: 'Disable Compression',
+                    keepalive: 'Disable Keep-Alive',
+                    auth: 'Authentication',
+                    username: 'Username',
+                    password: 'Password'
                 },
                 message: {
-                    start: 'Benchmark Test Started',
-                    stop: 'Benchmark Test Stopped',
-                    error: 'Benchmark Test Error'
+                    start: 'Benchmark test started',
+                    stop: 'Benchmark test stopped',
+                    error: 'Benchmark test error',
+                    success: 'Operation successful',
+                    warning: 'Warning',
+                    info: 'Information'
+                },
+                validation: {
+                    urlRequired: 'Please enter request URL',
+                    urlInvalid: 'Please enter a valid URL',
+                    concurrentInvalid: 'Concurrent connections must be between 1-10000',
+                    durationInvalid: 'Duration must be greater than 0'
                 }
             }
         };
@@ -87,75 +390,125 @@
     <title id="page-title">HTTP Benchmark Tool</title>
 </head>
 
-<body style="height: 100%; margin: 0">
-    <!-- Chart container -->
-    <div id="chart-container" style="height: 70%; margin: auto; width:98%; padding: 10px; box-sizing: border-box; box-shadow: rgba(0, 0, 0, 0.3) 0px 0px 20px;"></div>
-
-    <!-- Main application container -->
-    <div id="app" style="margin: 20px;">
-        <!-- Language selector -->
-        <el-select v-model="currentLanguage" @change="changeLanguage" size="small" style="margin-right: 15px; margin-bottom: 10px;">
-            <el-option label="中文" value="zh-CN"></el-option>
-            <el-option label="English" value="en-US"></el-option>
-        </el-select>
-
-        <!-- Control buttons -->
-        <el-row>
-            <el-button type="primary" :loading="isRunning" @click="startTest">{{translate('start')}}</el-button>
-            <el-button type="danger" @click="stopTest" :disabled="!isRunning">{{translate('stop')}}</el-button>
-        </el-row>
-
-        <!-- Form inputs -->
-        <el-select v-model="protocolType" :placeholder="translate('request.typePlaceholder')" style="margin: 4px 0; width: 100%;">
-            <template slot="prepend">{{translate('request.type')}}</template>
-            <el-option
-                v-for="protocol in protocolOptions"
-                :key="protocol.value"
-                :label="protocol.label"
-                :value="protocol.value">
-            </el-option>
-        </el-select>
-        <el-input :placeholder="translate('metrics.durationPlaceholder')" v-model="metricsInterval" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('metrics.duration')}}</template>
-        </el-input>
-        <el-input :placeholder="translate('request.urlPlaceholder')" v-model="requestUrl" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('request.url')}}</template>
-        </el-input>
-        <el-select v-model="requestMethod" :placeholder="translate('request.methodPlaceholder')" style="margin: 4px 0; width: 100%;">
-            <template slot="prepend">{{translate('request.method')}}</template>
-            <el-option
-                v-for="method in httpMethods"
-                :key="method.value"
-                :label="method.label"
-                :value="method.value">
-            </el-option>
-        </el-select>
-        <el-input :placeholder="translate('request.bodyPlaceholder')" v-model="requestBody" type="textarea"
-            :autosize="{ minRows: 5, maxRows: 100}" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('request.body')}}</template>
-        </el-input>
-        <el-input :placeholder="translate('request.bodyTypePlaceholder')" v-model="requestBodyType" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('request.bodyType')}}</template>
-        </el-input>
-        <el-input placeholder="n" v-model="totalRequests" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('stress.total')}}</template>
-        </el-input>
-        <el-input placeholder="c" v-model="concurrentConnections" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('stress.concurrent')}}</template>
-        </el-input>
-        <el-input placeholder="duration(s)" v-model="testDuration" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('stress.duration')}}</template>
-        </el-input>
-        <el-input placeholder="timeout(ms)" v-model="requestTimeout" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('stress.timeout')}}</template>
-        </el-input>
-        <el-input placeholder="qps" v-model="qpsLimit" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('stress.qps')}}</template>
-        </el-input>
-        <el-input placeholder="/cb9ab101f9f725cb7c3a355bd5631184" v-model="workerApiEndpoint" style="margin: 4px 0;">
-            <template slot="prepend">{{translate('stress.worker')}}</template>
-        </el-input>
+<body>
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 id="page-title">🚀 HTTP Bench</h1>
+        <p id="page-subtitle">Professional HTTP Performance Testing Tool</p>
     </div>
+    
+    <div class="main-container">
+        <!-- Chart Card -->
+        <div class="chart-card">
+            <div class="chart-card-header">
+                <div class="chart-card-title" id="chart-title">📊 Real-time Performance Metrics</div>
+            </div>
+            <div id="chart-container" style="height: 400px; width: 100%;"></div>
+        </div>
+        
+        <!-- Control Panel (Vue App) -->
+        <div id="app">
+            <div class="control-panel">
+                <!-- Language selector -->
+                <div style="position: absolute; top: 30px; right: 30px;">
+                    <el-select v-model="currentLanguage" @change="changeLanguage" size="small" class="language-selector">
+                        <el-option label="🇨🇳 中文" value="zh-CN"></el-option>
+                        <el-option label="🇺🇸 English" value="en-US"></el-option>
+                    </el-select>
+                </div>
+                <div class="control-header">
+                    <div class="control-title" id="control-title">⚙️ Test Configuration</div>
+                </div>
+                
+                <!-- Control Buttons -->
+                <div class="button-group">
+                    <el-button type="primary" :loading="isRunning" @click="startTest" icon="el-icon-video-play">
+                        {{translate('start')}}
+                    </el-button>
+                    <el-button type="danger" @click="stopTest" :disabled="!isRunning" icon="el-icon-video-pause">
+                        {{translate('stop')}}
+                    </el-button>
+                </div>
+                
+                <!-- Request Configuration Section -->
+                <div class="form-section">
+                    <div class="section-title" id="section-request">🌐 Request Configuration</div>
+                    <div class="form-grid">
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('request.urlPlaceholder')" v-model="requestUrl">
+                                <template slot="prepend">{{translate('request.url')}}</template>
+                            </el-input>
+                        </div>
+                        <el-select v-model="protocolType" :placeholder="translate('request.typePlaceholder')" style="width: 100%;">
+                            <template slot="prepend">{{translate('request.type')}}</template>
+                            <el-option
+                                v-for="protocol in protocolOptions"
+                                :key="protocol.value"
+                                :label="protocol.label"
+                                :value="protocol.value">
+                            </el-option>
+                        </el-select>
+                        <el-select v-model="requestMethod" :placeholder="translate('request.methodPlaceholder')" style="width: 100%;">
+                            <template slot="prepend">{{translate('request.method')}}</template>
+                            <el-option
+                                v-for="method in httpMethods"
+                                :key="method.value"
+                                :label="method.label"
+                                :value="method.value">
+                            </el-option>
+                        </el-select>
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('request.bodyPlaceholder')" v-model="requestBody" type="textarea"
+                                :autosize="{ minRows: 3, maxRows: 10}">
+                                <template slot="prepend">{{translate('request.body')}}</template>
+                            </el-input>
+                        </div>
+                        <el-input :placeholder="translate('request.bodyTypePlaceholder')" v-model="requestBodyType">
+                            <template slot="prepend">{{translate('request.bodyType')}}</template>
+                        </el-input>
+                    </div>
+                </div>
+                
+                <!-- Stress Test Parameters Section -->
+                <div class="form-section">
+                    <div class="section-title" id="section-stress">⚡ Stress Test Parameters</div>
+                    <div class="form-grid">
+                        <el-input :placeholder="translate('stress.totalPlaceholder')" v-model="totalRequests" type="number">
+                            <template slot="prepend">{{translate('stress.total')}}</template>
+                        </el-input>
+                        <el-input :placeholder="translate('stress.concurrentPlaceholder')" v-model="concurrentConnections" type="number">
+                            <template slot="prepend">{{translate('stress.concurrent')}}</template>
+                        </el-input>
+                        <el-input :placeholder="translate('stress.durationPlaceholder')" v-model="testDuration" type="number">
+                            <template slot="prepend">{{translate('stress.duration')}}</template>
+                        </el-input>
+                        <el-input :placeholder="translate('stress.timeoutPlaceholder')" v-model="requestTimeout" type="number">
+                            <template slot="prepend">{{translate('stress.timeout')}}</template>
+                        </el-input>
+                        <el-input :placeholder="translate('stress.qpsPlaceholder')" v-model="qpsLimit" type="number">
+                            <template slot="prepend">{{translate('stress.qps')}}</template>
+                        </el-input>
+                        <el-input :placeholder="translate('metrics.durationPlaceholder')" v-model="metricsInterval" type="number">
+                            <template slot="prepend">{{translate('metrics.duration')}}</template>
+                        </el-input>
+                    </div>
+                </div>
+                
+                <!-- Advanced Settings Section -->
+                <div class="form-section">
+                    <div class="section-title" id="section-advanced">🔧 Advanced Settings</div>
+                    <div class="form-grid">
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('stress.workerPlaceholder')" v-model="workerApiEndpoint">
+                                <template slot="prepend">{{translate('stress.worker')}}</template>
+                            </el-input>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script type="text/javascript">
         // Date formatting utility
         Date.prototype.format = function (fmt) {
@@ -195,15 +548,29 @@
         const DEFAULT_METRICS_INTERVAL = 2000;
         const TIME_FORMAT = "hh:mm:ss";
 
-        // Initialize chart
-        const chartContainer = document.getElementById('chart-container');
-        const performanceChart = echarts.init(chartContainer, 'dark', {
-            renderer: 'canvas',
-            useDirtyRect: false
-        });
+        // Initialize chart (will be done after DOM is ready)
+        let performanceChart = null;
+        
+        function initChart() {
+            const chartContainer = document.getElementById('chart-container');
+            if (!chartContainer) {
+                console.error('Chart container not found');
+                return;
+            }
+            performanceChart = echarts.init(chartContainer, 'dark', {
+                renderer: 'canvas',
+                useDirtyRect: false
+            });
+            // Initialize chart with empty data
+            renderChart([new Date().format(TIME_FORMAT)], [0]);
+        }
 
         // Chart rendering function
         function renderChart(timeLabels, qpsData, statusCodeData = {}) {
+            if (!performanceChart) {
+                console.warn('Chart not initialized yet');
+                return;
+            }
             const chartOptions = {
                 legend: {
                     data: ['qps']
@@ -244,9 +611,6 @@
                 performanceChart.setOption(chartOptions);
             }
         }
-        
-        // Initialize chart with empty data
-        renderChart([new Date().format(TIME_FORMAT)], [0]);
 
         // Optimize chart resize handler with debouncing
         const debounce = (fn, delay) => {
@@ -256,7 +620,11 @@
                 timer = setTimeout(() => fn.apply(this, arguments), delay);
             };
         };
-        window.addEventListener('resize', debounce(() => performanceChart.resize(), 250));
+        window.addEventListener('resize', debounce(() => {
+            if (performanceChart) {
+                performanceChart.resize();
+            }
+        }, 250));
 
         let sequenceId = Math.floor(Math.random() * 1000000) + 1;
         // Vue application instance
@@ -320,9 +688,20 @@
                     this.currentLanguage = language;
                     localStorage.setItem('preferred-language', language);
                     
-                    // Update page title and HTML lang attribute
-                    document.getElementById('page-title').innerText = this.translate('title');
+                    // Update all static text elements
+                    this.updateStaticTexts();
                     document.documentElement.setAttribute('lang', language);
+                },
+                
+                // Update static text elements
+                updateStaticTexts() {
+                    document.getElementById('page-title').innerText = this.translate('title');
+                    document.getElementById('page-subtitle').innerText = this.translate('subtitle');
+                    document.getElementById('chart-title').innerText = this.translate('chart.title');
+                    document.getElementById('control-title').innerText = this.translate('section.testConfig');
+                    document.getElementById('section-request').innerText = this.translate('section.requestConfig');
+                    document.getElementById('section-stress').innerText = this.translate('section.stressParams');
+                    document.getElementById('section-advanced').innerText = this.translate('section.advancedSettings');
                 },
                 
                 // Show message
@@ -517,9 +896,16 @@
                 if (savedLanguage && translations[savedLanguage]) {
                     this.currentLanguage = savedLanguage;
                 }
+            },
+            mounted() {
+                // Initialize chart after Vue is mounted
+                this.$nextTick(() => {
+                    initChart();
+                    // Update all static texts
+                    this.updateStaticTexts();
+                });
                 
-                // Set initial page title and HTML lang attribute
-                document.getElementById('page-title').innerText = this.translate('title');
+                // Set initial language
                 document.documentElement.setAttribute('lang', this.currentLanguage);
             }
         });

@@ -18,94 +18,162 @@ import (
 	"time"
 )
 
-var workerAddrList flagSlice // Worker mechine addr list.
+var (
+	// workerAddrList stores addresses of distributed worker nodes
+	workerAddrList flagSlice
+)
 
 // HttpBenchStartup starts HTTP benchmark testing
-func HttpBenchStartup(hbWorker *HttpbenchWorker, params HttpbenchParameters) (*CollectResult, error) {
-	result := NewCollectResult()
-
+// It automatically determines whether to run in distributed mode or single-node mode
+// based on the presence of worker addresses.
+//
+// Parameters:
+//   - worker: The worker instance to execute the benchmark
+//   - params: Configuration parameters for the benchmark test
+//
+// Returns:
+//   - *CollectResult: Aggregated test results
+//   - error: Error if the benchmark fails to start or execute
+func HttpBenchStartup(worker *HttpbenchWorker, params HttpbenchParameters) (*CollectResult, error) {
 	// Handle distributed worker nodes
 	if len(workerAddrList) > 0 {
 		return handleDistributedWorkers(params)
 	}
 
 	// Handle single worker node
-	return handleSingleWorker(hbWorker, params, result)
+	result := NewCollectResult()
+	return handleSingleWorker(worker, params, result)
 }
 
 // handleDistributedWorkers handles distributed worker nodes
+// It marshals the parameters and sends them to all worker nodes concurrently.
+//
+// Parameters:
+//   - params: Configuration parameters to send to workers
+//
+// Returns:
+//   - *CollectResult: Merged results from all workers
+//   - error: Always returns nil (errors are embedded in result)
 func handleDistributedWorkers(params HttpbenchParameters) (*CollectResult, error) {
-	verbosePrint(logLevelTrace, "worker list: %v", workerAddrList)
+	logTrace("distributing to worker list: %v", workerAddrList)
 
-	jsonBody, err := json.Marshal(params)
+	// Marshal parameters to JSON for transmission
+	jsonBody, err := json.Marshal(&params)
 	if err != nil {
-		verbosePrint(logLevelError, "invalid stress testing params: %v", err)
-		return nil, fmt.Errorf("failed to marshal stress testing params: %w", err)
-	}
-
-	result, err := postAllDistributedWorkers(workerAddrList, jsonBody)
-	if err != nil {
-		result = NewCollectResult()
-		result.ErrCode = -999
-		result.ErrMsg = err.Error()
+		logError("failed to marshal benchmark params: %v", err)
+		result := NewCollectResult()
+		result.ErrCode = -998
+		result.ErrMsg = fmt.Sprintf("parameter marshaling failed: %v", err)
 		return result, nil
 	}
+
+	// Send requests to all distributed workers
+	result, err := postAllDistributedWorkers(workerAddrList, jsonBody)
+	if err != nil {
+		logError("distributed workers execution failed: %v", err)
+		result = NewCollectResult()
+		result.ErrCode = -999
+		result.ErrMsg = fmt.Sprintf("distributed execution failed: %v", err)
+		return result, nil
+	}
+
+	logInfo("distributed benchmark completed successfully")
+	return result, nil
+}
+
+// handleSingleWorker handles single worker node execution
+// It processes different commands (start, stop, metrics) for the worker.
+//
+// Parameters:
+//   - worker: The worker instance to control
+//   - params: Configuration parameters including the command to execute
+//   - result: Pre-allocated result object (may be replaced)
+//
+// Returns:
+//   - *CollectResult: Test results or error information
+//   - error: Always returns nil (errors are embedded in result)
+func handleSingleWorker(worker *HttpbenchWorker, params HttpbenchParameters, result *CollectResult) (*CollectResult, error) {
+	logTrace("executing single worker command: %d", params.Cmd)
+
+	switch params.Cmd {
+	case cmdStart:
+		return handleStartCommand(worker, params)
+
+	case cmdStop:
+		return handleStopCommand(worker, params, result)
+
+	case cmdMetrics:
+		return handleMetricsCommand(worker)
+
+	default:
+		logWarn("received unknown command: %d", params.Cmd)
+		result.ErrCode = -2
+		result.ErrMsg = fmt.Sprintf("unsupported command: %d", params.Cmd)
+		return result, nil
+	}
+}
+
+// handleStartCommand starts the benchmark worker
+func handleStartCommand(worker *HttpbenchWorker, params HttpbenchParameters) (*CollectResult, error) {
+	logInfo("starting benchmark worker (sequence: %d)...", params.SequenceId)
+
+	result := worker.Start(params)
+
+	// Print results if this is a remote request
+	if params.From != "" {
+		logDebug("printing results for remote request from: %s", params.From)
+		result.print()
+	}
+
+	logInfo("benchmark completed - requests: %d, errors: %d, rps: %d",
+		result.LatsTotal, result.ErrTotal, result.Rps)
 
 	return result, nil
 }
 
-// handleSingleWorker handles single worker node
-func handleSingleWorker(hbWorker *HttpbenchWorker, params HttpbenchParameters, result *CollectResult) (*CollectResult, error) {
-	verbosePrint(logLevelTrace, "single worker and cmd: %s", params.Cmd)
+// handleStopCommand stops the benchmark worker
+func handleStopCommand(worker *HttpbenchWorker, params HttpbenchParameters, result *CollectResult) (*CollectResult, error) {
+	logInfo("stopping benchmark worker (sequence: %d)...", params.SequenceId)
 
-	switch params.Cmd {
-	case cmdStart:
-		verbosePrint(logLevelInfo, "starting worker...")
-		result = hbWorker.Start(params)
-		if params.From != "" {
-			result.print()
-		}
-		verbosePrint(logLevelInfo, "worker result: %v", result)
+	worker.Stop()
 
-	case cmdStop:
-		verbosePrint(logLevelInfo, "stopping worker...")
-		hbWorker.Stop()
-		verbosePrint(logLevelInfo, "worker stopped")
-		hbWorkerList.Delete(params.SequenceId)
+	// Remove worker from registry
+	workerRegistry.Delete(params.SequenceId)
 
-	case cmdMetrics:
-		verbosePrint(logLevelInfo, "getting metrics...")
-		result = hbWorker.GetResult()
+	logInfo("worker stopped and removed from registry")
+	return result, nil
+}
 
-	default:
-		verbosePrint(logLevelWarn, "unknown command: %d", params.Cmd)
-		result.ErrCode = -2
-		result.ErrMsg = fmt.Sprintf("unknown command: %d", params.Cmd)
-		return result, nil
-	}
+// handleMetricsCommand retrieves current metrics from the worker
+func handleMetricsCommand(worker *HttpbenchWorker) (*CollectResult, error) {
+	logInfo("retrieving worker metrics...")
 
-	// Check worker errors
-	if hbWorker.err != nil {
-		result.ErrCode = -1
-		result.ErrMsg = hbWorker.err.Error()
-	}
+	result := worker.GetResult()
+
+	logDebug("metrics retrieved - requests: %d, errors: %d",
+		result.LatsTotal, result.ErrTotal)
 
 	return result, nil
 }
 
 func main() {
+	// Set custom usage message
 	flag.Usage = func() {
-		fmt.Println(fmt.Sprintf(usage, runtime.NumCPU()))
+		fmt.Print(usage)
 	}
 
-	var params HttpbenchParameters
-	var headerslice flagSlice
+	var (
+		params      HttpbenchParameters
+		headerSlice flagSlice
+	)
 
-	flag.Var(&headerslice, "H", "")    // Custom HTTP header
-	flag.Var(&workerAddrList, "W", "") // Worker mechine, support W/w
-	flag.Var(&workerAddrList, "w", "")
+	// Register custom flag types
+	flag.Var(&headerSlice, "H", "")    // Custom HTTP header (repeatable)
+	flag.Var(&workerAddrList, "W", "") // Worker machine addresses (repeatable)
+	flag.Var(&workerAddrList, "w", "") // Worker machine addresses (lowercase alias)
 	flag.Parse()
 
+	// Handle positional URL argument
 	for flag.NArg() > 0 {
 		if len(*urlstr) == 0 {
 			*urlstr = flag.Args()[0]
@@ -114,189 +182,257 @@ func main() {
 		flag.Parse()
 	}
 
+	// Print examples and exit if requested
 	if *printExample {
-		println(examples)
+		fmt.Print(examples)
 		return
 	}
 
+	// Configure runtime
 	runtime.GOMAXPROCS(*cpus)
+	logDebug("using %d CPU cores", *cpus)
+
+	// Initialize basic parameters
 	params.N = *n
 	params.C = *c
 	params.Qps = *q
 	params.Duration = parseTime(*d)
 
+	// Validate concurrency parameters
 	if params.C <= 0 {
-		usageAndExit("n and c cannot be smaller than 1.")
+		usageAndExit("concurrency (-c) must be at least 1")
 	}
 
-	if (params.N < params.C) && (params.Duration < 0) {
-		usageAndExit("n cannot be less than c.")
+	if params.N > 0 && params.N < params.C {
+		usageAndExit("total requests (-n) cannot be less than concurrency (-c)")
 	}
 
-	var requestUrls []string
-	var err error
+	if params.N <= 0 && params.Duration <= 0 {
+		usageAndExit("either -n (request count) or -d (duration) must be specified")
+	}
+
+	// Parse target URLs from command line or file
+	var (
+		requestUrls []string
+		err         error
+	)
+
 	if *urlFile == "" && len(*urlstr) > 0 {
+		// Single URL from command line
 		requestUrls = append(requestUrls, *urlstr)
+		logDebug("using single URL: %s", *urlstr)
 	} else if len(*urlFile) > 0 {
+		// Multiple URLs from file
 		if requestUrls, err = parseFile(*urlFile, []rune{'\r', '\n'}); err != nil {
-			usageAndExit(*urlFile + " file read error(" + err.Error() + ").")
+			usageAndExit(fmt.Sprintf("failed to read URL file %s: %v", *urlFile, err))
 		}
+		logDebug("loaded %d URLs from file: %s", len(requestUrls), *urlFile)
 	}
 
+	// Configure HTTP request parameters
 	params.RequestMethod = strings.ToUpper(*m)
 	params.DisableCompression = *disableCompression
 	params.DisableKeepAlives = *disableKeepAlives
 	params.RequestBody = *body
 	params.RequestBodyType = *bodyType
 
+	// Load request body from file if specified
 	if *bodyFile != "" {
-		var readBody []string
-		readBody, err = parseFile(*bodyFile, nil)
-		if err != nil {
-			usageAndExit(*bodyFile + " file read error(" + err.Error() + ").")
+		var bodyContent []string
+		if bodyContent, err = parseFile(*bodyFile, nil); err != nil {
+			usageAndExit(fmt.Sprintf("failed to read body file %s: %v", *bodyFile, err))
 		}
-		if len(readBody) > 0 {
-			params.RequestBody = readBody[0]
+		if len(bodyContent) > 0 {
+			params.RequestBody = bodyContent[0]
+			logDebug("loaded request body from file (%d bytes)", len(params.RequestBody))
 		}
 	}
 
+	// Load script body from file if specified
 	if *scriptFile != "" {
-		var scriptBody []string
-		scriptBody, err = parseFile(*scriptFile, nil)
-		if err != nil {
-			usageAndExit(*scriptFile + " file read error(" + err.Error() + ").")
+		var scriptContent []string
+		if scriptContent, err = parseFile(*scriptFile, nil); err != nil {
+			usageAndExit(fmt.Sprintf("failed to read script file %s: %v", *scriptFile, err))
 		}
-		if len(scriptBody) > 0 {
-			params.RequestScriptBody = scriptBody[0]
+		if len(scriptContent) > 0 {
+			params.RequestScriptBody = scriptContent[0]
+			logDebug("loaded script body from file (%d bytes)", len(params.RequestScriptBody))
 		}
 	}
 
+	// Determine protocol type
 	if strings.ToLower(*pType) != "" {
 		params.RequestType = strings.ToLower(*pType)
 	} else {
-		params.RequestType = strings.ToLower(*httpType) // default http request
+		params.RequestType = strings.ToLower(*httpType) // Default to HTTP/1.1
 	}
+	logDebug("using protocol: %s", params.RequestType)
 
-	// set any other additional repeatable headers
-	for _, h := range headerslice {
+	// Parse and set custom HTTP headers
+	for _, header := range headerSlice {
 		var match []string
-		match, err = parseInputWithRegexp(h, headerRegexp)
-		if err != nil {
-			usageAndExit(err.Error())
+		if match, err = parseInputWithRegexp(header, HeaderRegexp); err != nil {
+			usageAndExit(fmt.Sprintf("invalid header format: %v", err))
 		}
 		if params.Headers == nil {
-			params.Headers = make(map[string][]string, 0)
+			params.Headers = make(map[string][]string)
 		}
 		params.Headers[match[1]] = []string{match[2]}
+		logTrace("added custom header: %s: %s", match[1], match[2])
 	}
 
-	// set basic auth if set
+	// Set HTTP Basic Authentication if provided
 	if *authHeader != "" {
 		var match []string
-		match, err = parseInputWithRegexp(*authHeader, authRegexp)
-		if err != nil {
-			usageAndExit(err.Error())
+		if match, err = parseInputWithRegexp(*authHeader, AuthRegexp); err != nil {
+			usageAndExit(fmt.Sprintf("invalid auth format: %v", err))
 		}
-		params.Headers["Authorization"] = []string{
-			fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(match[1]+":"+match[2]))),
+		if params.Headers == nil {
+			params.Headers = make(map[string][]string)
 		}
+		authValue := base64.StdEncoding.EncodeToString([]byte(match[1] + ":" + match[2]))
+		params.Headers["Authorization"] = []string{fmt.Sprintf("Basic %s", authValue)}
+		logDebug("added basic authentication for user: %s", match[1])
 	}
 
-	if *output != "" && *output != "csv" {
-		usageAndExit("invalid output type; only csv is supported.")
+	// Validate and set output format
+	if *output != "" && *output != "csv" && *output != "html" {
+		usageAndExit("invalid output format; supported formats: csv, html")
 	}
+	params.Output = *output
 
-	// set request timeout
+	// Set request timeout
 	params.Timeout = *t
+	logDebug("request timeout: %dms", *t)
 
+	// Validate and set proxy URL
 	if *proxyAddr != "" {
 		if _, err = gourl.Parse(*proxyAddr); err != nil {
-			usageAndExit(err.Error())
+			usageAndExit(fmt.Sprintf("invalid proxy URL: %v", err))
 		}
 		params.ProxyUrl = *proxyAddr
+		logDebug("using proxy: %s", *proxyAddr)
 	}
 
-	var hbServer *http.Server
+	var server *http.Server
 
-	// decrease go gc rate
-	hbGOGC := getEnv("HTTPBENCH_GOGC")
-	var n int64
-	if n, err = strconv.ParseInt(hbGOGC, 2, 64); err == nil {
-		debug.SetGCPercent(int(n))
+	// Configure Go garbage collector if specified
+	if gogcValue := getEnv("HTTPBENCH_GOGC"); gogcValue != "" {
+		if gcPercent, err := strconv.ParseInt(gogcValue, 10, 64); err == nil {
+			debug.SetGCPercent(int(gcPercent))
+			logDebug("set GC percent to: %d", gcPercent)
+		} else {
+			logWarn("invalid HTTPBENCH_GOGC value: %s", gogcValue)
+		}
 	}
 
-	// cloud worker API
-	hbWorkerAPI := getEnv("HTTPBENCH_WORKERAPI")
-	if hbWorkerAPI != "" {
+	// Configure cloud worker API endpoint if specified
+	if workerAPI := getEnv("HTTPBENCH_WORKERAPI"); workerAPI != "" {
 		dashboardHtml = strings.ReplaceAll(dashboardHtml,
-			"/cb9ab101f9f725cb7c3a355bd5631184", hbWorkerAPI)
+			"/cb9ab101f9f725cb7c3a355bd5631184", workerAPI)
+		logDebug("configured worker API endpoint: %s", workerAPI)
 	}
 
+	// Use dashboard address if specified
 	if len(*dashboard) > 0 {
 		*listen = *dashboard
 	}
 
-	// start http server to serve dashboard
+	// Start HTTP server for dashboard and worker API
 	if len(*listen) > 0 {
 		mux := http.NewServeMux()
+
+		// Serve dashboard HTML
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(dashboardHtml)) // export dashboard index.html
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write([]byte(dashboardHtml))
 		})
+
+		// Serve worker API endpoint
 		mux.HandleFunc(httpWorkerApiPath, serveDistributedWorker)
-		hbServer = &http.Server{
+
+		server = &http.Server{
 			Addr:    *listen,
 			Handler: mux,
 		}
-		println("worker listen: %s, and you can open http://%s/index.html on browser", *listen, *listen)
-		if err = hbServer.ListenAndServe(); err != nil {
-			verbosePrint(logLevelError, "listen err: %s", err.Error())
+
+		fmt.Printf("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+		fmt.Printf("Worker listening on: %s\n", *listen)
+		fmt.Printf("Dashboard URL: http://%s/\n", *listen)
+		fmt.Printf("Worker API: http://%s%s\n", *listen, httpWorkerApiPath)
+		fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
+
+		if err = server.ListenAndServe(); err != nil {
+			logError("failed to start server: %v", err)
 		}
 		return
 	}
 
-	// start http bench
+	// Validate that at least one URL is provided
 	if len(requestUrls) <= 0 {
-		usageAndExit("url or url-file empty.")
+		usageAndExit("no target URL specified; use -url or --url-file")
 	}
+
+	// Execute benchmark for each URL
+	logInfo("starting benchmark for %d URL(s)", len(requestUrls))
 
 	for i, url := range requestUrls {
 		params.Url = url
 		params.SequenceId = genSequenceId(i)
 		params.Cmd = cmdStart
 
-		verbosePrint(logLevelDebug, "request params: %s", params.String())
-		stopSignal = make(chan os.Signal)
+		logDebug("benchmark parameters: %s", params.String())
+
+		// Setup signal handling for graceful shutdown
+		stopSignal = make(chan os.Signal, 1)
 		signal.Notify(stopSignal, syscall.SIGINT, syscall.SIGTERM)
 
-		var hbWorker = NewWorker(params.SequenceId)
-		var hbResult *CollectResult
+		var (
+			worker = NewWorker(params.SequenceId)
+			result *CollectResult
+		)
 
+		// Start goroutine to handle stop signals and timeout
 		go func() {
 			select {
-			case <-stopSignal:
-				verbosePrint(logLevelInfo, "recv stop signal!!!")
+			case sig := <-stopSignal:
+				logInfo("received stop signal: %v", sig)
 				if len(workerAddrList) > 0 {
+					// Stop distributed workers
 					params.Cmd = cmdStop
-					HttpBenchStartup(hbWorker, params)
+					if _, err := HttpBenchStartup(worker, params); err != nil {
+						logError("failed to stop distributed workers: %v", err)
+					}
 				} else {
-					hbWorker.Stop()
+					// Stop local worker
+					worker.Stop()
 				}
+
 			case <-time.After(time.Duration(params.Duration) * time.Millisecond):
-				if len(workerAddrList) > 0 {
-					verbosePrint(logLevelInfo, "recv timeout signal!!!")
+				if len(workerAddrList) > 0 && params.Duration > 0 {
+					logInfo("duration timeout reached, stopping distributed workers")
 					params.Cmd = cmdStop
-					HttpBenchStartup(hbWorker, params)
+					if _, err := HttpBenchStartup(worker, params); err != nil {
+						logError("failed to stop distributed workers on timeout: %v", err)
+					}
 				}
 			}
 		}()
 
-		hbResult, err = HttpBenchStartup(hbWorker, params)
+		// Execute the benchmark
+		result, err = HttpBenchStartup(worker, params)
 		if err != nil {
-			verbosePrint(logLevelError, "http bench err: %s", err.Error())
+			logError("benchmark execution failed: %v", err)
+			continue
 		}
 
-		if hbResult != nil {
-			hbResult.print()
+		// Print results
+		if result != nil {
+			result.print()
+		} else {
+			logWarn("benchmark completed but no results available")
 		}
 	}
+
+	logInfo("all benchmarks completed")
 }

@@ -41,29 +41,14 @@ func (h *flagSlice) Set(value string) error {
 	return nil
 }
 
-var logLevels = map[int]string{
-	logLevelTrace: "TRACE",
-	logLevelDebug: "DEBUG",
-	logLevelInfo:  "INFO",
-}
-
 const (
 	IntMax = int(^uint(0) >> 1)
 	IntMin = ^IntMax
 
 	// String generation constants
-	letterIdxBits  = 6                    // 6 bits to represent a letter index
-	letterIdxMask  = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax   = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+	letterIdxBits  = 6 // 6 bits to represent a letter index
 	letterBytes    = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	letterNumBytes = "0123456789"
-
-	// HTTP related constants
-	httpContentTypeJSON = "application/json"
-	httpWorkerApiPath   = "/api"
-
-	// HTTP worker constants
-	defaultWorkerTimeout = 10000
 )
 
 var (
@@ -71,6 +56,11 @@ var (
 	ErrInitHttpClient = errors.New("init http client error")
 	ErrInitTcpClient  = errors.New("init tcp client error")
 	ErrUrl            = errors.New("check url error")
+)
+
+var (
+	HeaderRegexp = regexp.MustCompile(`^([\w-]+):\s*(.+)`)
+	AuthRegexp   = regexp.MustCompile(`^(.+):([^\s].+)`)
 )
 
 var (
@@ -209,7 +199,7 @@ func getEnv(key string) string {
 func hexToString(hexStr string) string {
 	data, err := hex.DecodeString(hexStr)
 	if err != nil {
-		verbosePrint(logLevelError, "hex decode error: %v", err)
+		logError("hex decode error: %v", err)
 		return ""
 	}
 	return string(data)
@@ -224,7 +214,7 @@ func toString(args ...interface{}) string {
 	return fmt.Sprintf(`"%v"`, args...)
 }
 
-// parseTime converts a duration string into seconds.
+// parseTime converts a duration string into milliseconds.
 // Supported units (case-insensitive):
 //
 //	s: seconds (default)
@@ -233,13 +223,14 @@ func toString(args ...interface{}) string {
 //	d: days
 //	w: weeks
 //
-// e.g. "10s", "5m", "2h", "1d", "1w", or just "30" for seconds.
+// Examples: "10s", "5m", "2h", "1d", "1w", or just "30" for seconds.
 func parseTime(timeStr string) int64 {
 	s := strings.TrimSpace(timeStr)
 	if s == "" {
 		usageAndExit("empty duration string")
 	}
-	// unit multipliers in seconds
+
+	// Unit multipliers in seconds
 	units := map[string]int64{
 		"s": 1,
 		"m": 60,
@@ -247,7 +238,8 @@ func parseTime(timeStr string) int64 {
 		"d": 86400,
 		"w": 604800,
 	}
-	// split numeric part and unit suffix
+
+	// Split numeric part and unit suffix
 	n := len(s)
 	unit := strings.ToLower(s[n-1:])
 	multiplier, ok := units[unit]
@@ -255,17 +247,17 @@ func parseTime(timeStr string) int64 {
 	if ok {
 		valueStr = s[:n-1]
 	} else {
-		multiplier = 1
+		multiplier = 1 // Default to seconds
 	}
+
 	t, err := strconv.ParseInt(valueStr, 10, 64)
 	if err != nil || t < 0 {
 		usageAndExit(fmt.Sprintf("invalid duration: %s", timeStr))
 	}
-	return t * multiplier * 1000
+	return t * multiplier * 1000 // Convert to milliseconds
 }
 
-func parseInputWithRegexp(input, regx string) ([]string, error) {
-	re := regexp.MustCompile(regx)
+func parseInputWithRegexp(input string, re *regexp.Regexp) ([]string, error) {
 	matches := re.FindStringSubmatch(input)
 	if len(matches) < 1 {
 		return nil, fmt.Errorf("could not parse the provided input; input = %v", input)
@@ -273,28 +265,30 @@ func parseInputWithRegexp(input, regx string) ([]string, error) {
 	return matches, nil
 }
 
-// Optimize parseFile function with more efficient line splitting
+// parseFile reads a file and splits it by delimiters
 func parseFile(fileName string, delimiter []rune) ([]string, error) {
 	content, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
+	// If no delimiter specified, return entire content
 	if delimiter == nil {
 		return []string{string(content)}, nil
 	}
 
-	// Pre-allocate sufficient capacity to reduce reallocation
 	contentStr := string(content)
-	estimatedLines := min(int64(len(contentStr)/30), 1000) // Estimate line count
+	// Pre-allocate with estimated capacity to reduce reallocation
+	estimatedLines := min(int64(len(contentStr)/30), 1000)
 	result := make([]string, 0, estimatedLines)
 
-	// Create delimiter set for quick lookup
+	// Create delimiter set for O(1) lookup
 	delimSet := make(map[rune]struct{}, len(delimiter))
 	for _, d := range delimiter {
 		delimSet[d] = struct{}{}
 	}
 
+	// Split by delimiters
 	lines := strings.FieldsFunc(contentStr, func(r rune) bool {
 		_, ok := delimSet[r]
 		return ok
@@ -335,26 +329,6 @@ func min(a int64, bList ...int64) int64 {
 	return minValue
 }
 
-func println(vfmt string, args ...interface{}) {
-	fmt.Printf(vfmt+"\n", args...)
-}
-
-// Optimize verbosePrint function to avoid unnecessary formatting
-func verbosePrint(level int, vfmt string, args ...interface{}) {
-	if *verbose > level {
-		return
-	}
-
-	ts := time.Now().Format("2006-01-02 15:04:05")
-	prefix := "[%s][ERROR]"
-	if l, ok := logLevels[level]; ok {
-		prefix = "[%s][" + l + "]"
-	}
-
-	// Avoid unnecessary Sprintf calls when there are no arguments
-	fmt.Printf(prefix+" "+vfmt+"\n", append([]interface{}{ts}, args...)...)
-}
-
 // Base64 encoding and decoding
 func base64Encode(s string) string {
 	return base64.StdEncoding.EncodeToString([]byte(s))
@@ -363,7 +337,7 @@ func base64Encode(s string) string {
 func base64Decode(s string) string {
 	data, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		verbosePrint(logLevelError, "base64 decode error: %v", err)
+		logError("base64 decode error: %v", err)
 		return ""
 	}
 	return string(data)

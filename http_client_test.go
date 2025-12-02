@@ -91,7 +91,7 @@ func TestClientDoHTTP1(t *testing.T) {
 	}
 
 	c := &Client{}
-	if err := c.Init(ClientOpts{typ: protocolHTTP1, params: params}); err != nil {
+	if err := c.Init(ClientOpts{Protocol: protocolHTTP1, Params: params}); err != nil {
 		t.Fatalf("Init error: %v", err)
 	}
 
@@ -137,7 +137,7 @@ func TestClientDoHTTP2(t *testing.T) {
 	}
 
 	c := &Client{}
-	if err := c.Init(ClientOpts{typ: protocolHTTP2, params: params}); err != nil {
+	if err := c.Init(ClientOpts{Protocol: protocolHTTP2, Params: params}); err != nil {
 		t.Fatalf("Init HTTP2 error: %v", err)
 	}
 	code, length, err := c.Do([]byte(params.Url), []byte(params.RequestBody), 0)
@@ -183,7 +183,7 @@ func TestClientDoWS(t *testing.T) {
 	}
 
 	c := &Client{}
-	if err := c.Init(ClientOpts{typ: protocolWS, params: params}); err != nil {
+	if err := c.Init(ClientOpts{Protocol: protocolWS, Params: params}); err != nil {
 		t.Fatalf("Init WS error: %v", err)
 	}
 	code, length, err := c.Do([]byte(params.Url), []byte(params.RequestBody), 0)
@@ -218,7 +218,7 @@ func TestClientDoTimeout(t *testing.T) {
 	}
 
 	c := &Client{}
-	if err := c.Init(ClientOpts{typ: protocolHTTP1, params: params}); err != nil {
+	if err := c.Init(ClientOpts{Protocol: protocolHTTP1, Params: params}); err != nil {
 		t.Fatalf("Init error: %v", err)
 	}
 
