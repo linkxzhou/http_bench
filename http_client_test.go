@@ -227,3 +227,57 @@ func TestClientDoTimeout(t *testing.T) {
 		t.Fatal("expected timeout error; got nil")
 	}
 }
+
+// BenchmarkClientPool_GetPut benchmarks the performance of getting and putting clients
+func BenchmarkClientPool_GetPut(b *testing.B) {
+	pool := NewClientPool(100)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		c := pool.Get()
+		if c != nil {
+			pool.Put(c)
+		}
+	}
+}
+
+// BenchmarkClient_Do benchmarks the performance of HTTP client requests
+func BenchmarkClient_Do(b *testing.B) {
+	// Setup a simple echo server
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.Copy(io.Discard, r.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	params := HttpbenchParameters{
+		Url:                srv.URL,
+		RequestMethod:      http.MethodGet,
+		RequestType:        protocolHTTP1,
+		Timeout:            500,
+		DisableCompression: true,
+		DisableKeepAlives:  false,
+	}
+
+	c := &Client{}
+	if err := c.Init(ClientOpts{Protocol: protocolHTTP1, Params: params}); err != nil {
+		b.Fatalf("Init error: %v", err)
+	}
+
+	urlBytes := []byte(params.Url)
+	reqBody := []byte("benchmark")
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		code, _, err := c.Do(urlBytes, reqBody, 0)
+		if err != nil {
+			b.Fatalf("Do error: %v", err)
+		}
+		if code != http.StatusOK {
+			b.Fatalf("expected status 200; got %d", code)
+		}
+	}
+}

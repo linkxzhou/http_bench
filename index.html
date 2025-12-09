@@ -13,236 +13,99 @@
     
     <!-- Custom Styles -->
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --primary: #667eea;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --danger: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --shadow: 0 10px 40px rgba(0,0,0,0.15);
+            --radius: 16px;
+            --text-main: #333;
         }
-        
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gradient);
             min-height: 100vh;
             padding: 20px;
+            color: var(--text-main);
         }
-        
+
+        .main-container { max-width: 1400px; margin: 0 auto; }
+
+        /* Headers */
         .page-header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
+            text-align: center; color: white; margin-bottom: 30px;
             animation: fadeInDown 0.6s ease-out;
         }
-        
-        .page-header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .page-header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-        
-        .main-container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .chart-card {
+        .page-header h2 { font-size: 2rem; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        .page-header p { opacity: 0.9; font-size: 1.1rem; }
+
+        /* Cards & Panels */
+        .chart-card, .control-panel, .stat-card {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
             padding: 20px;
             margin-bottom: 30px;
             animation: fadeInUp 0.6s ease-out;
         }
+        .control-panel { padding: 30px; }
         
-        .chart-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
+        .chart-card-header, .control-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0;
         }
-        
-        .chart-card-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #333;
-        }
-        
-        .control-panel {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-            padding: 30px;
-            animation: fadeInUp 0.6s ease-out 0.1s;
-            animation-fill-mode: both;
-        }
-        
-        .control-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-        
-        .control-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #333;
-        }
-        
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        
+        .chart-card-title, .control-title { font-size: 1.3rem; font-weight: 600; }
+
+        /* Buttons */
+        .button-group { display: flex; gap: 15px; margin-bottom: 25px; }
         .button-group .el-button {
-            flex: 1;
-            height: 50px;
-            font-size: 16px;
-            font-weight: 600;
-            border-radius: 10px;
-            transition: all 0.3s ease;
+            flex: 1; height: 50px; font-size: 16px; border-radius: 10px; border: none;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
-        
-        .button-group .el-button--primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-        }
-        
-        .button-group .el-button--primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .button-group .el-button--danger {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            border: none;
-        }
-        
-        .button-group .el-button--danger:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
-        }
-        
-        .form-section {
-            margin-bottom: 25px;
-        }
-        
+        .button-group .el-button:hover { transform: translateY(-2px); }
+        .button-group .el-button--primary { background: var(--gradient); }
+        .button-group .el-button--primary:hover { box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4); }
+        .button-group .el-button--danger { background: var(--danger); }
+        .button-group .el-button--danger:hover:not(:disabled) { box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4); }
+
+        /* Forms */
+        .form-section { margin-bottom: 25px; }
         .section-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #555;
-            margin-bottom: 15px;
-            padding-left: 10px;
-            border-left: 4px solid #667eea;
+            font-size: 1.1rem; font-weight: 600; color: #555;
+            margin-bottom: 15px; padding-left: 10px; border-left: 4px solid var(--primary);
         }
-        
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 15px;
-        }
-        
-        .form-item-full {
-            grid-column: 1 / -1;
-        }
-        
-        .el-input, .el-select {
-            margin: 0 !important;
-        }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .form-item-full { grid-column: 1 / -1; }
+        .el-input, .el-select { margin: 0 !important; }
         
         .el-input__inner, .el-textarea__inner {
-            border-radius: 8px;
-            border: 2px solid #e8e8e8;
-            transition: all 0.3s ease;
+            border-radius: 8px; border: 2px solid #e8e8e8; transition: all 0.3s;
         }
-        
         .el-input__inner:focus, .el-textarea__inner:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary); box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
-        
         .el-input-group__prepend {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            font-weight: 600;
-            border-radius: 8px 0 0 8px;
-            min-width: 140px;
+            background: var(--gradient); color: white; border: none; font-weight: 600; border-radius: 8px 0 0 8px;
         }
-        
-        .el-select .el-input__inner {
-            border-radius: 8px;
-        }
-        
-        .language-selector {
-            min-width: 120px;
-        }
-        
         .language-selector .el-input__inner {
-            border-radius: 8px;
-            border: 2px solid rgba(255,255,255,0.3);
-            background: rgba(255,255,255,0.2);
-            color: white;
-            font-weight: 600;
+            background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; font-weight: 600;
         }
-        
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
+
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 30px; animation-fill-mode: both; }
+
+        /* Animations */
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Responsive */
+        @media (max-width: 992px) { .charts-row { grid-template-columns: 1fr; } }
         @media (max-width: 768px) {
-            .page-header h1 {
-                font-size: 1.8rem;
-            }
-            
-            .button-group {
-                flex-direction: column;
-            }
-            
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .control-panel {
-                padding: 20px;
-            }
-        }
-        
-        .el-button.is-loading::before {
-            animation: rotating 2s linear infinite;
-        }
-        
-        @keyframes rotating {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            .page-header h2 { font-size: 1.5rem; }
+            .button-group, .form-grid { flex-direction: column; }
+            .control-panel { padding: 20px; }
         }
     </style>
     
@@ -251,13 +114,22 @@
         const translations = {
             'zh-CN': {
                 title: '🚀 HTTP 压力测试工具',
-                subtitle: '专业的HTTP性能测试工具',
+                subtitle: '专业的HTTP/1/2/3性能测试工具',
                 start: '开始压测',
                 stop: '停止压测',
                 chart: {
                     title: '📊 实时性能指标',
                     qps: 'QPS',
-                    statusCode: '状态码'
+                    statusCode: '状态码',
+                    latency: '📊 响应耗时分布',
+                    errorDist: '⚠️ 错误分布'
+                },
+                stats: {
+                    avg: '平均耗时',
+                    rps: '平均 QPS',
+                    fastest: '最快耗时',
+                    slowest: '最慢耗时',
+                    errors: '错误总数'
                 },
                 section: {
                     testConfig: '⚙️ 测试配置',
@@ -325,7 +197,16 @@
                 chart: {
                     title: '📊 Real-time Performance Metrics',
                     qps: 'QPS',
-                    statusCode: 'Status Code'
+                    statusCode: 'Status Code',
+                    latency: '📊 Latency Distribution',
+                    errorDist: '⚠️ Error Distribution'
+                },
+                stats: {
+                    avg: 'Average Latency',
+                    rps: 'Average RPS',
+                    fastest: 'Fastest Request',
+                    slowest: 'Slowest Request',
+                    errors: 'Total Errors'
                 },
                 section: {
                     testConfig: '⚙️ Test Configuration',
@@ -393,11 +274,11 @@
 <body>
     <!-- Page Header -->
     <div class="page-header">
-        <h1 id="page-title">🚀 HTTP Bench</h1>
-        <p id="page-subtitle">Professional HTTP Performance Testing Tool</p>
+        <h2 id="page-title">🚀 HTTP Benchmark Tool</h2>
+        <p id="page-subtitle">Professional HTTP1/2/3 Performance Testing Tool</p>
     </div>
     
-    <div class="main-container">
+    <div class="main-container" id="app">
         <!-- Chart Card -->
         <div class="chart-card">
             <div class="chart-card-header">
@@ -405,12 +286,28 @@
             </div>
             <div id="chart-container" style="height: 400px; width: 100%;"></div>
         </div>
+
+        <!-- Secondary Charts -->
+        <div class="charts-row" v-show="hasData" style="display: none;" :style="{ display: hasData ? 'grid' : 'none' }">
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <div class="chart-card-title">{{translate('chart.latency')}}</div>
+                </div>
+                <div id="latency-chart" style="height: 350px; width: 100%;"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <div class="chart-card-title">{{translate('chart.errorDist')}}</div>
+                </div>
+                <div id="error-chart" style="height: 350px; width: 100%;"></div>
+            </div>
+        </div>
         
         <!-- Control Panel (Vue App) -->
-        <div id="app">
+        <div>
             <div class="control-panel">
                 <!-- Language selector -->
-                <div style="position: absolute; top: 30px; right: 30px;">
+                <div style="position: absolute; top: 30px; right: 30px; width: 120px;">
                     <el-select v-model="currentLanguage" @change="changeLanguage" size="small" class="language-selector">
                         <el-option label="🇨🇳 中文" value="zh-CN"></el-option>
                         <el-option label="🇺🇸 English" value="en-US"></el-option>
@@ -548,71 +445,14 @@
         const DEFAULT_METRICS_INTERVAL = 2000;
         const TIME_FORMAT = "hh:mm:ss";
 
-        // Initialize chart (will be done after DOM is ready)
-        let performanceChart = null;
-        
-        function initChart() {
-            const chartContainer = document.getElementById('chart-container');
-            if (!chartContainer) {
-                console.error('Chart container not found');
-                return;
-            }
-            performanceChart = echarts.init(chartContainer, 'dark', {
-                renderer: 'canvas',
-                useDirtyRect: false
-            });
-            // Initialize chart with empty data
-            renderChart([new Date().format(TIME_FORMAT)], [0]);
-        }
+        // Helper functions
+        const formatDuration = ns => {
+            if (!ns) return '0ms';
+            if (ns < 1e6) return (ns / 1e3).toFixed(2) + 'µs';
+            if (ns < 1e9) return (ns / 1e6).toFixed(2) + 'ms';
+            return (ns / 1e9).toFixed(2) + 's';
+        };
 
-        // Chart rendering function
-        function renderChart(timeLabels, qpsData, statusCodeData = {}) {
-            if (!performanceChart) {
-                console.warn('Chart not initialized yet');
-                return;
-            }
-            const chartOptions = {
-                legend: {
-                    data: ['qps']
-                },
-                tooltip: {
-                    trigger: 'axis',
-                    axisPointer: { type: 'cross' }
-                },
-                xAxis: {
-                    type: 'category',
-                    data: timeLabels
-                },
-                yAxis: {
-                    type: 'value'
-                },
-                series: [
-                    {
-                        name: "qps",
-                        data: qpsData,
-                        type: 'line',
-                        smooth: true
-                    },
-                ]
-            };
-
-            // Add status code series
-            for (let statusCode in statusCodeData) {
-                chartOptions.series.push({
-                    name: statusCode,
-                    data: statusCodeData[statusCode],
-                    type: 'line',
-                    smooth: true
-                });
-                chartOptions.legend.data.push(statusCode);
-            }
-
-            if (chartOptions && typeof chartOptions === 'object') {
-                performanceChart.setOption(chartOptions);
-            }
-        }
-
-        // Optimize chart resize handler with debouncing
         const debounce = (fn, delay) => {
             let timer = null;
             return function() {
@@ -620,13 +460,7 @@
                 timer = setTimeout(() => fn.apply(this, arguments), delay);
             };
         };
-        window.addEventListener('resize', debounce(() => {
-            if (performanceChart) {
-                performanceChart.resize();
-            }
-        }, 250));
 
-        let sequenceId = Math.floor(Math.random() * 1000000) + 1;
         // Vue application instance
         new Vue({
             el: '#app',
@@ -639,9 +473,9 @@
                 requestBodyType: "",
                 protocolType: "http1",
                 protocolOptions: [
-                    { value: 'http1', label: 'HTTP(S)/1.1' },
-                    { value: 'http2', label: 'HTTP(S)/2' },
-                    { value: 'http3', label: 'HTTP(S)/3' },
+                    { value: 'http1', label: 'HTTP<S>/1.1' },
+                    { value: 'http2', label: 'HTTP<S>/2' },
+                    { value: 'http3', label: 'HTTP<S>/3' },
                     { value: 'ws', label: 'WebSocket(ws://)' },
                     { value: 'wss', label: 'WebSocket Secure(wss://)' }
                 ],
@@ -664,10 +498,20 @@
                 disableKeepalives: false,
                 authUsername: "",
                 authPassword: "",
-                requestUrl: "http://127.0.0.1:8000?data=1",
+                requestUrl: "http://httpbin.org/get",
                 workerApiEndpoint: "",
                 isRunning: false,
                 metricsTimer: undefined,
+                hasData: false,
+                stats: { average: '0ms', rps: 0, fastest: '0ms', slowest: '0ms', errTotal: 0 },
+                charts: {},
+                monitor: {
+                    timeLabels: [],
+                    qpsData: [],
+                    total: 0,
+                    statusCodes: {},
+                    prevStatusCounts: {}
+                }
             },
             methods: {
                 // i18n translation method
@@ -716,7 +560,7 @@
                 
                 // Start stress test
                 startTest() {
-                    sequenceId = Math.floor(Math.random() * 1000000) + 1;
+                    this.sequenceId = Math.floor(Math.random() * 1000000) + 1;
                     // Build request data
                     const requestData = this.buildRequestData(API_COMMANDS.START);
                     const apiEndpoint = this.getWorkerApiEndpoint();
@@ -750,15 +594,15 @@
                 buildRequestData(command) {
                     return {
                         cmd: command,
-                        sequence_id: sequenceId,
+                        sequence_id: this.sequenceId,
                         request_method: this.requestMethod,
                         request_body: this.requestBody,
                         request_bodytype: this.requestBodyType,
                         request_type: this.protocolType,
                         n: parseInt(this.totalRequests) || 0,
                         c: parseInt(this.concurrentConnections) || 1,
-                        duration: parseInt(this.testDuration) || 1000,
-                        timeout: parseInt(this.requestTimeout) || 3000,
+                        duration: parseInt(this.testDuration) * 1000000 || 1000 * 1000000,
+                        timeout: parseInt(this.requestTimeout) * 1000000 || 3000 * 1000000,
                         qps: parseInt(this.qpsLimit) || 0,
                         disable_compression: this.disableCompression || this.disableCompression === "true",
                         disable_keepalives: this.disableKeepalives || this.disableKeepalives === "true",
@@ -774,120 +618,170 @@
                     return this.workerApiEndpoint.length > 0 ? this.workerApiEndpoint : DEFAULT_API_PATH;
                 },
                 
-                // Setup monitoring
+                initCharts() {
+                    const init = (id) => {
+                        const el = document.getElementById(id);
+                        if (!el) return null;
+                        try {
+                            return echarts.init(el, 'dark', { renderer: 'canvas', useDirtyRect: false });
+                        } catch (e) {
+                            console.error('Failed to init chart:', id, e);
+                            return null;
+                        }
+                    };
+                    this.charts = {
+                        perf: init('chart-container'),
+                        lat: init('latency-chart'),
+                        err: init('error-chart')
+                    };
+                    this.renderPerfChart([], []);
+                },
+
+                renderPerfChart(times, qps, status = {}) {
+                    if (!this.charts.perf) return;
+                    const series = [{ name: "qps", data: qps, type: 'line', smooth: true }];
+                    const legend = ['qps'];
+                    Object.keys(status).forEach(code => {
+                        series.push({ name: code, data: status[code], type: 'line', smooth: true });
+                        legend.push(code);
+                    });
+                    this.charts.perf.setOption({
+                        legend: { data: legend },
+                        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+                        xAxis: { type: 'category', data: times },
+                        yAxis: { type: 'value' },
+                        series
+                    });
+                },
+
+                renderLatChart(lats) {
+                    if (!this.charts.lat || !lats) return;
+                    const entries = Object.entries(lats).map(([k, v]) => ({ val: parseInt(k)/1e6, count: v }));
+                    if (!entries.length) return;
+
+                    const min = Math.min(...entries.map(e => e.val));
+                    const max = Math.max(...entries.map(e => e.val));
+                    const buckets = 20;
+                    const step = (max - min) / buckets || 1;
+                    
+                    const data = new Array(buckets).fill(0);
+                    const cats = new Array(buckets).fill(0).map((_, i) => `${(min + i*step).toFixed(1)}-${(min + (i+1)*step).toFixed(1)}ms`);
+                    
+                    entries.forEach(e => {
+                        let idx = Math.floor((e.val - min) / step);
+                        if (idx >= buckets) idx = buckets - 1;
+                        data[idx] += e.count;
+                    });
+
+                    this.charts.lat.setOption({
+                        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                        xAxis: { type: 'category', data: cats, axisLabel: { interval: 'auto', rotate: 30 } },
+                        yAxis: { type: 'value' },
+                        series: [{ name: 'Count', type: 'bar', data, itemStyle: { color: '#667eea' } }]
+                    });
+                },
+
+                renderErrChart(dist) {
+                    if (!this.charts.err || !dist) return;
+                    const data = Object.entries(dist).map(([name, value]) => ({ value, name }));
+                    this.charts.err.setOption({
+                        tooltip: { trigger: 'item' },
+                        legend: { top: '5%', left: 'center' },
+                        series: [{
+                            name: 'Errors', type: 'pie', radius: ['40%', '70%'],
+                            avoidLabelOverlap: false,
+                            itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                            label: { show: false, position: 'center' },
+                            emphasis: { label: { show: true, fontSize: '14', fontWeight: 'bold' } },
+                            data
+                        }]
+                    });
+                },
+
                 setupMetricsMonitoring(requestData, apiEndpoint) {
-                    const timeLabels = [];
-                    const qpsData = [];
-                    let totalRequests = 0;
-                    let errTimes = 0;
-                    const statusCodeData = {};
-                    const previousStatusCodeCounts = {};
+                    this.monitor = { timeLabels: [], qpsData: [], total: 0, statusCodes: {}, prevStatusCounts: {} };
                     const interval = parseInt(this.metricsInterval) || DEFAULT_METRICS_INTERVAL;
+                    let errTimes = 0;
 
                     this.isRunning = true;
                     this.metricsTimer = setInterval(() => {
-                        const metricsRequest = { ...requestData, cmd: API_COMMANDS.GET_METRICS };
-                        
                         fetch(apiEndpoint, {
                             method: 'POST',
                             headers: CONTENT_TYPE_JSON,
-                            body: JSON.stringify(metricsRequest)
+                            body: JSON.stringify({ ...requestData, cmd: API_COMMANDS.GET_METRICS })
                         })
-                        .then(response => response.json())
+                        .then(r => r.json())
                         .then(data => {
-                            // Check if the test is stopped
                             if (data.err_code !== 0) {
-                                errTimes++;
-                                if (errTimes > 2) {
-                                    this.isRunning = false;
-                                    this.metricsTimer && clearInterval(this.metricsTimer);
+                                if (++errTimes > 2) {
+                                    this.stopTest();
                                     this.showMessage(data.err_msg, 'error', 5000);
-                                    return;
                                 }
-                            } else {
-                                errTimes = 0;
+                                return;
                             }
-
-                            this.processMetricsData(
-                                data, 
-                                timeLabels, 
-                                qpsData, 
-                                totalRequests, 
-                                statusCodeData, 
-                                previousStatusCodeCounts, 
-                                interval
-                            );
-                            totalRequests = data.lats_total || totalRequests;
+                            errTimes = 0;
+                            this.processMetricsData(data, interval);
                         })
-                        .catch(error => {
-                            console.error("Failed to fetch metrics:", error);
-                        });
+                        .catch(e => console.error("Metrics fetch failed:", e));
                     }, interval);
                 },
-                
-                // Process monitoring data
-                processMetricsData(data, timeLabels, qpsData, previousTotal, statusCodeData, previousStatusCodeCounts, interval) {
-                    if (data && data.lats_total && (data.lats_total - previousTotal) >= 0) {
-                        // Add time label
-                        timeLabels.push(new Date().format(TIME_FORMAT));
-                        
-                        // Calculate QPS
-                        const currentQps = (data.lats_total - previousTotal) * 1000 / interval;
-                        qpsData.push(currentQps);
 
-                        // Process status code distribution
+                processMetricsData(data, interval) {
+                    if (!data) return;
+                    if (!this.hasData) {
+                        this.hasData = true;
+                        this.$nextTick(() => {
+                            Object.values(this.charts).forEach(c => c && c.resize());
+                        });
+                    }
+
+                    if (data.is_last) {
+                        console.log("processMetricsData last metrics data:", data);
+                        this.stopTest();
+                        return;
+                    }
+
+                    this.stats = {
+                        average: formatDuration(data.average),
+                        rps: data.rps || 0,
+                        fastest: formatDuration(data.fastest),
+                        slowest: formatDuration(data.slowest),
+                        errTotal: data.err_total || 0
+                    };
+                    this.renderLatChart(data.lats);
+                    this.renderErrChart(data.error_dist);
+
+                    if (data.lats_total && (data.lats_total - this.monitor.total) >= 0) {
+                        this.monitor.timeLabels.push(new Date().format(TIME_FORMAT));
+                        const currentQps = (data.lats_total - this.monitor.total) * 1000 / interval;
+                        this.monitor.qpsData.push(currentQps);
+                        this.monitor.total = data.lats_total;
+
                         if (data.status_code_dist) {
-                            for (let statusCode in data.status_code_dist) {
-                                // Initialize arrays if needed
-                                if (!statusCodeData[statusCode]) {
-                                    statusCodeData[statusCode] = [];
-                                }
-                                if (!previousStatusCodeCounts[statusCode]) {
-                                    previousStatusCodeCounts[statusCode] = 0;
-                                }
-                                
-                                // Calculate status code QPS
-                                const statusCodeCount = data.status_code_dist[statusCode];
-                                const statusCodeQps = (statusCodeCount - previousStatusCodeCounts[statusCode]) * 1000 / interval;
-                                statusCodeData[statusCode].push(statusCodeQps);
-                                
-                                // Update previous counts
-                                previousStatusCodeCounts[statusCode] = statusCodeCount;
+                            for (let code in data.status_code_dist) {
+                                if (!this.monitor.statusCodes[code]) this.monitor.statusCodes[code] = [];
+                                const count = data.status_code_dist[code];
+                                const prev = this.monitor.prevStatusCounts[code] || 0;
+                                this.monitor.statusCodes[code].push((count - prev) * 1000 / interval);
+                                this.monitor.prevStatusCounts[code] = count;
                             }
                         }
-                        
-                        // Update chart
-                        renderChart(timeLabels, qpsData, statusCodeData);
+                        this.renderPerfChart(this.monitor.timeLabels, this.monitor.qpsData, this.monitor.statusCodes);
                     }
                 },
                 
-                // Stop stress test
                 stopTest() {
-                    const requestData = this.buildRequestData(API_COMMANDS.STOP);
-                    const apiEndpoint = this.getWorkerApiEndpoint();
-                    
                     this.showMessage('stop');
-                    fetch(apiEndpoint, {
+                    this.isRunning = false;
+                    clearInterval(this.metricsTimer);
+                    this.metricsTimer = undefined;
+                    
+                    fetch(this.getWorkerApiEndpoint(), {
                         method: 'POST',
                         headers: CONTENT_TYPE_JSON,
-                        body: JSON.stringify(requestData)
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.err_code !== 0) {
-                            this.showMessage(data.err_msg, 'error', 5000);
-                            return;
-                        }
-                        
-                        this.isRunning = false;
-                        if (this.metricsTimer) {
-                            clearInterval(this.metricsTimer);
-                            this.metricsTimer = undefined;
-                        }
-                    })
-                    .catch(error => {
-                        this.showMessage(error.message, 'error', 5000);
-                    });
+                        body: JSON.stringify(this.buildRequestData(API_COMMANDS.STOP))
+                    }).catch(e => console.error(e));
                 }
             },
             created() {
@@ -898,14 +792,13 @@
                 }
             },
             mounted() {
-                // Initialize chart after Vue is mounted
                 this.$nextTick(() => {
-                    initChart();
-                    // Update all static texts
+                    this.initCharts();
                     this.updateStaticTexts();
+                    window.addEventListener('resize', debounce(() => {
+                        Object.values(this.charts).forEach(c => c && c.resize());
+                    }, 250));
                 });
-                
-                // Set initial language
                 document.documentElement.setAttribute('lang', this.currentLanguage);
             }
         });

@@ -12,9 +12,9 @@ import (
 // HttpbenchWorker manages the execution of HTTP benchmark tests
 // It coordinates multiple concurrent clients and collects results
 type HttpbenchWorker struct {
+	seqId             int64
 	stopChan          chan bool
 	isStop            atomic.Bool        // Thread-safe stop flag
-	result            *CollectResult     // Aggregated test results
 	urlTmpl, bodyTmpl *template.Template // URL and body templates for dynamic content
 	mu                sync.Mutex         // Protects worker state
 }
@@ -30,11 +30,13 @@ func NewWorker(seqId int64) *HttpbenchWorker {
 
 	if v, ok := workerRegistry.Load(seqId); ok && v != nil {
 		worker = v.(*HttpbenchWorker)
-		logInfo("worker %d already exists, reusing", seqId)
+		logInfo(seqId, "worker %d already exists, reusing", seqId)
 	} else {
-		worker = &HttpbenchWorker{}
+		worker = &HttpbenchWorker{
+			seqId: seqId,
+		}
 		workerRegistry.Store(seqId, worker)
-		logInfo("worker %d created", seqId)
+		logInfo(seqId, "worker %d created", seqId)
 	}
 
 	return worker
@@ -43,29 +45,26 @@ func NewWorker(seqId int64) *HttpbenchWorker {
 // Start initiates the benchmark test with the given parameters
 // It spawns concurrent clients and waits for completion or timeout
 // Returns the aggregated test results
-func (w *HttpbenchWorker) Start(params HttpbenchParameters) *CollectResult {
+func (w *HttpbenchWorker) Start(params HttpbenchParameters) error {
 	w.mu.Lock()
-	w.result = NewCollectResult()
-	w.result.Output = params.Output // Preserve output format setting
 	w.stopChan = make(chan bool, stopChannelSize)
 	w.isStop.Store(false) // Reset stop flag
 	if params.Duration <= 0 {
 		params.Duration = defaultWorkerTimeout
 	}
+	NewResult(w.seqId)
 	w.mu.Unlock()
-
-	// Record start time for duration calculation
-	startTime := time.Now()
 
 	// Execute benchmark in separate goroutine
 	var wg sync.WaitGroup
 	wg.Add(1)
+
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				logError("worker panic recovered: %v", r)
+				logError(w.seqId, "worker panic recovered: %v", r)
 			}
-			logDebug("worker execution finished")
+			logDebug(w.seqId, "worker execution finished")
 			w.Stop()
 			wg.Done()
 		}()
@@ -77,23 +76,21 @@ func (w *HttpbenchWorker) Start(params HttpbenchParameters) *CollectResult {
 	select {
 	case isStop, ok := <-w.stopChan:
 		if ok && isStop {
-			logDebug("worker stopped by explicit signal")
+			logDebug(w.seqId, "worker stopped by explicit signal")
 		}
-	case <-time.After(time.Duration(params.Duration) * time.Millisecond):
-		logDebug("worker stopped by timeout after %d ms", params.Duration)
+	case <-time.After(params.Duration):
+		logDebug(w.seqId, "worker stopped by timeout after %v ms",
+			params.Duration.Milliseconds())
 	}
 
 	// Ensure worker is stopped
 	w.Stop()
-
-	// Calculate actual test duration
-	w.result.Duration = int64(time.Since(startTime).Seconds() * timeScaleFactor)
-	logInfo("worker finished, waiting for goroutines to complete")
+	logInfo(w.seqId, "worker finished, waiting for goroutines to complete")
 	wg.Wait()
+	stopResult(w.seqId)
+	logInfo(w.seqId, "worker results collected")
 
-	// Merge results to calculate final statistics
-	w.result = mergeCollectResult(nil, w.result)
-	return w.result
+	return nil
 }
 
 // Stop signals the worker to stop execution
@@ -101,17 +98,16 @@ func (w *HttpbenchWorker) Start(params HttpbenchParameters) *CollectResult {
 func (w *HttpbenchWorker) Stop() error {
 	// Use atomic operation to avoid race conditions
 	if w.isStop.Swap(true) {
-		// Already stopped
 		return nil
 	}
 
 	// Send stop signal (non-blocking)
 	select {
 	case w.stopChan <- true:
-		logDebug("stop signal sent")
+		logDebug(w.seqId, "stop signal sent")
 	default:
 		// Channel already has a signal or is closed
-		logDebug("stop signal already present")
+		logDebug(w.seqId, "stop signal already present")
 	}
 
 	return nil
@@ -123,11 +119,12 @@ func (w *HttpbenchWorker) GetResult() *CollectResult {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if w.isStop.Load() {
-		w.result.ErrCode = 1
-		w.result.ErrMsg = "http_bench stopped"
+	result, err := getCollectResult(w.seqId)
+	if err != nil {
+		logError(w.seqId, "failed to get collect result: %v", err)
+		return nil
 	}
-	return w.result
+	return result
 }
 
 // do executes the actual benchmark test by spawning concurrent clients
@@ -136,7 +133,8 @@ func (w *HttpbenchWorker) do(params HttpbenchParameters) error {
 	concurrency := params.C
 
 	fmt.Printf("[%v][%v] running %d connections for %d secs @ %s\n",
-		params.RequestType, params.RequestMethod, concurrency, params.Duration/1000, params.Url)
+		params.RequestType, params.RequestMethod, concurrency,
+		int(params.Duration.Seconds()), params.Url)
 
 	var (
 		wg               sync.WaitGroup
@@ -145,7 +143,7 @@ func (w *HttpbenchWorker) do(params HttpbenchParameters) error {
 		urlTemplateName  = fmt.Sprintf("url-template-%d", params.SequenceId)
 
 		// Initialize connection pool with proper size limit
-		connPool = NewClientPool(concurrency)
+		connPool = NewClientPool(concurrency * 2)
 	)
 
 	defer connPool.Shutdown()
@@ -153,24 +151,24 @@ func (w *HttpbenchWorker) do(params HttpbenchParameters) error {
 	// Parse URL template with custom functions
 	w.urlTmpl, err = template.New(urlTemplateName).Funcs(fnMap).Parse(params.Url)
 	if err != nil {
-		logError("failed to parse URL template: %v", err)
+		logError(w.seqId, "failed to parse URL template: %v", err)
 		return err
 	}
-	logDebug("URL template parsed: %s", params.Url)
+	logDebug(w.seqId, "URL template parsed: %s", params.Url)
 
 	// Parse request body template
 	w.bodyTmpl, err = template.New(bodyTemplateName).Funcs(fnMap).Parse(params.RequestBody)
 	if err != nil {
-		logError("failed to parse body template: %v", err)
+		logError(w.seqId, "failed to parse body template: %v", err)
 		return err
 	}
-	logDebug("body template parsed successfully")
+	logDebug(w.seqId, "body template parsed successfully")
 
 	// Calculate sleep interval for QPS rate limiting (in microseconds)
 	sleepInterval := 0
 	if params.Qps > 0 {
 		sleepInterval = 1e6 / (concurrency * params.Qps)
-		logDebug("QPS rate limiting enabled: %d qps, sleep interval: %d µs", params.Qps, sleepInterval)
+		logDebug(w.seqId, "QPS rate limiting enabled: %d qps, sleep interval: %d µs", params.Qps, sleepInterval)
 	}
 
 	// Calculate requests per client
@@ -186,7 +184,7 @@ func (w *HttpbenchWorker) do(params HttpbenchParameters) error {
 			// Get client from pool
 			client := connPool.Get()
 			if client == nil {
-				logError("failed to get client from pool")
+				logError(w.seqId, "failed to get client from pool")
 				return
 			}
 
@@ -196,7 +194,7 @@ func (w *HttpbenchWorker) do(params HttpbenchParameters) error {
 				Params:   params,
 			})
 			if err != nil {
-				logError("client %d initialization failed: %v", clientID, err)
+				logError(w.seqId, "client %d initialization failed: %v", clientID, err)
 				return
 			}
 
@@ -204,7 +202,7 @@ func (w *HttpbenchWorker) do(params HttpbenchParameters) error {
 			defer func() {
 				connPool.Put(client)
 				if r := recover(); r != nil {
-					logError("client %d panic recovered: %v", clientID, r)
+					logError(w.seqId, "client %d panic recovered: %v", clientID, r)
 				}
 			}()
 
@@ -215,7 +213,7 @@ func (w *HttpbenchWorker) do(params HttpbenchParameters) error {
 
 	// Wait for all clients to complete
 	wg.Wait()
-	logDebug("all client goroutines completed")
+	logDebug(w.seqId, "all client goroutines completed")
 	return nil
 }
 
@@ -240,44 +238,45 @@ func (w *HttpbenchWorker) doClient(client *Client, maxRequests, sleepMicrosecond
 		// Execute URL template to generate dynamic URL
 		urlBuf.Reset()
 		if err := w.urlTmpl.Execute(&urlBuf, nil); err != nil {
-			logError("failed to execute URL template: %v", err)
+			logError(w.seqId, "failed to execute URL template: %v", err)
 			return
 		}
 
 		// Execute body template to generate dynamic request body
 		bodyBuf.Reset()
 		if err := w.bodyTmpl.Execute(&bodyBuf, nil); err != nil {
-			logError("failed to execute body template: %v", err)
+			logError(w.seqId, "failed to execute body template: %v", err)
 			return
 		}
 
-		logTrace("request #%d: url=%s, body=%s", requestCount, urlBuf.String(), bodyBuf.String())
+		logTrace(w.seqId, "request #%d: url=%s, body=%s", requestCount, urlBuf.String(), bodyBuf.String())
 
 		// Execute HTTP request and measure duration
 		startTime := time.Now()
 		statusCode, contentLength, err := client.Do(urlBuf.Bytes(), bodyBuf.Bytes(), 0)
 		duration := time.Since(startTime)
 
-		logTrace("request #%d completed: status=%d, size=%d, duration=%v, err=%v",
+		logTrace(w.seqId, "request #%d completed: status=%d, size=%d, duration=%v, err=%v",
 			requestCount, statusCode, contentLength, duration, err)
 
 		// Record result
-		w.result.append(&result{
+		_, resultErr := appendResult(w.seqId, &Result{
 			statusCode:    statusCode,
 			duration:      duration,
 			contentLength: contentLength,
 			err:           err,
 		})
 
-		// Check circuit breaker on error
 		if err != nil {
-			logWarn("request #%d failed: %v", requestCount, err)
-			if w.result.isCircuitBreak() {
-				logError("error rate exceeded %d%% threshold, circuit breaker triggered", circuitBreakerPercent)
-				return
-			}
+			logWarn(w.seqId, "request #%d failed: %v", requestCount, err)
+		}
+
+		// Check circuit breaker on error
+		if resultErr != nil {
+			logError(w.seqId, "failed to append result: %v", resultErr)
+			return
 		}
 	}
 
-	logDebug("client completed %d requests", requestCount)
+	logDebug(w.seqId, "client completed %d requests", requestCount)
 }

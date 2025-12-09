@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"runtime"
+	"time"
 
 	_ "embed"
 )
@@ -29,21 +30,22 @@ const (
 
 // Worker and performance constants
 const (
-	stopChannelSize       = 1000  // Buffer size for worker stop channel
-	circuitBreakerPercent = 50    // Error rate threshold (%) to trigger circuit breaker
-	defaultWorkerTimeout  = 10000 // Default worker timeout (milliseconds)
+	stopChannelSize       = 1000             // Buffer size for worker stop channel
+	resultChannelSize     = 10000000         // Buffer size for result channel
+	circuitBreakerPercent = 50               // Error rate threshold (%) to trigger circuit breaker
+	defaultWorkerTimeout  = 10 * time.Second // Default worker timeout
 )
 
 // HTTP related constants
 const (
 	httpContentTypeJSON = "application/json" // JSON content type header
-	httpWorkerApiPath   = "/api"             // Worker API endpoint path
+	httpWorkerApiURL    = "/api"             // Worker API endpoint path
 )
 
 // Default values
 const (
 	defaultConcurrency  = 50    // Default number of concurrent requests
-	defaultTimeout      = 3000  // Default request timeout (milliseconds)
+	defaultTimeout      = "3s"  // Default request timeout
 	defaultDuration     = "10s" // Default test duration
 	defaultVerboseLevel = 3     // Default log level (ERROR)
 
@@ -59,38 +61,36 @@ Load Testing Options:
   -c  <number>         Number of concurrent workers (default: 50)
   -q  <number>         Rate limit in queries per second (QPS)
   -d  <duration>       Test duration (e.g., 10s, 2m, 1h)
-  -t  <milliseconds>   Request timeout in milliseconds (default: 3000)
+  -t  <duration>       Request timeout (e.g., 3s, 500ms) (default: 3s)
 
 HTTP Request Options:
   -m  <method>         HTTP method: GET, POST, PUT, DELETE, HEAD, OPTIONS (default: GET)
   -H  <header>         Add custom header (repeatable), e.g., -H "Content-Type: application/json"
-      --body <data>    Request body content (string or hex format)
-      --body-type <type>  Body format: string or hex (default: string)
-      --body-file <path>  Read request body from file
+      -body <data>     Request body content (string or hex format)
+      -bodytype <type> Body format: string or hex (default: string)
   -a  <user:pass>      HTTP Basic Authentication credentials
-      --http <version> HTTP protocol: http1, http2, http3, ws, wss (default: http1)
+      -http <version>  HTTP protocol: http1, http2, http3, ws, wss (default: http1)
 
 HTTP Client Options:
   -x  <host:port>      HTTP proxy address
-      --disable-compression   Disable response compression
-      --disable-keepalive     Disable HTTP keep-alive connections
+      -disable-compression    Disable response compression
+      -disable-keepalive      Disable HTTP keep-alive connections
 
 Input/Output Options:
   -o  <format>         Output format: summary (default) or csv
-      --url-file <path>  Read target URLs from file (one per line)
-      --verbose <level>  Log verbosity: 0=TRACE, 1=DEBUG, 2=INFO, 3=ERROR (default: 3)
+      -file <path>     Read target URLs from file (one per line)
+      -verbose <level> Log verbosity: 0=TRACE, 1=DEBUG, 2=INFO, 3=ERROR (default: 3)
 
 Distributed Testing:
-      --listen <addr>    Start as worker node, listen on address (e.g., 127.0.0.1:12710)
+      -listen <addr>   Start dashboard and worker node on address (e.g., 127.0.0.1:12710)
   -w, -W  <addr>       Worker node addresses for distributed testing (repeatable)
-      --dashboard <addr> Start dashboard web UI on address (e.g., 127.0.0.1:12345)
 
 System Options:
-      --cpus <number>    Number of CPU cores to use (default: all available)
-      --example          Show usage examples and exit
+      -cpus <number>   Number of CPU cores to use (default: all available)
+      -example         Show usage examples and exit
 
 Examples:
-  Run --example flag to see detailed usage examples
+  Run -example flag to see detailed usage examples
 `
 
 	examples = `
@@ -106,7 +106,7 @@ Examples:
    Test POST endpoint for 30 seconds:
    $ http_bench -d 30s -c 20 -m POST http://127.0.0.1/api/users \
      -H "Content-Type: application/json" \
-     --body '{"name":"John","email":"john@example.com"}'
+     -body '{"name":"John","email":"john@example.com"}'
 
 3. Rate Limited Testing
    Send requests at 100 QPS for 1 minute:
@@ -114,17 +114,17 @@ Examples:
 
 4. HTTP/2 Testing
    Test HTTP/2 endpoint with custom timeout:
-   $ http_bench -d 10s -c 10 -t 5000 --http http2 \
+   $ http_bench -d 10s -c 10 -t 5000 -http http2 \
      https://127.0.0.1/api/test
 
 5. WebSocket Testing
    Test WebSocket connection:
-   $ http_bench -d 10s -c 10 --http ws \
-     ws://127.0.0.1/ws --body '{"message":"hello"}'
+   $ http_bench -d 10s -c 10 -http ws \
+     ws://127.0.0.1/ws -body '{"message":"hello"}'
 
 6. Multiple URLs from File
-   Test multiple endpoints (urls.txt contains one URL per line):
-   $ http_bench -n 1000 -c 10 --url-file urls.txt
+   Test multiple endpoints (urls.http contains one URL per line):
+   $ http_bench -n 1000 -c 10 -file urls.http
 
 7. Authentication Testing
    Test with Basic Auth:
@@ -140,38 +140,32 @@ Examples:
    Export results in CSV format:
    $ http_bench -n 1000 -c 10 -o csv http://127.0.0.1/api/test > results.csv
 
-10. Dashboard Mode
-    Start web dashboard for real-time monitoring:
-    $ http_bench --dashboard 127.0.0.1:12345 --verbose 1
+10. Dashboard & Worker Mode
+    Start web dashboard and worker node:
+    $ http_bench -listen 127.0.0.1:12345 -verbose 1
     Then open http://127.0.0.1:12345 in your browser
 
 11. Distributed Testing (Multi-Node)
     Step 1 - Start worker nodes on different machines:
-    $ http_bench --listen 192.168.1.10:12710 --verbose 1
-    $ http_bench --listen 192.168.1.11:12710 --verbose 1
+    $ http_bench -listen 192.168.1.10:12710 -verbose 1
+    $ http_bench -listen 192.168.1.11:12710 -verbose 1
     
     Step 2 - Run controller to coordinate workers:
     $ http_bench -n 10000 -c 100 -d 30s \
       -m POST http://target.example.com/api/test \
-      --body '{"key":"value"}' \
+      -body '{"key":"value"}' \
       -W 192.168.1.10:12710 -W 192.168.1.11:12710
 
-12. Advanced: Body from File
-    Use large JSON payload from file:
-    $ http_bench -n 500 -c 10 -m POST \
-      http://127.0.0.1/api/data \
-      --body-file payload.json
-
-13. High Concurrency Testing
+12. High Concurrency Testing
     Test with 1000 concurrent connections:
-    $ http_bench -d 1m -c 1000 --cpus 8 \
-      --disable-keepalive http://127.0.0.1/api/test
+    $ http_bench -d 1m -c 1000 -cpus 8 \
+      -disable-keepalive http://127.0.0.1/api/test
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Tips:
   • Use -d for duration-based tests or -n for fixed request count
   • Adjust -c (concurrency) based on your system and target capacity
-  • Use --verbose 1 for debugging, --verbose 3 for production
+  • Use -verbose 1 for debugging, -verbose 3 for production
   • Distributed mode scales testing across multiple machines
   • Dashboard provides real-time metrics visualization
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -181,6 +175,14 @@ Tips:
 var (
 	// Signal channel for graceful shutdown
 	stopSignal chan os.Signal
+
+	// workerAddrList stores addresses of distributed worker nodes
+	workerAddrList flagSlice
+
+	// Worker authentication header key
+	httpWorkerApiAuthKey string = getEnv("HTTPBENCH_AUTH_KEY")
+	httpWorkerApiPath           = getEnv("HTTPBENCH_WORKERAPI")
+	gogcValue                   = getEnv("HTTPBENCH_GOGC")
 
 	// HTTP request configuration flags
 	m          = flag.String("m", "GET", "")     // HTTP method
@@ -194,7 +196,7 @@ var (
 	n        = flag.Int("n", 0, "")                   // Total number of requests
 	q        = flag.Int("q", 0, "")                   // Rate limit (QPS)
 	d        = flag.String("d", defaultDuration, "")  // Test duration
-	t        = flag.Int("t", defaultTimeout, "")      // Request timeout (ms)
+	t        = flag.String("t", defaultTimeout, "")   // Request timeout (ms)
 	httpType = flag.String("http", protocolHTTP1, "") // HTTP protocol version
 	pType    = flag.String("p", "", "")               // TCP/UDP protocol type
 
@@ -208,13 +210,13 @@ var (
 	proxyAddr          = flag.String("x", "", "")                    // Proxy address
 
 	// Server and worker configuration flags
-	urlstr    = flag.String("url", "", "")                   // Target URL
-	verbose   = flag.Int("verbose", defaultVerboseLevel, "") // Log verbosity level
-	listen    = flag.String("listen", "", "")                // Worker listen address
-	dashboard = flag.String("dashboard", "", "")             // Dashboard listen address
+	urlstr  = flag.String("url", "", "")                   // Target URL
+	verbose = flag.Int("verbose", defaultVerboseLevel, "") // Log verbosity level
+	listen  = flag.String("listen", "", "")                // Dashboard or Worker listen address
 
-	// File input flags
-	urlFile    = flag.String("url-file", "", "")  // File containing URLs
-	bodyFile   = flag.String("body-file", "", "") // File containing request body
-	scriptFile = flag.String("script", "", "")    // Script file for advanced scenarios
+	// File input flags，format:
+	// - URL per line
+	// - Optional headers in format "Key: Value"
+	// - Optional body in JSON format
+	httpFile = flag.String("file", "", "") // File containing URLs
 )

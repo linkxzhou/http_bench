@@ -46,7 +46,7 @@ func NewClientPool(maxSize int) *ClientPool {
 // Returns nil if pool is closed or at capacity
 func (p *ClientPool) Get() *Client {
 	if atomic.LoadInt32(&p.closed) == 1 {
-		logDebug("client pool is closed, cannot get client")
+		logDebug(0, "client pool is closed, cannot get client")
 		return nil
 	}
 
@@ -62,7 +62,7 @@ func (p *ClientPool) Get() *Client {
 			atomic.AddInt32(&p.active, 1)
 			return &Client{}
 		}
-		logDebug("client pool at capacity: %d", p.maxSize)
+		logDebug(0, "client pool at capacity: %d", p.maxSize)
 	}
 	return nil
 }
@@ -83,10 +83,10 @@ func (p *ClientPool) Put(client *Client) {
 	select {
 	case p.clients <- client:
 		// Successfully returned to pool
-		logDebug("client returned to pool")
+		logTrace(0, "client returned to pool")
 	default:
 		// Pool is full, close client
-		logDebug("pool full, closing client")
+		logError(0, "pool full, closing client")
 		p.closeClient(client)
 	}
 	atomic.AddInt32(&p.active, -1)
@@ -96,7 +96,7 @@ func (p *ClientPool) Put(client *Client) {
 func (p *ClientPool) closeClient(client *Client) {
 	if client != nil {
 		if err := client.Close(); err != nil {
-			logDebug("error closing client: %v", err)
+			logDebug(0, "error closing client: %v", err)
 		}
 	}
 }
@@ -118,7 +118,7 @@ func (p *ClientPool) Shutdown() {
 		p.closeClient(client)
 	}
 
-	logDebug("client pool shutdown complete")
+	logDebug(0, "client pool shutdown complete")
 }
 
 // Client represents a reusable HTTP/WebSocket client
@@ -157,12 +157,12 @@ func (c *Client) Init(opts ClientOpts) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	logDebug("initializing client with protocol: %s", opts.Protocol)
+	logDebug(0, "initializing client with protocol: %s", opts.Protocol)
 	c.opts = opts
 
 	// If client is already initialized and protocol is the same, reuse directly
 	if c.initialized && c.httpClient != nil && c.opts.Protocol == opts.Protocol {
-		logDebug("reusing existing client")
+		logDebug(0, "reusing existing client")
 		return nil
 	}
 
@@ -179,15 +179,16 @@ func (c *Client) Init(opts ClientOpts) error {
 		err = c.initWebSocketClient()
 	default:
 		err = fmt.Errorf("unsupported protocol: %s", opts.Protocol)
-		logError("unsupported protocol: %s", opts.Protocol)
+		logError(0, "unsupported protocol: %s", opts.Protocol)
 	}
 
 	if err != nil {
+		logError(0, "initializing client: %v", err)
 		return err
 	}
 
 	c.initialized = true
-	logDebug("client initialized successfully")
+	logDebug(0, "client initialized successfully")
 	return nil
 }
 
@@ -277,7 +278,7 @@ func (c *Client) initWebSocketClient() error {
 	var err error
 	c.wsClient, _, err = dialer.Dial(c.opts.Params.Url, c.opts.Params.Headers)
 	if err != nil {
-		logError("websocket dial error: %v", err)
+		logError(0, "websocket dial error: %v", err)
 		return fmt.Errorf("websocket dial error: %v", err)
 	}
 
@@ -311,25 +312,29 @@ var (
 //   - timeoutMs: request timeout in milliseconds (0 uses default)
 //
 // Returns: (statusCode, contentLength, error)
-func (c *Client) Do(url, reqBody []byte, timeoutMs int) (int, int64, error) {
+func (c *Client) Do(url, reqBody []byte, timeout time.Duration) (int, int64, error) {
 	if !c.initialized {
 		return 0, 0, fmt.Errorf("client not initialized")
 	}
 
-	curTimeout := time.Duration(c.opts.Params.Timeout) * time.Millisecond
-	if timeoutMs > 0 {
-		curTimeout = time.Duration(timeoutMs) * time.Millisecond
+	curTimeout := c.opts.Params.Timeout
+	if timeout > 0 {
+		curTimeout = timeout
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), curTimeout)
 	defer cancel()
+
+	// Log request details
+	logTrace(0, "executing request: %s %s, timeout: %v seconds",
+		c.opts.Params.RequestMethod, string(url), curTimeout.Seconds())
 
 	switch c.opts.Protocol {
 	case protocolHTTP1, protocolHTTP2, protocolHTTP3:
 		return c.doHTTPRequest(ctx, url, reqBody)
 
 	case protocolWS, protocolWSS:
-		return c.doWebSocketRequest(reqBody)
+		return c.doWebSocketRequest(ctx, reqBody)
 	}
 
 	return 0, 0, fmt.Errorf("unsupported protocol type: %s", c.opts.Protocol)
@@ -381,7 +386,7 @@ func (c *Client) doHTTPRequest(ctx context.Context, url, reqBody []byte) (int, i
 	} else {
 		// Discard response body to release connection
 		if _, err := io.Copy(io.Discard, resp.Body); err != nil {
-			logDebug("error discarding response body: %v", err)
+			logDebug(0, "error discarding response body: %v", err)
 		}
 	}
 
@@ -389,7 +394,7 @@ func (c *Client) doHTTPRequest(ctx context.Context, url, reqBody []byte) (int, i
 }
 
 // doWebSocketRequest executes a WebSocket request
-func (c *Client) doWebSocketRequest(reqBody []byte) (int, int64, error) {
+func (c *Client) doWebSocketRequest(ctx context.Context, reqBody []byte) (int, int64, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -421,17 +426,17 @@ func (c *Client) Close() error {
 	case protocolHTTP1, protocolHTTP2, protocolHTTP3:
 		if c.httpClient != nil {
 			c.httpClient.CloseIdleConnections()
-			logDebug("http client connections closed")
+			logTrace(0, "http client connections closed")
 		}
 		return nil
 	case protocolWS, protocolWSS:
 		if c.wsClient != nil {
 			err := c.wsClient.Close()
 			if err != nil {
-				logDebug("websocket close error: %v", err)
+				logError(0, "websocket close error: %v", err)
 				return fmt.Errorf("websocket close error: %v", err)
 			}
-			logDebug("websocket client closed")
+			logTrace(0, "websocket client closed")
 		}
 		return nil
 	}
@@ -451,8 +456,8 @@ type HttpbenchParameters struct {
 	ProxyUrl           string              `json:"proxy_url"`           // proxy url
 	N                  int                 `json:"n"`                   // N is the total number of requests to make.
 	C                  int                 `json:"c"`                   // C is the concurrency level, the number of concurrent workers to run.
-	Duration           int64               `json:"duration"`            // D is the duration for stress test
-	Timeout            int                 `json:"timeout"`             // Timeout in ms.
+	Duration           time.Duration       `json:"duration"`            // D is the duration for stress test
+	Timeout            time.Duration       `json:"timeout"`             // Timeout in ms.
 	Qps                int                 `json:"qps"`                 // Qps is the rate limit.
 	DisableCompression bool                `json:"disable_compression"` // DisableCompression is an option to disable compression in response
 	DisableKeepAlives  bool                `json:"disable_keepalives"`  // DisableKeepAlives is an option to prevents re-use of TCP connections between different HTTP requests
@@ -465,7 +470,7 @@ type HttpbenchParameters struct {
 func (p *HttpbenchParameters) String() string {
 	body, err := json.MarshalIndent(p, "", "\t")
 	if err != nil {
-		logError("json marshal err: %v", err)
+		logError(p.SequenceId, "json marshal err: %v", err)
 		return err.Error()
 	}
 	return string(body)
@@ -482,7 +487,7 @@ func (p *HttpbenchParameters) GetRequestBody() ([]byte, io.Reader) {
 	if p.RequestBodyType == bodyHex {
 		decoded, err := hex.DecodeString(p.RequestBody)
 		if err != nil {
-			logError("hex decode error: %v", err)
+			logError(p.SequenceId, "hex decode error: %v", err)
 			return nil, nil
 		}
 		return decoded, bytes.NewReader(decoded)
@@ -490,4 +495,58 @@ func (p *HttpbenchParameters) GetRequestBody() ([]byte, io.Reader) {
 
 	body := []byte(p.RequestBody)
 	return body, bytes.NewReader(body)
+}
+
+func (p *HttpbenchParameters) Merge(params *HttpbenchParameters) {
+	if params.RequestMethod != "" {
+		p.RequestMethod = params.RequestMethod
+	}
+	if params.RequestBody != "" {
+		p.RequestBody = params.RequestBody
+	}
+	if params.RequestBodyType != "" {
+		p.RequestBodyType = params.RequestBodyType
+	}
+	if params.RequestScriptBody != "" {
+		p.RequestScriptBody = params.RequestScriptBody
+	}
+	if params.RequestType != "" {
+		p.RequestType = params.RequestType
+	}
+	if params.ProxyUrl != "" {
+		p.ProxyUrl = params.ProxyUrl
+	}
+	if params.N > 0 {
+		p.N = params.N
+	}
+	if params.C > 0 {
+		p.C = params.C
+	}
+	if params.Duration > 0 {
+		p.Duration = params.Duration
+	}
+	if params.Timeout > 0 {
+		p.Timeout = params.Timeout
+	}
+	if params.Qps > 0 {
+		p.Qps = params.Qps
+	}
+	if params.DisableCompression {
+		p.DisableCompression = params.DisableCompression
+	}
+	if params.DisableKeepAlives {
+		p.DisableKeepAlives = params.DisableKeepAlives
+	}
+	if params.Headers != nil {
+		p.Headers = params.Headers
+	}
+	if params.Url != "" {
+		p.Url = params.Url
+	}
+	if params.Output != "" {
+		p.Output = params.Output
+	}
+	if params.From != "" {
+		p.From = params.From
+	}
 }

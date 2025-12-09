@@ -23,7 +23,7 @@ const (
 	TestBinaryPath = "./http_bench" // Path to the compiled http_bench binary
 
 	// Test timing configuration
-	TestDuration = 5                // Duration in seconds for each test run
+	TestDuration = 5                // TestDuration in seconds for each test run
 	TestTimeout  = 30 * time.Second // Maximum time allowed for test execution
 
 	// Test server configuration
@@ -33,10 +33,10 @@ const (
 	TestWorkerPort2 = "12711"     // Second distributed worker port
 
 	// Test file paths
-	TestURLsFile = "./test/urls.txt"   // File containing multiple test URLs
-	TestBodyFile = "./test/body.txt"   // File containing test request body
-	TestCertFile = "./test/server.crt" // TLS certificate for HTTPS/HTTP2/HTTP3
-	TestKeyFile  = "./test/server.key" // TLS private key for HTTPS/HTTP2/HTTP3
+	TestURLsFile = "./test/resturl_test.http"  // File containing multiple test URLs
+	TestBodyFile = "./test/restbody_test.http" // File containing test request body
+	TestCertFile = "./test/server.crt"         // TLS certificate for HTTPS/HTTP2/HTTP3
+	TestKeyFile  = "./test/server.key"         // TLS private key for HTTPS/HTTP2/HTTP3
 )
 
 // TestCase defines the structure for a single test case
@@ -194,7 +194,7 @@ func createTestServer(serverType, name, address string) *TestServer {
 	}
 
 	// Create server context with extended timeout (2x test timeout)
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout*2)
+	_, cancel := context.WithTimeout(context.Background(), TestTimeout*2)
 	var instance interface{}
 	defer cancel()
 
@@ -211,26 +211,12 @@ func createTestServer(serverType, name, address string) *TestServer {
 				cancel()
 			}()
 
-			errCh := make(chan error, 1)
-			go func() {
-				errCh <- srv.ListenAndServeTLS(TestCertFile, TestKeyFile)
-			}()
-
-			select {
-			case err := <-errCh:
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "[%s] Server error: %v\n", name, err)
-				}
-			case <-ctx.Done():
-				// Context timeout or cancellation - server shutting down
-				fmt.Fprintf(os.Stdout, "[%s] Server context done\n", name)
-			}
-
+			srv.ListenAndServeTLS(TestCertFile, TestKeyFile)
 			fmt.Fprintf(os.Stdout, "[%s] Server stopped (was listening on %s)\n", name, address)
 		}()
 		instance = srv
 
-	case "ws", "http1", "http2":
+	case "http1", "http2":
 		srv := &http.Server{
 			Addr:         address,
 			Handler:      mux,
@@ -240,33 +226,31 @@ func createTestServer(serverType, name, address string) *TestServer {
 		}
 		wg.Add(1)
 		go func() {
-			defer wg.Done()
-			defer cancel()
-
-			var err error
-			errCh := make(chan error, 1)
-
-			go func() {
-				if serverType == "http2" {
-					errCh <- srv.ListenAndServeTLS(TestCertFile, TestKeyFile)
-				} else {
-					errCh <- srv.ListenAndServe()
-				}
+			defer func() {
+				cancel()
+				wg.Done()
 			}()
 
-			select {
-			case err = <-errCh:
-				if err != nil && err != http.ErrServerClosed {
-					fmt.Fprintf(os.Stderr, "[%s] Server error: %v\n", name, err)
-				}
-			case <-ctx.Done():
-				// Context timeout or cancellation - gracefully shutdown
-				fmt.Fprintf(os.Stdout, "[%s] Shutting down server...\n", name)
-				shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer shutdownCancel()
-				srv.Shutdown(shutdownCtx)
-			}
+			srv.ListenAndServeTLS(TestCertFile, TestKeyFile)
+			fmt.Fprintf(os.Stdout, "[%s] Server stopped (was listening on %s)\n", name, address)
+		}()
+		instance = srv
+	case "ws":
+		srv := &http.Server{
+			Addr:         address,
+			Handler:      mux,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  30 * time.Second,
+		}
+		wg.Add(1)
+		go func() {
+			defer func() {
+				cancel()
+				wg.Done()
+			}()
 
+			srv.ListenAndServe()
 			fmt.Fprintf(os.Stdout, "[%s] Server stopped (was listening on %s)\n", name, address)
 		}()
 		instance = srv
@@ -326,7 +310,7 @@ func RunCommand(t *testing.T, name, args string, expectError bool, description s
 
 	// Initialize and execute command
 	cmder := CommandRunner{}
-	cmder.Initialize(TestBinaryPath, strings.Split(args, " "))
+	cmder.Initialize(TestBinaryPath, parseArgs(args))
 
 	result, err := cmder.Execute()
 
@@ -343,12 +327,58 @@ func RunCommand(t *testing.T, name, args string, expectError bool, description s
 
 	// Log result summary
 	if len(result) > 200 {
-		t.Logf("[%s] Result (truncated): %s...", name, result[:200])
+		t.Logf("[%s] Result (truncated): %s...", name, result)
 	} else {
 		t.Logf("[%s] Result: %s", name, result)
 	}
 
 	return result
+}
+
+// parseArgs parses a command line string into arguments, handling quotes
+func parseArgs(input string) []string {
+	var args []string
+	var currentArg strings.Builder
+	var inSingleQuote, inDoubleQuote bool
+	var argStarted bool
+
+	for _, r := range input {
+		switch r {
+		case ' ':
+			if !inSingleQuote && !inDoubleQuote {
+				if argStarted {
+					args = append(args, currentArg.String())
+					currentArg.Reset()
+					argStarted = false
+				}
+			} else {
+				currentArg.WriteRune(r)
+			}
+		case '\'':
+			if !inDoubleQuote {
+				inSingleQuote = !inSingleQuote
+				argStarted = true
+			} else {
+				currentArg.WriteRune(r)
+			}
+		case '"':
+			if !inSingleQuote {
+				inDoubleQuote = !inDoubleQuote
+				argStarted = true
+			} else {
+				currentArg.WriteRune(r)
+			}
+		default:
+			currentArg.WriteRune(r)
+			argStarted = true
+		}
+	}
+
+	if argStarted {
+		args = append(args, currentArg.String())
+	}
+
+	return args
 }
 
 // buildServerAddress creates a full server address from host and port
@@ -368,37 +398,145 @@ func TestStressHTTP1(t *testing.T) {
 	defer testServer.Stop()
 
 	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	// Define test cases
 	testCases := []TestCase{
 		{
 			Description: "GET request with empty body",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url http://%s/`,
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url https://%s/`,
 				TestDuration, serverName, serverAddress),
 			ExpectError: false,
 		},
 		{
 			Description: "GET request with URLs from file",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url-file %s`,
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -file %s`,
 				TestDuration, serverName, TestURLsFile),
 			ExpectError: false,
 		},
 		{
 			Description: "POST request with JSON body",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' http://%s/`,
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body '%s' https://%s/`,
 				TestDuration, serverName, `{"key":"value"}`, serverAddress),
 			ExpectError: false,
 		},
 		{
-			Description: "POST request with body from file",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s http://%s/`,
-				TestDuration, serverName, TestBodyFile, serverAddress),
+			Description: "Requests from file",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -file %s`,
+				TestDuration, serverName, TestBodyFile),
+			ExpectError: false,
+		},
+		{
+			Description: "PUT request with JSON body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m PUT -body '%s' https://%s/`,
+				TestDuration, serverName, `{"update":"true"}`, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "DELETE request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "HEAD request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "OPTIONS request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with custom header",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Basic Auth",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with QPS limit",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Keep-Alive disabled",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-keepalive https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Compression disabled",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-compression https://%s/`,
+				TestDuration, serverName, serverAddress),
 			ExpectError: false,
 		},
 		{
 			Description: "GET request with multiple connections",
-			Args: fmt.Sprintf(`-c 10 -d %ds -http %s -m GET http://%s/`,
+			Args: fmt.Sprintf(`-c 10 -d %ds -http %s -m GET https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "PUT request with JSON body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m PUT -body '%s' https://%s/`,
+				TestDuration, serverName, `{"update":"true"}`, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "DELETE request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "HEAD request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "OPTIONS request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with custom header",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Basic Auth",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with QPS limit",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Keep-Alive disabled",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET --disable-keepalive https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Compression disabled",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET --disable-compression https://%s/`,
 				TestDuration, serverName, serverAddress),
 			ExpectError: false,
 		},
@@ -421,7 +559,7 @@ func TestStressHTTP2(t *testing.T) {
 	defer testServer.Stop()
 
 	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	// Define test cases
 	testCases := []TestCase{
@@ -438,14 +576,122 @@ func TestStressHTTP2(t *testing.T) {
 			ExpectError: false,
 		},
 		{
-			Description: "POST request with body from file",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s https://%s/`,
-				TestDuration, serverName, TestBodyFile, serverAddress),
+			Description: "Requests from file",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -file %s`,
+				TestDuration, serverName, TestBodyFile),
+			ExpectError: false,
+		},
+		{
+			Description: "PUT request with JSON body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m PUT -body '%s' https://%s/`,
+				TestDuration, serverName, `{"update":"true"}`, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "DELETE request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "HEAD request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "OPTIONS request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with custom header",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Basic Auth",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with QPS limit",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Keep-Alive disabled",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-keepalive https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Compression disabled",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-compression https://%s/`,
+				TestDuration, serverName, serverAddress),
 			ExpectError: false,
 		},
 		{
 			Description: "GET request with multiple connections",
 			Args: fmt.Sprintf(`-c 5 -d %ds -http %s -m GET https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "PUT request with JSON body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m PUT -body '%s' https://%s/`,
+				TestDuration, serverName, `{"update":"true"}`, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "DELETE request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "HEAD request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "OPTIONS request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with custom header",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Basic Auth",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with QPS limit",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Keep-Alive disabled",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET --disable-keepalive https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Compression disabled",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET --disable-compression https://%s/`,
 				TestDuration, serverName, serverAddress),
 			ExpectError: false,
 		},
@@ -491,7 +737,7 @@ func TestStressHTTP3(t *testing.T) {
 	defer testServer.Stop()
 
 	// Give HTTP/3 server extra time to start (QUIC initialization)
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	// Define test cases
 	testCases := []TestCase{
@@ -508,9 +754,63 @@ func TestStressHTTP3(t *testing.T) {
 			ExpectError: false,
 		},
 		{
-			Description: "POST request with body from file",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s https://%s/`,
-				TestDuration, serverName, TestBodyFile, serverAddress),
+			Description: "Requests from file",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -file %s`,
+				TestDuration, serverName, TestBodyFile),
+			ExpectError: false,
+		},
+		{
+			Description: "PUT request with JSON body",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m PUT -body '%s' https://%s/`,
+				TestDuration, serverName, `{"update":"true"}`, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "DELETE request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "HEAD request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "OPTIONS request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with custom header",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Basic Auth",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with QPS limit",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Keep-Alive disabled",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-keepalive https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Compression disabled",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-compression https://%s/`,
+				TestDuration, serverName, serverAddress),
 			ExpectError: false,
 		},
 	}
@@ -532,13 +832,19 @@ func TestStressWS(t *testing.T) {
 	defer testServer.Stop()
 
 	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	// Define test cases
 	testCases := []TestCase{
 		{
-			Description: "WebSocket connection",
+			Description: "WebSocket connection (WS)",
 			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -url ws://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "WebSocket connection (WSS)",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -url wss://%s/`,
 				TestDuration, serverName, serverAddress),
 			ExpectError: false,
 		},
@@ -549,9 +855,21 @@ func TestStressWS(t *testing.T) {
 			ExpectError: false,
 		},
 		{
-			Description: "WebSocket with POST and body from file",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body-file %s ws://%s/`,
-				TestDuration, serverName, TestBodyFile, serverAddress),
+			Description: "WebSocket with custom header",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -H "X-Custom-Header: test-value" ws://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "WebSocket with Basic Auth",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -a "user:pass" ws://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "WebSocket with QPS limit",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -q 10 ws://%s/`,
+				TestDuration, serverName, serverAddress),
 			ExpectError: false,
 		},
 		{
@@ -565,114 +883,5 @@ func TestStressWS(t *testing.T) {
 	// Run all test cases
 	for _, tc := range testCases {
 		RunCommand(t, serverName, tc.Args, tc.ExpectError, tc.Description)
-	}
-}
-
-// TestStressMultipleWorkerHTTP1 tests distributed worker functionality
-// It validates coordinated load testing across multiple worker nodes
-func TestStressMultipleWorkerHTTP1(t *testing.T) {
-	// Note: Not parallel as it uses specific ports that might conflict
-
-	serverName := "http1"
-	serverAddress := buildServerAddress(TestServerHost, TestServerPort)
-	testServer := createTestServer(serverName, serverName, serverAddress)
-	defer testServer.Stop()
-
-	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
-
-	// Define worker addresses
-	workerAddresses := []string{
-		buildServerAddress(TestServerHost, TestWorkerPort1),
-		buildServerAddress(TestServerHost, TestWorkerPort2),
-	}
-
-	testCases := []struct {
-		Description string
-		MainArgs    string
-		WorkerArgs  []string
-		ExpectError bool
-	}{
-		{
-			Description: "Distributed testing with multiple workers",
-			MainArgs: fmt.Sprintf(`-c 1 -d %ds -http %s -m POST -body "%s" -url http://%s/ -W %s -W %s`,
-				TestDuration, serverName, `{"test":"distributed"}`, serverAddress,
-				workerAddresses[0], workerAddresses[1]),
-			WorkerArgs: []string{
-				fmt.Sprintf(`-listen %s`, workerAddresses[0]),
-				fmt.Sprintf(`-listen %s`, workerAddresses[1]),
-			},
-			ExpectError: false,
-		},
-		{
-			Description: "Distributed testing with GET request",
-			MainArgs: fmt.Sprintf(`-c 2 -d %ds -http %s -m GET -url http://%s/ -W %s -W %s`,
-				TestDuration, serverName, serverAddress,
-				workerAddresses[0], workerAddresses[1]),
-			WorkerArgs: []string{
-				fmt.Sprintf(`-listen %s`, workerAddresses[0]),
-				fmt.Sprintf(`-listen %s`, workerAddresses[1]),
-			},
-			ExpectError: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.Description, func(t *testing.T) {
-			var workerRunners []*CommandRunner
-			var workerWg sync.WaitGroup
-			var startupWg sync.WaitGroup
-
-			// Start worker processes
-			for _, workerArg := range tc.WorkerArgs {
-				workerWg.Add(1)
-				startupWg.Add(1)
-				workerRunner := &CommandRunner{}
-				workerRunner.Initialize(TestBinaryPath, strings.Split(workerArg, " "))
-
-				go func(runner *CommandRunner) {
-					defer workerWg.Done()
-
-					// Signal that worker is starting
-					startupWg.Done()
-
-					// Execute worker and log result
-					workerResult, err := runner.Execute()
-					if err != nil {
-						t.Logf("Worker execution error: %v", err)
-					}
-					if len(workerResult) > 100 {
-						t.Logf("Worker result (truncated): %s...", workerResult[:100])
-					} else {
-						t.Logf("Worker result: %s", workerResult)
-					}
-				}(workerRunner)
-
-				workerRunners = append(workerRunners, workerRunner)
-			}
-
-			// Wait for all workers to start initializing
-			startupWg.Wait()
-			t.Logf("All workers initialized, waiting for startup...")
-
-			// Give workers time to fully start and listen
-			time.Sleep(5 * time.Second)
-
-			// Run the main benchmark command
-			t.Logf("Starting main benchmark command...")
-			RunCommand(t, serverName, tc.MainArgs, tc.ExpectError, tc.Description)
-
-			// Stop all worker processes
-			t.Logf("Stopping all workers...")
-			for i, runner := range workerRunners {
-				if err := runner.Stop(); err != nil {
-					t.Logf("Error stopping worker %d: %v", i, err)
-				}
-			}
-
-			// Wait for all workers to terminate
-			workerWg.Wait()
-			t.Logf("All workers stopped")
-		})
 	}
 }

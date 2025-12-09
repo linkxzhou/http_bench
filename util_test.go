@@ -468,3 +468,433 @@ func TestRandomBoolean(t *testing.T) {
 		t.Logf("randomBoolean() distribution: %d true, %d false (may be acceptable)", trueCount, falseCount)
 	}
 }
+
+// ============================================================================
+// Test JSON Functions
+// ============================================================================
+
+func TestJsonEncode(t *testing.T) {
+	data := map[string]interface{}{
+		"name": "test",
+		"age":  30,
+	}
+	result := jsonEncode(data)
+	if !strings.Contains(result, "name") || !strings.Contains(result, "test") {
+		t.Errorf("jsonEncode failed: %s", result)
+	}
+}
+
+func TestJsonDecode(t *testing.T) {
+	jsonStr := `{"name":"test","age":30}`
+	result := jsonDecode(jsonStr)
+	if result["name"] != "test" {
+		t.Errorf("jsonDecode failed: got %v", result)
+	}
+
+	// Test invalid JSON
+	invalid := jsonDecode("invalid json")
+	if len(invalid) != 0 {
+		t.Errorf("jsonDecode should return empty map for invalid JSON")
+	}
+}
+
+func TestJsonGet(t *testing.T) {
+	jsonStr := `{"user":{"name":"Alice","age":25}}`
+
+	if got := jsonGet(jsonStr, "user.name"); got != "Alice" {
+		t.Errorf("jsonGet(user.name) = %s, want Alice", got)
+	}
+
+	if got := jsonGet(jsonStr, "user.age"); got != "25" {
+		t.Errorf("jsonGet(user.age) = %s, want 25", got)
+	}
+
+	// Test non-existent key
+	if got := jsonGet(jsonStr, "user.invalid"); got != "" {
+		t.Errorf("jsonGet(user.invalid) should return empty string")
+	}
+}
+
+// ============================================================================
+// Test URL Functions
+// ============================================================================
+
+func TestUrlEncode(t *testing.T) {
+	input := "hello world&test=123"
+	result := urlEncode(input)
+	if !strings.Contains(result, "hello") {
+		t.Errorf("urlEncode failed: %s", result)
+	}
+}
+
+func TestUrlDecode(t *testing.T) {
+	encoded := "hello+world%26test%3D123"
+	result := urlDecode(encoded)
+	if !strings.Contains(result, "hello world") {
+		t.Errorf("urlDecode failed: %s", result)
+	}
+}
+
+func TestUrlParse(t *testing.T) {
+	testURL := "https://example.com:8080/path?query=1#fragment"
+
+	tests := []struct {
+		component string
+		want      string
+	}{
+		{"scheme", "https"},
+		{"host", "example.com:8080"},
+		{"hostname", "example.com"},
+		{"port", "8080"},
+		{"path", "/path"},
+		{"query", "query=1"},
+		{"fragment", "fragment"},
+	}
+
+	for _, tt := range tests {
+		if got := urlParse(testURL, tt.component); got != tt.want {
+			t.Errorf("urlParse(%s) = %s, want %s", tt.component, got, tt.want)
+		}
+	}
+}
+
+func TestQueryBuild(t *testing.T) {
+	result := queryBuild("key1", "value1", "key2", "value2")
+	if !strings.Contains(result, "key1=value1") {
+		t.Errorf("queryBuild failed: %s", result)
+	}
+
+	// Test odd number of arguments
+	invalid := queryBuild("key1")
+	if invalid != "" {
+		t.Errorf("queryBuild with odd args should return empty string")
+	}
+}
+
+// ============================================================================
+// Test Timestamp Functions
+// ============================================================================
+
+func TestTimestamp(t *testing.T) {
+	ts := timestamp()
+	if ts <= 0 {
+		t.Errorf("timestamp() = %d, should be positive", ts)
+	}
+
+	// Should be close to current time
+	now := time.Now().Unix()
+	if ts < now-1 || ts > now+1 {
+		t.Errorf("timestamp() = %d, expected around %d", ts, now)
+	}
+}
+
+func TestTimestampMs(t *testing.T) {
+	ts := timestampMs()
+	if ts <= 0 {
+		t.Errorf("timestampMs() = %d, should be positive", ts)
+	}
+
+	// Should be 13 digits (milliseconds since epoch)
+	if ts < 1000000000000 {
+		t.Errorf("timestampMs() = %d, should be at least 13 digits", ts)
+	}
+}
+
+func TestTimestampNano(t *testing.T) {
+	ts := timestampNano()
+	if ts <= 0 {
+		t.Errorf("timestampNano() = %d, should be positive", ts)
+	}
+
+	// Should be 19 digits (nanoseconds since epoch)
+	if ts < 1000000000000000000 {
+		t.Errorf("timestampNano() = %d, should be at least 19 digits", ts)
+	}
+}
+
+// ============================================================================
+// Test Array/String Functions
+// ============================================================================
+
+func TestJoin(t *testing.T) {
+	result := join(",", "a", "b", "c")
+	if result != "a,b,c" {
+		t.Errorf("join() = %s, want a,b,c", result)
+	}
+}
+
+func TestSplit(t *testing.T) {
+	result := split("a,b,c", ",")
+	if len(result) != 3 || result[0] != "a" {
+		t.Errorf("split() failed: %v", result)
+	}
+}
+
+func TestContains(t *testing.T) {
+	if !contains("hello world", "world") {
+		t.Error("contains() should return true")
+	}
+	if contains("hello", "world") {
+		t.Error("contains() should return false")
+	}
+}
+
+func TestStartsWith(t *testing.T) {
+	if !startsWith("hello world", "hello") {
+		t.Error("startsWith() should return true")
+	}
+	if startsWith("hello", "world") {
+		t.Error("startsWith() should return false")
+	}
+}
+
+func TestEndsWith(t *testing.T) {
+	if !endsWith("hello world", "world") {
+		t.Error("endsWith() should return true")
+	}
+	if endsWith("hello", "world") {
+		t.Error("endsWith() should return false")
+	}
+}
+
+func TestRepeat(t *testing.T) {
+	result := repeat("ab", 3)
+	if result != "ababab" {
+		t.Errorf("repeat() = %s, want ababab", result)
+	}
+
+	// Test negative count
+	if got := repeat("x", -1); got != "" {
+		t.Errorf("repeat with negative count should return empty string")
+	}
+}
+
+func TestReverse(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"hello", "olleh"},
+		{"12345", "54321"},
+		{"a", "a"},
+		{"", ""},
+		{"你好", "好你"},
+	}
+
+	for _, tt := range tests {
+		if got := reverse(tt.input); got != tt.want {
+			t.Errorf("reverse(%s) = %s, want %s", tt.input, got, tt.want)
+		}
+	}
+}
+
+// ============================================================================
+// Test Math Functions
+// ============================================================================
+
+func TestRound(t *testing.T) {
+	tests := []struct {
+		input float64
+		want  int64
+	}{
+		{1.4, 1},
+		{1.5, 2},
+		{1.6, 2},
+		{-1.4, -1},
+		{-1.5, -2},
+	}
+
+	for _, tt := range tests {
+		if got := round(tt.input); got != tt.want {
+			t.Errorf("round(%f) = %d, want %d", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestCeil(t *testing.T) {
+	tests := []struct {
+		input float64
+		want  int64
+	}{
+		{1.1, 2},
+		{1.9, 2},
+		{-1.1, -1},
+		{2.0, 2},
+	}
+
+	for _, tt := range tests {
+		if got := ceil(tt.input); got != tt.want {
+			t.Errorf("ceil(%f) = %d, want %d", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestFloor(t *testing.T) {
+	tests := []struct {
+		input float64
+		want  int64
+	}{
+		{1.1, 1},
+		{1.9, 1},
+		{-1.1, -2},
+		{2.0, 2},
+	}
+
+	for _, tt := range tests {
+		if got := floor(tt.input); got != tt.want {
+			t.Errorf("floor(%f) = %d, want %d", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestAbs(t *testing.T) {
+	tests := []struct {
+		input int64
+		want  int64
+	}{
+		{5, 5},
+		{-5, 5},
+		{0, 0},
+	}
+
+	for _, tt := range tests {
+		if got := abs(tt.input); got != tt.want {
+			t.Errorf("abs(%d) = %d, want %d", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestPow(t *testing.T) {
+	tests := []struct {
+		base     float64
+		exponent float64
+		want     float64
+	}{
+		{2, 3, 8},
+		{10, 2, 100},
+		{5, 0, 1},
+	}
+
+	for _, tt := range tests {
+		if got := pow(tt.base, tt.exponent); got != tt.want {
+			t.Errorf("pow(%f, %f) = %f, want %f", tt.base, tt.exponent, got, tt.want)
+		}
+	}
+}
+
+// ============================================================================
+// Test Random Data Generators
+// ============================================================================
+
+func TestRandomEmail(t *testing.T) {
+	email := randomEmail()
+	if !strings.Contains(email, "@") {
+		t.Errorf("randomEmail() = %s, should contain @", email)
+	}
+	if !strings.Contains(email, ".com") {
+		t.Errorf("randomEmail() = %s, should contain .com", email)
+	}
+}
+
+func TestRandomPhone(t *testing.T) {
+	phone := randomPhone()
+	if !strings.HasPrefix(phone, "+1-") {
+		t.Errorf("randomPhone() = %s, should start with +1-", phone)
+	}
+	if len(phone) != 15 { // +1-XXX-XXX-XXXX
+		t.Errorf("randomPhone() = %s, wrong length", phone)
+	}
+}
+
+func TestRandomUsername(t *testing.T) {
+	username := randomUsername()
+	if !strings.Contains(username, "_") {
+		t.Errorf("randomUsername() = %s, should contain _", username)
+	}
+}
+
+func TestRandomUserAgent(t *testing.T) {
+	ua := randomUserAgent()
+	if !strings.Contains(ua, "Mozilla") {
+		t.Errorf("randomUserAgent() = %s, should contain Mozilla", ua)
+	}
+}
+
+func TestRandomHTTPMethod(t *testing.T) {
+	validMethods := map[string]bool{
+		"GET": true, "POST": true, "PUT": true, "DELETE": true,
+		"PATCH": true, "HEAD": true, "OPTIONS": true,
+	}
+
+	method := randomHTTPMethod()
+	if !validMethods[method] {
+		t.Errorf("randomHTTPMethod() = %s, invalid method", method)
+	}
+}
+
+func TestRandomMAC(t *testing.T) {
+	mac := randomMAC()
+	// Should be in format XX:XX:XX:XX:XX:XX
+	parts := strings.Split(mac, ":")
+	if len(parts) != 6 {
+		t.Errorf("randomMAC() = %s, should have 6 parts", mac)
+	}
+}
+
+func TestRandomPort(t *testing.T) {
+	port := randomPort()
+	if port < 1024 || port > 65535 {
+		t.Errorf("randomPort() = %d, should be between 1024-65535", port)
+	}
+}
+
+// ============================================================================
+// Test Utility Functions
+// ============================================================================
+
+func TestLength(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int
+	}{
+		{"hello", 5},
+		{"你好", 2},
+		{"", 0},
+	}
+
+	for _, tt := range tests {
+		if got := length(tt.input); got != tt.want {
+			t.Errorf("length(%s) = %d, want %d", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestDefaultValue(t *testing.T) {
+	if got := defaultValue("", "default"); got != "default" {
+		t.Errorf("defaultValue() = %s, want default", got)
+	}
+	if got := defaultValue("value", "default"); got != "value" {
+		t.Errorf("defaultValue() = %s, want value", got)
+	}
+}
+
+func TestTernary(t *testing.T) {
+	if got := ternary(true, "yes", "no"); got != "yes" {
+		t.Errorf("ternary(true) = %v, want yes", got)
+	}
+	if got := ternary(false, "yes", "no"); got != "no" {
+		t.Errorf("ternary(false) = %v, want no", got)
+	}
+}
+
+func TestIncrement(t *testing.T) {
+	if got := increment(5); got != 6 {
+		t.Errorf("increment(5) = %d, want 6", got)
+	}
+}
+
+func TestDecrement(t *testing.T) {
+	if got := decrement(5); got != 4 {
+		t.Errorf("decrement(5) = %d, want 4", got)
+	}
+}

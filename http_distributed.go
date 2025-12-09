@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 )
 
 // serveDistributedWorker handles HTTP requests for distributed benchmark execution.
@@ -26,32 +25,44 @@ func serveDistributedWorker(w http.ResponseWriter, r *http.Request) {
 
 	// Only accept POST requests
 	if r.Method != http.MethodPost {
-		logWarn("invalid method %s, only POST is allowed", r.Method)
+		logWarn(0, "invalid method %s, only POST is allowed", r.Method)
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+
+	// Check Authorization header if worker API auth key is set
+	if len(httpWorkerApiAuthKey) > 0 {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader != fmt.Sprintf("Bearer %s", httpWorkerApiAuthKey) {
+			logWarn(0, "invalid Authorization header %s", authHeader)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Parse request parameters
 	var params HttpbenchParameters
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		logError("failed to decode request body: %v", err)
+		logError(0, "failed to decode request body: %v", err)
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	logDebug("received benchmark request: %s", params.String())
+	var seqId = params.SequenceId
+
+	logDebug(seqId, "received benchmark request: %s", params.String())
 
 	// Execute benchmark
-	worker := NewWorker(params.SequenceId)
-	result, err := HttpBenchStartup(worker, params)
+	worker := NewWorker(seqId)
+	result, err := handleStartup(worker, params)
 	if err != nil {
-		logError("benchmark execution failed: %v", err)
+		logError(seqId, "benchmark execution failed: %v", err)
 		http.Error(w, fmt.Sprintf("Benchmark failed: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	if result == nil {
-		logError("benchmark returned nil result")
+		logError(seqId, "benchmark returned nil result")
 		http.Error(w, "Internal error: nil result", http.StatusInternalServerError)
 		return
 	}
@@ -60,7 +71,7 @@ func serveDistributedWorker(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", httpContentTypeJSON)
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(result); err != nil {
-		logError("failed to encode response: %v", err)
+		logError(seqId, "failed to encode response: %v", err)
 	}
 }
 
@@ -74,32 +85,30 @@ func setCORSHeaders(w http.ResponseWriter) {
 // postDistributedWorker sends a benchmark request to a distributed worker node.
 // It uses a 5-minute timeout to allow for long-running benchmarks.
 func postDistributedWorker(uri string, body []byte) (*CollectResult, error) {
-	logDebug("sending request to worker %s, body size: %d bytes", uri, len(body))
+	logDebug(0, "sending request to worker %s, body size: %d bytes", uri, len(body))
 
 	// Create HTTP client with timeout
 	client := &http.Client{
-		Timeout: 5 * time.Minute, // Allow time for benchmark execution
+		Timeout: 0, // Infinite timeout for distributed communication
 		Transport: &http.Transport{
 			MaxIdleConns:        100,
 			MaxIdleConnsPerHost: 10,
-			IdleConnTimeout:     90 * time.Second,
+			IdleConnTimeout:     0, // No idle timeout
 		},
 	}
 
-	// Create request with context
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, uri, bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(context.Background(),
+		http.MethodPost, uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	req.Header.Set("Content-Type", httpContentTypeJSON)
 
+	req.Header.Set("Content-Type", httpContentTypeJSON)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", httpWorkerApiAuthKey))
 	// Send request
 	resp, err := client.Do(req)
 	if err != nil {
-		logError("failed to send request to worker %s: %v", uri, err)
+		logError(0, "failed to send request to worker %s: %v", uri, err)
 		return nil, fmt.Errorf("worker request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -107,8 +116,8 @@ func postDistributedWorker(uri string, body []byte) (*CollectResult, error) {
 	// Check response status
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		logError("worker %s returned status %d: %s", uri, resp.StatusCode, string(body))
-		return nil, fmt.Errorf("worker returned status %d: %s", resp.StatusCode, string(body))
+		logError(0, "worker %s returned status %d: %s", uri, resp.StatusCode, string(body))
+		return nil, fmt.Errorf("worker %s returned status %d: %s", uri, resp.StatusCode, string(body))
 	}
 
 	// Parse response
@@ -117,7 +126,7 @@ func postDistributedWorker(uri string, body []byte) (*CollectResult, error) {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	logDebug("received result from worker %s: %d requests completed", uri, result.LatsTotal)
+	logDebug(0, "received result from worker %s: %d requests completed", uri, result.LatsTotal)
 	return &result, nil
 }
 
@@ -129,7 +138,7 @@ func postAllDistributedWorkers(workerAddrs flagSlice, jsonParams []byte) (*Colle
 		return nil, fmt.Errorf("no worker addresses provided")
 	}
 
-	logInfo("distributing benchmark to %d worker(s)", len(workerAddrs))
+	logInfo(0, "distributing benchmark to %d worker(s)", len(workerAddrs))
 
 	var (
 		wg         sync.WaitGroup
@@ -143,14 +152,14 @@ func postAllDistributedWorkers(workerAddrs flagSlice, jsonParams []byte) (*Colle
 		wg.Add(1)
 
 		workerURL := buildWorkerURL(addr)
-		logDebug("dispatching to worker: %s", workerURL)
+		logDebug(0, "dispatching to worker: %s", workerURL)
 
 		go func(url string) {
 			defer wg.Done()
 
 			result, err := postDistributedWorker(url, jsonParams)
 			if err != nil {
-				logWarn("worker %s failed: %v", url, err)
+				logWarn(0, "worker %s failed: %v", url, err)
 				mu.Lock()
 				failedCnt++
 				mu.Unlock()
@@ -161,7 +170,7 @@ func postAllDistributedWorkers(workerAddrs flagSlice, jsonParams []byte) (*Colle
 				mu.Lock()
 				resultList = append(resultList, result)
 				mu.Unlock()
-				logInfo("worker %s completed successfully", url)
+				logDebug(0, "worker %s completed successfully", url)
 			}
 		}(workerURL)
 	}
@@ -174,12 +183,8 @@ func postAllDistributedWorkers(workerAddrs flagSlice, jsonParams []byte) (*Colle
 		return nil, fmt.Errorf("all %d worker(s) failed", len(workerAddrs))
 	}
 
-	if failedCnt > 0 {
-		logWarn("%d out of %d worker(s) failed", failedCnt, len(workerAddrs))
-	}
-
-	logInfo("collected results from %d worker(s), merging...", len(resultList))
-
+	logInfo(0, "collected results from %d worker(s), failedCnt: %d",
+		len(resultList), failedCnt)
 	// Merge all results
 	mergedResult := mergeCollectResult(nil, resultList...)
 	return mergedResult, nil
@@ -192,12 +197,13 @@ func buildWorkerURL(workerAddr string) string {
 	workerAddr = strings.TrimSpace(workerAddr)
 
 	// Check if scheme is already present
-	if strings.HasPrefix(workerAddr, "http://") || strings.HasPrefix(workerAddr, "https://") {
+	if strings.HasPrefix(workerAddr, "http://") ||
+		strings.HasPrefix(workerAddr, "https://") {
 		// Remove trailing slash if present
 		workerAddr = strings.TrimSuffix(workerAddr, "/")
-		return fmt.Sprintf("%s%s", workerAddr, httpWorkerApiPath)
+		return fmt.Sprintf("%s%s", workerAddr, httpWorkerApiURL)
 	}
 
 	// Add default http:// scheme
-	return fmt.Sprintf("http://%s%s", workerAddr, httpWorkerApiPath)
+	return fmt.Sprintf("http://%s%s", workerAddr, httpWorkerApiURL)
 }

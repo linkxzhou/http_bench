@@ -8,3 +8,4 @@ arch.drawio
 */**/nohup.out
 .vscode
 **/.DS_Store
+**/*.csv
