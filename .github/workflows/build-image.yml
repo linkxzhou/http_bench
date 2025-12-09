@@ -76,7 +76,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             ${{ secrets.REGISTRY_URL }}/serverless2025/http_bench:latest
-            ${{ secrets.REGISTRY_URL }}/serverless2025/http_bench:${{ steps.vars.outputs.tag }}
             ${{ secrets.REGISTRY_URL }}/serverless2025/http_bench:${{ steps.vars.outputs.tag }}-${{ steps.vars.outputs.time }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
