@@ -100,16 +100,16 @@ Latency distribution:
 -cpus     使用的 CPU 核心数（默认为当前机器的核心数）
 -url      请求单个 URL
 -verbose  打印详细日志，默认级别：2（0:TRACE, 1:DEBUG, 2:INFO ~ ERROR）
--url-file 从文件读取 URL 列表并随机压测
--body-file 从文件读取请求体
--listen   监听 IP:PORT 用于分布式压测和工作机器（默认为空）。例如："127.0.0.1:12710"
--dashboard 监听仪表盘 IP:PORT 并在浏览器上操作压测参数
+-file     从 .http 文件读取请求（支持多请求）
+-listen   监听 IP:PORT 用于分布式压测 Worker 或 Dashboard（默认为空）。例如："127.0.0.1:12710"
 -W  运行分布式压测的工作机器列表
       例如：-W "127.0.0.1:12710" -W "127.0.0.1:12711"
 -example  打印压测示例（默认为 false）
 ```
 
 ## 使用示例
+
+[使用样例](./EXAMPLE_CN.md)   
 
 ### 单 URL 测试
 
@@ -122,11 +122,11 @@ Latency distribution:
 ### 从文件测试 URL 列表
 
 ```bash
-# 从文件随机选择 URL，1000 次请求，10 个并发连接
-./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -url-file urls.txt
+# 从 .http 文件读取请求进行压测
+./http_bench -n 1000 -c 10 -file requests.http
 
-# 基于持续时间的测试，使用 POST 请求和请求体
-./http_bench -d 10s -c 10 -m POST -body "{}" -url-file urls.txt
+# 结合其他参数（如持续时间）使用
+./http_bench -d 10s -c 10 -file requests.http
 ```
 
 ### HTTP/2 测试
@@ -162,7 +162,7 @@ Latency distribution:
 
 ```bash
 # 步骤 1：启动仪表盘服务器
-./http_bench -dashboard "127.0.0.1:12345" -verbose 1
+./http_bench -listen "127.0.0.1:12345" -verbose 1
 
 # 步骤 2：在浏览器中打开仪表盘 URL
 # http://127.0.0.1:12345

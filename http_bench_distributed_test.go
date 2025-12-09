@@ -210,7 +210,7 @@ func TestStressMultipleWorkerHTTP1(t *testing.T) {
 					// Execute worker and log result
 					workerResult, err := runner.Execute()
 					if err != nil {
-						t.Logf("Worker execution error: %v", err)
+						t.Logf("Worker execution: %v", err)
 					}
 					if len(workerResult) > 100 {
 						t.Logf("Worker result (truncated): %s...", workerResult[:100])

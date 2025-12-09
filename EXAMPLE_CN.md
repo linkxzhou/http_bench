@@ -62,30 +62,32 @@
   -body '{"username":"admin","password":"secret"}'
 ```
 
-### 5. 从文件读取请求体
+### 5. 使用 .http 文件测试（多请求）
+
+支持标准的 `.http` 文件格式（兼容 IntelliJ/VSCode REST Client）。你可以定义多个请求，使用 `###` 分隔。
+压测工具将按顺序对文件定义的每个请求进行压测。
 
 ```bash
-# 创建请求体文件
-echo '{"data":"large payload content"}' > request_body.json
+# 创建包含多个请求的 .http 文件
+cat > requests.http << EOF
+# 请求 1: 获取用户列表
+GET http://127.0.0.1:8080/api/users
 
-# 使用文件中的请求体
-./http_bench -n 1000 -c 20 -m POST "http://127.0.0.1:8080/api/data" \
-  -body-file request_body.json
-```
+###
 
-### 6. URL列表测试
+# 请求 2: 创建数据（带 JSON 请求体）
+POST http://127.0.0.1:8080/api/data
+Content-Type: application/json
 
-```bash
-# 创建URL列表文件
-cat > urls.txt << EOF
-http://127.0.0.1:8080/api/users
-http://127.0.0.1:8080/api/products
-http://127.0.0.1:8080/api/orders
-http://127.0.0.1:8080/api/categories
+{
+    "name": "test",
+    "value": 123
+}
 EOF
 
-# 随机测试URL列表
-./http_bench -n 2000 -c 30 -url-file urls.txt
+# 使用文件中的请求运行压测
+# 这将先运行第一个请求的压测，完成后运行第二个
+./http_bench -n 1000 -c 20 -file requests.http
 ```
 
 ## HTTP协议测试
@@ -280,7 +282,7 @@ EOF
 
 ```bash
 # 启动Web仪表盘
-./http_bench -dashboard "127.0.0.1:12345" -verbose 1
+./http_bench -listen "127.0.0.1:12345" -verbose 1
 
 # 然后在浏览器中访问: http://127.0.0.1:12345
 ```
@@ -305,8 +307,8 @@ export HTTPBENCH_GOGC=200
 ./http_bench -n 50000 -c 500 "http://127.0.0.1:8080/api/test"
 
 # 设置Worker API端点
-export HTTPBENCH_WORKERAPI="/api/v2/worker"
-./http_bench -dashboard "127.0.0.1:12345"
+export HTTPBENCH_WORKERAPI="/v2/worker"
+./http_bench -listen "127.0.0.1:12345"
 ```
 
 ### 3. 大规模压测示例

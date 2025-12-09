@@ -42,6 +42,8 @@ go build .
 
 ## Example Usage
 
+[Example](./EXAMPLE.md)   
+
 ### Single URL Testing
 
 ```bash
@@ -50,14 +52,14 @@ go build .
 ./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1"
 ```
 
-### Testing with URL List from File
+### Testing with .http File (Multiple Requests)
 
 ```bash
-# Random URL selection from a file with 1000 requests and 10 concurrent connections
-./http_bench -n 1000 -c 10 -m GET "http://127.0.0.1/test1" -url-file urls.txt
+# Run benchmark using requests from a .http file
+./http_bench -n 1000 -c 10 -file requests.http
 
-# Duration-based test with POST requests and body payload
-./http_bench -d 10s -c 10 -m POST -body "{}" -url-file urls.txt
+# Combine with duration parameter
+./http_bench -d 10s -c 10 -file requests.http
 ```
 
 ### HTTP/2 Testing
@@ -93,7 +95,7 @@ go build .
 
 ```bash
 # Step 1: Start the dashboard server
-./http_bench -dashboard "127.0.0.1:12345" -verbose 1
+./http_bench -listen "127.0.0.1:12345" -verbose 1
 
 # Step 2: Open the dashboard URL in your browser
 # http://127.0.0.1:12345

@@ -72,9 +72,9 @@ func TestAppendAndMarshal(t *testing.T) {
 		t.Errorf("unexpected status counts: %#v", r.StatusCodeDist)
 	}
 
-	// Check latencies: 0.01s * 10000 = 100
-	if val, ok := r.Lats[100]; !ok || val != 2 {
-		t.Errorf("expected 2 count for duration 100, got %d", val)
+	// Check latencies: 0.01s = 10ms
+	if val, ok := r.Lats[10*time.Millisecond]; !ok || val != 2 {
+		t.Errorf("expected 2 count for duration 10ms, got %d", val)
 	}
 
 	if r.ErrorDist["500"] != 1 && r.ErrorDist["some"] >= 0 {
@@ -92,7 +92,7 @@ func TestAppendAndMarshal(t *testing.T) {
 	if check.StatusCodeDist[200] != r.StatusCodeDist[200] {
 		t.Error("roundtrip mismatch")
 	}
-	if val, ok := check.Lats[100]; !ok || val != 2 {
+	if val, ok := check.Lats[10*time.Millisecond]; !ok || val != 2 {
 		t.Errorf("roundtrip lats mismatch: expected 2, got %d", val)
 	}
 }

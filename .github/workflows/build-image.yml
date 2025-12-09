@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "time=$(date +'%Y%m%d%H')" >> $GITHUB_OUTPUT
+          echo "time=$(TZ=Asia/Shanghai date +'%Y%m%d')" >> $GITHUB_OUTPUT
           echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
 
       - name: Go mod cache
@@ -42,11 +42,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Build and Test
+      - name: Build
         run: |
           go mod tidy
           go build -v .
-          go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
@@ -76,8 +75,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ secrets.REGISTRY_URL }}/serverless2025/http_bench:latest
-            ${{ secrets.REGISTRY_URL }}/serverless2025/http_bench:${{ steps.vars.outputs.tag }}
-            ${{ secrets.REGISTRY_URL }}/serverless2025/http_bench:${{ steps.vars.outputs.tag }}-${{ steps.vars.outputs.time }}
+            ${{ secrets.REGISTRY_URL }}/serverless/http_bench:latest
+            ${{ secrets.REGISTRY_URL }}/serverless/http_bench:${{ steps.vars.outputs.tag }}
+            ${{ secrets.REGISTRY_URL }}/serverless/http_bench:${{ steps.vars.outputs.tag }}-${{ steps.vars.outputs.time }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -4,12 +4,11 @@
     <!-- Meta tags for responsive design -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    
     <!-- External dependencies -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
     <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
     
     <!-- Custom Styles -->
     <style>
@@ -118,11 +117,11 @@
                 start: '开始压测',
                 stop: '停止压测',
                 chart: {
-                    title: '📊 实时性能指标',
+                    title: '⚡️ 实时性能指标',
                     qps: 'QPS',
                     statusCode: '状态码',
-                    latency: '📊 响应耗时分布',
-                    errorDist: '⚠️ 错误分布'
+                    latency: '⏱️ 响应耗时分布',
+                    errorDist: '🚫 错误分布'
                 },
                 stats: {
                     avg: '平均耗时',
@@ -498,7 +497,7 @@
                 disableKeepalives: false,
                 authUsername: "",
                 authPassword: "",
-                requestUrl: "http://httpbin.org/get",
+                requestUrl: "https://www.http3check.net",
                 workerApiEndpoint: "",
                 isRunning: false,
                 metricsTimer: undefined,
@@ -736,7 +735,6 @@
                         });
                     }
 
-                    console.log("processMetricsData last metrics data:", data);
                     if (data.is_last) {
                         this.stopTest();
                         return;

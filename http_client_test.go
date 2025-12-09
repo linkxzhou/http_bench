@@ -78,13 +78,14 @@ func TestClientDoHTTP1(t *testing.T) {
 	}))
 	defer srv.Close()
 
+	time.Sleep(100 * time.Millisecond)
 	params := HttpbenchParameters{
 		Url:                srv.URL,
 		RequestMethod:      http.MethodPost,
 		RequestBody:        "ping",
 		RequestBodyType:    "",
 		RequestType:        protocolHTTP1,
-		Timeout:            500,
+		Timeout:            500 * time.Millisecond,
 		DisableCompression: false,
 		DisableKeepAlives:  false,
 		Headers:            map[string][]string{"X-Test": {"yes"}},
@@ -127,12 +128,13 @@ func TestClientDoHTTP2(t *testing.T) {
 	srv.StartTLS()
 	defer srv.Close()
 
+	time.Sleep(100 * time.Millisecond)
 	params := HttpbenchParameters{
 		Url:             srv.URL,
 		RequestMethod:   http.MethodPost,
 		RequestBody:     "hello2",
 		RequestBodyType: "",
-		Timeout:         500,
+		Timeout:         500 * time.Millisecond,
 		RequestType:     protocolHTTP2,
 	}
 
@@ -172,6 +174,7 @@ func TestClientDoWS(t *testing.T) {
 	}))
 	defer srv.Close()
 
+	time.Sleep(100 * time.Millisecond)
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
 	params := HttpbenchParameters{
 		Url:             wsURL,

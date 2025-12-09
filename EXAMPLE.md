@@ -62,30 +62,32 @@ This document provides detailed usage examples for the HTTP Bench tool, covering
   -body '{"username":"admin","password":"secret"}'
 ```
 
-### 5. Reading Request Body from File
+### 5. Testing with .http File (Multiple Requests)
+
+Support standard `.http` file format (IntelliJ/VSCode REST Client compatible). You can define multiple requests separated by `###`.
+The benchmark will run sequentially for each request defined in the file.
 
 ```bash
-# Create request body file
-echo '{"data":"large payload content"}' > request_body.json
+# Create a .http file with multiple requests
+cat > requests.http << EOF
+# Request 1: Get Users
+GET http://127.0.0.1:8080/api/users
 
-# Use request body from file
-./http_bench -n 1000 -c 20 -m POST "http://127.0.0.1:8080/api/data" \
-  -body-file request_body.json
-```
+###
 
-### 6. URL List Testing
+# Request 2: Create Data with JSON body
+POST http://127.0.0.1:8080/api/data
+Content-Type: application/json
 
-```bash
-# Create URL list file
-cat > urls.txt << EOF
-http://127.0.0.1:8080/api/users
-http://127.0.0.1:8080/api/products
-http://127.0.0.1:8080/api/orders
-http://127.0.0.1:8080/api/categories
+{
+    "name": "test",
+    "value": 123
+}
 EOF
 
-# Random testing of URL list
-./http_bench -n 2000 -c 30 -url-file urls.txt
+# Run benchmark using requests from file
+# This will run the benchmark for the first request, then the second.
+./http_bench -n 1000 -c 20 -file requests.http
 ```
 
 ## HTTP Protocol Testing
@@ -280,7 +282,7 @@ EOF
 
 ```bash
 # Start Web dashboard
-./http_bench -dashboard "127.0.0.1:12345" -verbose 1
+./http_bench -listen "127.0.0.1:12345" -verbose 1
 
 # Then access in browser: http://127.0.0.1:12345
 ```
@@ -305,8 +307,8 @@ export HTTPBENCH_GOGC=200
 ./http_bench -n 50000 -c 500 "http://127.0.0.1:8080/api/test"
 
 # Set Worker API endpoint
-export HTTPBENCH_WORKERAPI="/api/v2/worker"
-./http_bench -dashboard "127.0.0.1:12345"
+export HTTPBENCH_WORKERAPI="/v2/worker"
+./http_bench -listen "127.0.0.1:12345"
 ```
 
 ### 3. Large-scale Load Testing Examples
