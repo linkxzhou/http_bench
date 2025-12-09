@@ -736,8 +736,8 @@
                         });
                     }
 
+                    console.log("processMetricsData last metrics data:", data);
                     if (data.is_last) {
-                        console.log("processMetricsData last metrics data:", data);
                         this.stopTest();
                         return;
                     }

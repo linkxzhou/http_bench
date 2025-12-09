@@ -434,6 +434,7 @@ func mergeCollectResult(result *CollectResult, resultList ...*CollectResult) *Co
 		// Track maximum duration across all results
 		maxDuration = time.Duration(max(maxDuration.Milliseconds(),
 			v.Duration.Milliseconds())) * time.Millisecond
+		result.IsLast = v.IsLast
 	}
 
 	logTrace(0, "maxDuration: %v", maxDuration)
