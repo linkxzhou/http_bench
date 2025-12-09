@@ -51,12 +51,6 @@ func handleStartup(worker *HttpbenchWorker, params HttpbenchParameters) (result 
 			return nil, err
 		}
 
-		// Print results if this is a remote request
-		if params.From != "" {
-			logDebug(seqId, "printing results for remote request from: %s", params.From)
-			result.print()
-		}
-
 		logDebug(seqId, "benchmark completed - requests: %d, errors: %d, rps: %d",
 			result.LatsTotal, result.ErrTotal, result.Rps)
 
@@ -90,6 +84,12 @@ func handleStartup(worker *HttpbenchWorker, params HttpbenchParameters) (result 
 	}
 
 	result = mergeCollectResult(nil, result)
+	// Print results if this is a remote request
+	if params.Cmd == cmdStart && params.From != "" {
+		logDebug(seqId, "printing results for remote request from: %s", params.From)
+		result.print()
+	}
+
 	return
 }
 
