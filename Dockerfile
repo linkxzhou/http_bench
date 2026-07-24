@@ -10,6 +10,7 @@ FROM alpine:latest
 
 WORKDIR /app
 COPY --from=builder /app/http_bench .
+RUN chmod +x http_bench
 
 EXPOSE 9000
 ENTRYPOINT ["./http_bench", "-listen", "0.0.0.0:9000"]

@@ -9,3 +9,6 @@ arch.drawio
 .vscode
 **/.DS_Store
 **/*.csv
+output
+.session_tmps
+.box-desens

@@ -272,6 +272,9 @@ EOF
 # CSV格式输出
 ./http_bench -n 1000 -c 20 -o csv "http://127.0.0.1:8080/api/test" > results.csv
 
+# HTML格式输出
+./http_bench -n 1000 -c 20 -o html "http://127.0.0.1:8080/api/test" > results.html
+
 # 详细日志输出
 ./http_bench -n 1000 -c 20 "http://127.0.0.1:8080/api/test" -verbose 0  # TRACE
 ./http_bench -n 1000 -c 20 "http://127.0.0.1:8080/api/test" -verbose 1  # DEBUG
@@ -286,6 +289,16 @@ EOF
 
 # 然后在浏览器中访问: http://127.0.0.1:12345
 ```
+
+仪表盘页面在 worker 节点上异步执行压测，并按可调间隔（默认 2000 毫秒）轮询
+`/api` 接口获取指标，实时渲染：
+
+- QPS 与各状态码曲线
+- 概览卡片：平均耗时、平均 QPS、最快/最慢耗时、错误总数
+- 响应耗时分布直方图与错误分布饼图
+
+测试可随时在页面上停止；压测结束时自动渲染最后一帧数据。界面语言可在
+右上角切换中英文。
 
 ## 性能调优
 

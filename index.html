@@ -3,7 +3,7 @@
 <head>
     <!-- Meta tags for responsive design -->
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- External dependencies -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
@@ -14,11 +14,17 @@
     <style>
         :root {
             --primary: #667eea;
+            --primary-dark: #764ba2;
             --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --danger: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --shadow: 0 10px 40px rgba(0,0,0,0.15);
+            --aqua: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --sunset: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --mint: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --shadow: 0 10px 40px rgba(31, 38, 135, 0.15);
+            --shadow-hover: 0 18px 50px rgba(31, 38, 135, 0.22);
             --radius: 16px;
-            --text-main: #333;
+            --text-main: #2d3748;
+            --text-muted: #8a94a6;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -26,58 +32,124 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--gradient);
+            background-attachment: fixed;
             min-height: 100vh;
-            padding: 10px;
+            padding: 24px 16px;
             color: var(--text-main);
+            position: relative;
+            overflow-x: hidden;
         }
 
-        .main-container { max-width: 1400px; margin: 0 auto; }
+        /* 背景装饰光斑 */
+        body::before, body::after {
+            content: ''; position: fixed; border-radius: 50%;
+            filter: blur(90px); z-index: 0; pointer-events: none;
+        }
+        body::before {
+            width: 420px; height: 420px; top: -120px; right: -80px;
+            background: rgba(255, 255, 255, 0.18);
+        }
+        body::after {
+            width: 360px; height: 360px; bottom: -100px; left: -80px;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .main-container { max-width: 1400px; margin: 0 auto; position: relative; z-index: 1; }
+        .control-panel { position: relative; }
+        .language-selector-wrap { position: absolute; top: 20px; right: 20px; width: 130px; z-index: 2; }
+        .language-selector .el-input__inner { color: white; }
+        .language-selector .el-input__suffix { color: white; }
+        .chart-card { min-width: 0; }
+        .el-form-item { margin-bottom: 12px; }
+        .status-line { min-height: 24px; margin-top: 8px; color: var(--text-muted); font-size: 0.9rem; }
+        .status-line.is-error { color: #f56c6c; }
 
         /* Headers */
         .page-header {
-            text-align: center; color: white; margin-bottom: 10px;
+            text-align: center; color: white; margin-bottom: 24px; padding-top: 8px;
             animation: fadeInDown 0.6s ease-out;
         }
-        .page-header h2 { font-size: 2rem; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
-        .page-header p { opacity: 0.9; font-size: 1.1rem; }
+        .page-header h2 { font-size: 2.2rem; margin-bottom: 8px; text-shadow: 2px 2px 8px rgba(0,0,0,0.25); letter-spacing: 0.5px; }
+        .page-header p { opacity: 0.92; font-size: 1.05rem; font-weight: 300; letter-spacing: 1px; }
 
         /* Cards & Panels */
         .chart-card, .control-panel, .stat-card {
-            background: white;
+            background: rgba(255, 255, 255, 0.98);
             border-radius: var(--radius);
             box-shadow: var(--shadow);
-            padding: 10px;
-            margin-bottom: 10px;
+            padding: 20px;
+            margin-bottom: 16px;
             animation: fadeInUp 0.6s ease-out;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .control-panel { padding: 10px; }
-        
+        .chart-card:hover, .control-panel:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
         .chart-card-header, .control-header {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #eef0f6;
         }
-        .chart-card-title, .control-title { font-size: 1.3rem; font-weight: 600; }
+        .chart-card-title, .control-title { font-size: 1.15rem; font-weight: 600; letter-spacing: 0.3px; }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px; margin-bottom: 16px;
+        }
+        .stat-card {
+            display: flex; align-items: center; gap: 14px;
+            padding: 18px 20px; margin-bottom: 0;
+        }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; color: white; box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        }
+        .stat-icon.avg { background: var(--gradient); }
+        .stat-icon.rps { background: var(--aqua); }
+        .stat-icon.fast { background: var(--mint); }
+        .stat-icon.slow { background: var(--sunset); }
+        .stat-icon.err { background: var(--danger); }
+        .stat-info { min-width: 0; }
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; white-space: nowrap; }
+        .stat-value {
+            font-size: 1.35rem; font-weight: 700; color: var(--text-main);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-variant-numeric: tabular-nums;
+        }
 
         /* Buttons */
-        .button-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        .button-group { display: flex; gap: 12px; margin-bottom: 18px; }
         .button-group .el-button {
-            flex: 1; height: 50px; font-size: 16px; border-radius: 10px; border: none;
-            transition: transform 0.3s, box-shadow 0.3s;
+            flex: 1; height: 52px; font-size: 16px; font-weight: 600; letter-spacing: 1px;
+            border-radius: 12px; border: none;
+            transition: transform 0.3s, box-shadow 0.3s, opacity 0.3s;
             margin-left: 0px;
         }
         .button-group .el-button:hover { transform: translateY(-2px); }
+        .button-group .el-button:active { transform: translateY(0); }
         .button-group .el-button--primary { background: var(--gradient); }
-        .button-group .el-button--primary:hover { box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4); }
+        .button-group .el-button--primary:hover { box-shadow: 0 10px 24px rgba(102, 126, 234, 0.45); }
         .button-group .el-button--danger { background: var(--danger); }
-        .button-group .el-button--danger:hover:not(:disabled) { box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4); }
+        .button-group .el-button--danger:hover:not(:disabled) { box-shadow: 0 10px 24px rgba(245, 87, 108, 0.45); }
+        .button-group .el-button.is-disabled { opacity: 0.55; }
 
         /* Forms */
-        .form-section { margin-bottom: 10px; }
+        .form-section { margin-bottom: 18px; }
+        .form-section:last-child { margin-bottom: 4px; }
         .section-title {
-            font-size: 1.1rem; font-weight: 600; color: #555;
-            margin-bottom: 10px; padding-left: 10px; border-left: 4px solid var(--primary);
+            font-size: 1.05rem; font-weight: 600; color: #4a5568;
+            margin-bottom: 12px; padding-left: 12px; position: relative;
         }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+        .section-title::before {
+            content: ''; position: absolute; left: 0; top: 2px; bottom: 2px;
+            width: 4px; border-radius: 2px; background: var(--gradient);
+        }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
         .form-item-full { grid-column: 1 / -1; }
         .el-input, .el-select { margin: 0 !important; }
         
@@ -94,8 +166,9 @@
             background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; font-weight: 600;
         }
 
-        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; animation-fill-mode: both; }
-        
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; animation-fill-mode: both; }
+        .charts-row .chart-card { margin-bottom: 0; }
+
         /* Animations */
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
@@ -103,9 +176,22 @@
         /* Responsive */
         @media (max-width: 992px) { .charts-row { grid-template-columns: 1fr; } }
         @media (max-width: 768px) {
+            body { padding: 12px 8px; }
+            .page-header { margin-bottom: 16px; }
             .page-header h2 { font-size: 1.5rem; }
-            .button-group, .form-grid { flex-direction: column; }
-            .control-panel { padding: 20px; }
+            .page-header p { font-size: 0.9rem; }
+            .chart-card, .control-panel, .stat-card { padding: 14px; margin-bottom: 12px; }
+            .stats-row { gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+            .stat-value { font-size: 1.1rem; }
+            .stat-icon { width: 40px; height: 40px; font-size: 1.15rem; }
+            .button-group { flex-direction: column; }
+            .button-group .el-button { width: 100%; }
+            .form-grid { grid-template-columns: 1fr; }
+            .control-panel { padding: 20px 14px; }
+            .language-selector-wrap { position: static; width: 100%; margin-bottom: 12px; }
+            .language-selector { width: 100%; }
+            #chart-container { height: 300px !important; }
+            .charts-row .chart-card > div:last-child { height: 280px !important; }
         }
     </style>
     
@@ -149,9 +235,13 @@
                     body: '请求体',
                     bodyPlaceholder: '请输入请求体内容',
                     bodyType: '请求体类型',
-                    bodyTypePlaceholder: '空或hex，默认空',
+                    bodyTypePlaceholder: 'string 或 hex，默认 string',
                     type: '协议类型',
-                    typePlaceholder: 'http1, http2, ws, wss，默认http1'
+                    typePlaceholder: 'http1, http2, http3, ws, wss，默认http1',
+                    headers: '请求头',
+                    headersPlaceholder: '每行一个，例如 Content-Type: application/json',
+                    proxy: '代理地址',
+                    proxyPlaceholder: 'http://host:port，可选'
                 },
                 stress: {
                     total: '总请求数',
@@ -162,7 +252,7 @@
                     durationPlaceholder: '毫秒',
                     timeout: '超时时间（毫秒）',
                     timeoutPlaceholder: '毫秒',
-                    qps: 'QPS限制',
+                        qps: 'QPS限制',
                     qpsPlaceholder: '0 = 无限制',
                     worker: 'Worker API',
                     workerPlaceholder: '/api 或自定义端点'
@@ -170,9 +260,12 @@
                 advanced: {
                     compression: '禁用压缩',
                     keepalive: '禁用Keep-Alive',
+                    insecure: '跳过 TLS 证书验证',
                     auth: '认证信息',
                     username: '用户名',
-                    password: '密码'
+                    usernamePlaceholder: '可选',
+                    password: '密码',
+                    passwordPlaceholder: '可选'
                 },
                 message: {
                     start: '压测已开始',
@@ -226,9 +319,13 @@
                     body: 'Request Body',
                     bodyPlaceholder: 'Enter request body content',
                     bodyType: 'Body Type',
-                    bodyTypePlaceholder: 'empty or hex, default empty',
+                    bodyTypePlaceholder: 'string or hex, default string',
                     type: 'Protocol Type',
-                    typePlaceholder: 'http1, http2, ws, wss, default http1'
+                    typePlaceholder: 'http1, http2, http3, ws, wss, default http1',
+                    headers: 'Request Headers',
+                    headersPlaceholder: 'One header per line, e.g. Content-Type: application/json',
+                    proxy: 'Proxy Address',
+                    proxyPlaceholder: 'http://host:port, optional'
                 },
                 stress: {
                     total: 'Total Requests',
@@ -247,9 +344,12 @@
                 advanced: {
                     compression: 'Disable Compression',
                     keepalive: 'Disable Keep-Alive',
+                    insecure: 'Skip TLS Certificate Verification',
                     auth: 'Authentication',
                     username: 'Username',
-                    password: 'Password'
+                    usernamePlaceholder: 'optional',
+                    password: 'Password',
+                    passwordPlaceholder: 'optional'
                 },
                 message: {
                     start: 'Benchmark test started',
@@ -268,7 +368,7 @@
             }
         };
     </script>
-    <title id="page-title">HTTP Benchmark Tool</title>
+    <title id="document-title">HTTP Benchmark Tool</title>
 </head>
 
 <body>
@@ -287,8 +387,19 @@
             <div id="chart-container" style="height: 400px; width: 100%;"></div>
         </div>
 
+        <!-- Stats Row -->
+        <div class="stats-row" style="display: none;" :style="{ display: hasData ? 'grid' : 'none' }">
+            <div class="stat-card" v-for="item in statItems" :key="item.key">
+                <div class="stat-icon" :class="item.key">{{item.icon}}</div>
+                <div class="stat-info">
+                    <div class="stat-label">{{item.label}}</div>
+                    <div class="stat-value">{{item.value}}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Secondary Charts -->
-        <div class="charts-row" v-show="hasData" style="display: none;" :style="{ display: hasData ? 'grid' : 'none' }">
+        <div class="charts-row" style="display: none;" :style="{ display: hasData ? 'grid' : 'none' }">
             <div class="chart-card">
                 <div class="chart-card-header">
                     <div class="chart-card-title">{{translate('chart.latency')}}</div>
@@ -307,7 +418,7 @@
         <div>
             <div class="control-panel">
                 <!-- Language selector -->
-                <div style="position: absolute; top: 30px; right: 30px; width: 120px;">
+                <div class="language-selector-wrap">
                     <el-select v-model="currentLanguage" @change="changeLanguage" size="small" class="language-selector">
                         <el-option label="🇨🇳 中文" value="zh-CN"></el-option>
                         <el-option label="🇺🇸 English" value="en-US"></el-option>
@@ -363,6 +474,15 @@
                         <el-input :placeholder="translate('request.bodyTypePlaceholder')" v-model="requestBodyType">
                             <template slot="prepend">{{translate('request.bodyType')}}</template>
                         </el-input>
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('request.headersPlaceholder')" v-model="requestHeaders" type="textarea"
+                                :autosize="{ minRows: 2, maxRows: 6}">
+                                <template slot="prepend">{{translate('request.headers')}}</template>
+                            </el-input>
+                        </div>
+                        <el-input :placeholder="translate('request.proxyPlaceholder')" v-model="proxyUrl">
+                            <template slot="prepend">{{translate('request.proxy')}}</template>
+                        </el-input>
                     </div>
                 </div>
                 
@@ -398,6 +518,19 @@
                         <div class="form-item-full">
                             <el-input :placeholder="translate('stress.workerPlaceholder')" v-model="workerApiEndpoint">
                                 <template slot="prepend">{{translate('stress.worker')}}</template>
+                            </el-input>
+                        </div>
+                        <el-checkbox v-model="disableCompression">{{translate('advanced.compression')}}</el-checkbox>
+                        <el-checkbox v-model="disableKeepalives">{{translate('advanced.keepalive')}}</el-checkbox>
+                        <el-checkbox v-model="insecure">{{translate('advanced.insecure')}}</el-checkbox>
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('advanced.usernamePlaceholder')" v-model="authUsername">
+                                <template slot="prepend">{{translate('advanced.username')}}</template>
+                            </el-input>
+                        </div>
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('advanced.passwordPlaceholder')" v-model="authPassword" show-password>
+                                <template slot="prepend">{{translate('advanced.password')}}</template>
                             </el-input>
                         </div>
                     </div>
@@ -470,7 +603,9 @@
                 metricsInterval: DEFAULT_METRICS_INTERVAL,
                 requestMethod: "GET",
                 requestBody: "",
-                requestBodyType: "",
+                requestBodyType: "string",
+                requestHeaders: "",
+                proxyUrl: "",
                 protocolType: "http1",
                 protocolOptions: [
                     { value: 'http1', label: 'HTTP(S) / 1.1' },
@@ -486,6 +621,7 @@
                     { value: 'POST', label: 'POST' },
                     { value: 'PUT', label: 'PUT' },
                     { value: 'DELETE', label: 'DELETE' },
+                    { value: 'PATCH', label: 'PATCH' },
                     { value: 'TRACE', label: 'TRACE' },
                     { value: 'CONNECT', label: 'CONNECT' }
                 ],
@@ -496,6 +632,7 @@
                 qpsLimit: 0,
                 disableCompression: false,
                 disableKeepalives: false,
+                insecure: true,
                 authUsername: "",
                 authPassword: "",
                 requestUrl: "https://www.http3check.net",
@@ -504,13 +641,24 @@
                 metricsTimer: undefined,
                 hasData: false,
                 stats: { average: '0ms', rps: 0, fastest: '0ms', slowest: '0ms', errTotal: 0 },
-                charts: {},
                 monitor: {
                     timeLabels: [],
                     qpsData: [],
                     total: 0,
                     statusCodes: {},
                     prevStatusCounts: {}
+                }
+            },
+            computed: {
+                // 统计卡片数据（图标 + 标签 + 数值）
+                statItems() {
+                    return [
+                        { key: 'avg', icon: '⏱️', label: this.translate('stats.avg'), value: this.stats.average },
+                        { key: 'rps', icon: '🚀', label: this.translate('stats.rps'), value: this.stats.rps },
+                        { key: 'fast', icon: '⚡', label: this.translate('stats.fastest'), value: this.stats.fastest },
+                        { key: 'slow', icon: '🐢', label: this.translate('stats.slowest'), value: this.stats.slowest },
+                        { key: 'err', icon: '🚫', label: this.translate('stats.errors'), value: this.stats.errTotal }
+                    ];
                 }
             },
             methods: {
@@ -539,7 +687,8 @@
                 
                 // Update static text elements
                 updateStaticTexts() {
-                    document.getElementById('page-title').innerText = this.translate('title');
+                    document.getElementById('document-title').textContent = this.translate('title');
+                    document.querySelector('.page-header h2').textContent = this.translate('title');
                     document.getElementById('page-subtitle').innerText = this.translate('subtitle');
                     document.getElementById('chart-title').innerText = this.translate('chart.title');
                     document.getElementById('control-title').innerText = this.translate('section.testConfig');
@@ -560,36 +709,60 @@
                 
                 // Start stress test
                 startTest() {
-                    this.sequenceId = Math.floor(Math.random() * 1000000) + 1;
-                    // Build request data
+                    if (this.isRunning) return;
+                    const validationError = this.validateConfig();
+                    if (validationError) {
+                        this.showMessage(validationError, 'warning', 4000);
+                        return;
+                    }
+                    this.sequenceId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
                     const requestData = this.buildRequestData(API_COMMANDS.START);
                     const apiEndpoint = this.getWorkerApiEndpoint();
-                    
                     this.showMessage('start');
-                    // Send start stress test request
+                    this.isRunning = true;
+                    this.setupMetricsMonitoring(requestData, apiEndpoint);
                     fetch(apiEndpoint, {
                         method: 'POST',
                         headers: CONTENT_TYPE_JSON,
                         body: JSON.stringify(requestData)
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return response.json();
+                    })
                     .then(data => {
-                        if (data.err_code !== 0) {
-                            this.isRunning = false;
-                            this.metricsTimer && clearInterval(this.metricsTimer);
-                            this.showMessage(data.err_msg, 'error', 5000);
-                            return;
-                        }
+                        if (data.err_code !== 0) throw new Error(data.err_msg || 'Start request failed');
                     })
                     .catch(error => {
-                        this.showMessage(error.message, 'error', 5000);
                         this.isRunning = false;
+                        clearInterval(this.metricsTimer);
+                        this.metricsTimer = undefined;
+                        this.showMessage(error.message, 'error', 5000);
                     });
-                    
-                    // Setup monitoring
-                    this.setupMetricsMonitoring(requestData, apiEndpoint);
                 },
                 
+                validateConfig() {
+                    if (!this.requestUrl.trim()) return this.translate('validation.urlRequired');
+                    try {
+                        const url = new URL(this.requestUrl);
+                        if (!['http:', 'https:', 'ws:', 'wss:'].includes(url.protocol)) {
+                            return this.translate('validation.urlInvalid');
+                        }
+                    } catch (_) {
+                        return this.translate('validation.urlInvalid');
+                    }
+                    const concurrency = parseInt(this.concurrentConnections);
+                    const total = parseInt(this.totalRequests) || 0;
+                    const duration = parseInt(this.testDuration) || 0;
+                    if (concurrency < 1 || concurrency > 10000) return this.translate('validation.concurrentInvalid');
+                    if (total > 0 && total < concurrency) return 'Total requests must be at least concurrency';
+                    if (total <= 0 && duration <= 0) return this.translate('validation.durationInvalid');
+                    if (this.proxyUrl.trim()) {
+                        try { new URL(this.proxyUrl); } catch (_) { return 'Invalid proxy URL'; }
+                    }
+                    return '';
+                },
+
                 // Build request data
                 buildRequestData(command) {
                     return {
@@ -604,15 +777,35 @@
                         duration: parseInt(this.testDuration) * 1000000 || 1000 * 1000000,
                         timeout: parseInt(this.requestTimeout) * 1000000 || 3000 * 1000000,
                         qps: parseInt(this.qpsLimit) || 0,
-                        disable_compression: this.disableCompression || this.disableCompression === "true",
-                        disable_keepalives: this.disableKeepalives || this.disableKeepalives === "true",
-                        auth_username: this.authUsername,
-                        auth_password: this.authPassword,
+                        disable_compression: this.disableCompression,
+                        disable_keepalives: this.disableKeepalives,
+                        insecure: this.insecure,
+                        headers: this.parseHeaders(this.requestHeaders),
+                        proxy_url: this.proxyUrl,
                         url: this.requestUrl,
                         from: 'browser',
                     };
                 },
                 
+                parseHeaders(raw) {
+                    const headers = {};
+                    raw.split(/\r?\n/).forEach(line => {
+                        const index = line.indexOf(':');
+                        if (index <= 0) return;
+                        const key = line.slice(0, index).trim();
+                        const value = line.slice(index + 1).trim();
+                        if (key && value) {
+                            if (!headers[key]) headers[key] = [];
+                            headers[key].push(value);
+                        }
+                    });
+                    if (this.authUsername || this.authPassword) {
+                        const credentials = btoa(`${this.authUsername}:${this.authPassword}`);
+                        headers.Authorization = [`Basic ${credentials}`];
+                    }
+                    return headers;
+                },
+
                 // Get Worker API address
                 getWorkerApiEndpoint() {
                     return this.workerApiEndpoint.length > 0 ? this.workerApiEndpoint : DEFAULT_API_PATH;
@@ -623,7 +816,7 @@
                         const el = document.getElementById(id);
                         if (!el) return null;
                         try {
-                            return echarts.init(el, 'dark', { renderer: 'canvas', useDirtyRect: false });
+                            return echarts.init(el, null, { renderer: 'canvas', useDirtyRect: false });
                         } catch (e) {
                             console.error('Failed to init chart:', id, e);
                             return null;
@@ -639,17 +832,39 @@
 
                 renderPerfChart(times, qps, status = {}) {
                     if (!this.charts.perf) return;
-                    const series = [{ name: "qps", data: qps, type: 'line', smooth: true }];
+                    const series = [{
+                        name: "qps", data: qps, type: 'line', smooth: true,
+                        symbol: 'circle', symbolSize: 6, lineStyle: { width: 3 },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(102, 126, 234, 0.35)' },
+                                { offset: 1, color: 'rgba(102, 126, 234, 0.02)' }
+                            ])
+                        }
+                    }];
                     const legend = ['qps'];
                     Object.keys(status).forEach(code => {
-                        series.push({ name: code, data: status[code], type: 'line', smooth: true });
+                        series.push({
+                            name: code, data: status[code], type: 'line', smooth: true,
+                            symbol: 'circle', symbolSize: 5, lineStyle: { width: 2 }
+                        });
                         legend.push(code);
                     });
                     this.charts.perf.setOption({
-                        legend: { data: legend },
+                        color: ['#667eea', '#4facfe', '#43e97b', '#fa709a', '#f5576c', '#e8c43a', '#30cfd0', '#a18cd1'],
+                        legend: { data: legend, top: 0, textStyle: { color: '#4a5568' } },
                         tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-                        xAxis: { type: 'category', data: times },
-                        yAxis: { type: 'value' },
+                        grid: { left: '2%', right: '2%', bottom: '2%', top: 42, containLabel: true },
+                        xAxis: {
+                            type: 'category', data: times, boundaryGap: false,
+                            axisLine: { lineStyle: { color: '#cbd5e0' } },
+                            axisLabel: { color: '#8a94a6' }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            splitLine: { lineStyle: { color: '#eef0f6' } },
+                            axisLabel: { color: '#8a94a6' }
+                        },
                         series
                     });
                 },
@@ -675,10 +890,27 @@
 
                     this.charts.lat.setOption({
                         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-                        xAxis: { type: 'category', data: cats, axisLabel: { interval: 'auto', rotate: 30 } },
-                        yAxis: { type: 'value' },
-                        series: [{ name: 'Count', type: 'bar', data, itemStyle: { color: '#667eea' } }]
+                        grid: { left: '3%', right: '4%', bottom: '3%', top: 30, containLabel: true },
+                        xAxis: {
+                            type: 'category', data: cats,
+                            axisLabel: { interval: 'auto', rotate: 30, color: '#8a94a6' },
+                            axisLine: { lineStyle: { color: '#cbd5e0' } }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            splitLine: { lineStyle: { color: '#eef0f6' } },
+                            axisLabel: { color: '#8a94a6' }
+                        },
+                        series: [{
+                            name: 'Count', type: 'bar', data, barMaxWidth: 30,
+                            itemStyle: {
+                                borderRadius: [6, 6, 0, 0],
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: '#667eea' },
+                                    { offset: 1, color: '#764ba2' }
+                                ])
+                            }
+                        }]
                     });
                 },
 
@@ -686,20 +918,25 @@
                     if (!this.charts.err || !dist) return;
                     const data = Object.entries(dist).map(([name, value]) => ({ value, name }));
                     this.charts.err.setOption({
+                        color: ['#f5576c', '#fa709a', '#e8c43a', '#4facfe', '#a18cd1', '#30cfd0'],
                         tooltip: { trigger: 'item' },
-                        legend: { top: '5%', left: 'center' },
+                        legend: { top: '5%', left: 'center', textStyle: { color: '#4a5568' } },
                         series: [{
-                            name: 'Errors', type: 'pie', radius: ['40%', '70%'],
-                            avoidLabelOverlap: false,
+                            name: 'Errors', type: 'pie', radius: ['45%', '72%'], center: ['50%', '58%'],
+                            avoidLabelOverlap: true,
                             itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
                             label: { show: false, position: 'center' },
-                            emphasis: { label: { show: true, fontSize: '14', fontWeight: 'bold' } },
+                            emphasis: {
+                                label: { show: true, fontSize: '14', fontWeight: 'bold' },
+                                itemStyle: { shadowBlur: 16, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.25)' }
+                            },
                             data
                         }]
                     });
                 },
 
                 setupMetricsMonitoring(requestData, apiEndpoint) {
+                    clearInterval(this.metricsTimer);
                     this.monitor = { timeLabels: [], qpsData: [], total: 0, statusCodes: {}, prevStatusCounts: {} };
                     const interval = parseInt(this.metricsInterval) || DEFAULT_METRICS_INTERVAL;
                     let errTimes = 0;
@@ -711,7 +948,10 @@
                             headers: CONTENT_TYPE_JSON,
                             body: JSON.stringify({ ...requestData, cmd: API_COMMANDS.GET_METRICS })
                         })
-                        .then(r => r.json())
+                        .then(r => {
+                            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                            return r.json();
+                        })
                         .then(data => {
                             if (data.err_code !== 0) {
                                 if (++errTimes > 2) {
@@ -736,45 +976,53 @@
                         });
                     }
 
-                    if (data.is_last) {
-                        this.stopTest();
-                        return;
-                    }
-
                     this.stats = {
                         average: formatDuration(data.average),
                         rps: data.rps || 0,
                         fastest: formatDuration(data.fastest),
                         slowest: formatDuration(data.slowest),
-                        errTotal: data.err_total || 0
+                        errTotal: data.failed_requests || 0
                     };
-                    this.renderLatChart(data.lats);
-                    this.renderErrChart(data.error_dist);
+                    this.renderLatChart(data.latency_histogram);
+                    this.renderErrChart(data.error_counts);
 
-                    if (data.lats_total && (data.lats_total - this.monitor.total) >= 0) {
+                    if (data.total_requests && (data.total_requests - this.monitor.total) >= 0) {
                         this.monitor.timeLabels.push(new Date().format(TIME_FORMAT));
-                        const currentQps = (data.lats_total - this.monitor.total) * 1000 / interval;
+                        const currentQps = (data.total_requests - this.monitor.total) * 1000 / interval;
                         this.monitor.qpsData.push(currentQps);
-                        this.monitor.total = data.lats_total;
+                        this.monitor.total = data.total_requests;
 
-                        if (data.status_code_dist) {
-                            for (let code in data.status_code_dist) {
-                                if (!this.monitor.statusCodes[code]) this.monitor.statusCodes[code] = [];
-                                const count = data.status_code_dist[code];
-                                const prev = this.monitor.prevStatusCounts[code] || 0;
-                                this.monitor.statusCodes[code].push((count - prev) * 1000 / interval);
-                                this.monitor.prevStatusCounts[code] = count;
+                        const statusCounts = data.status_code_counts || {};
+                        // 本次未出现的状态码补 0，保证各 series 与 X 轴对齐
+                        for (let code in this.monitor.statusCodes) {
+                            if (!(code in statusCounts)) this.monitor.statusCodes[code].push(0);
+                        }
+                        for (let code in statusCounts) {
+                            // 中途新出现的状态码补前导 0，避免曲线错位
+                            if (!this.monitor.statusCodes[code]) {
+                                this.monitor.statusCodes[code] = new Array(this.monitor.timeLabels.length - 1).fill(0);
                             }
+                            const count = statusCounts[code];
+                            const prev = this.monitor.prevStatusCounts[code] || 0;
+                            this.monitor.statusCodes[code].push((count - prev) * 1000 / interval);
+                            this.monitor.prevStatusCounts[code] = count;
                         }
                         this.renderPerfChart(this.monitor.timeLabels, this.monitor.qpsData, this.monitor.statusCodes);
+                    }
+
+                    // 先渲染最后一帧数据再停止，避免短测试曲线完全丢失
+                    if (data.is_last) {
+                        this.stopTest();
                     }
                 },
                 
                 stopTest() {
-                    this.showMessage('stop');
+                    const wasRunning = this.isRunning;
                     this.isRunning = false;
                     clearInterval(this.metricsTimer);
                     this.metricsTimer = undefined;
+                    if (!wasRunning) return;
+                    this.showMessage('stop');
                     
                     fetch(this.getWorkerApiEndpoint(), {
                         method: 'POST',
@@ -784,6 +1032,8 @@
                 }
             },
             created() {
+                // echarts 实例保持非响应式，避免 Vue 深度 observe 图表内部对象
+                this.charts = {};
                 // Load saved language preference
                 const savedLanguage = localStorage.getItem('preferred-language');
                 if (savedLanguage && translations[savedLanguage]) {

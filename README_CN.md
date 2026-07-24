@@ -3,6 +3,8 @@
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.23.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.23.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.24.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.24.yml)
 
 **HTTP Bench** 是一个轻量级、高性能的压力测试工具，支持多种协议和分布式测试能力。
 
@@ -12,7 +14,9 @@
 
 ## 功能特点
 
-- ✅ **多协议支持**：HTTP/1、HTTP/2、HTTP/3、WebSocket 和 gRPC（即将推出）
+- ✅ **多协议支持**：HTTP/1、HTTP/2、HTTP/3、WebSocket
+- ✅ **全局 QPS 限速**：`-q` 由所有并发 worker 共享，不会随并发数平方放大
+- ✅ **duration 优先语义**：同时设置 `-n` 和 `-d` 时，`-d` 优先 — 测试运行完整时长
 - ✅ **分布式测试**：跨多台机器运行测试，实现更高负载
 - ✅ **模板函数**：使用内置函数和变量动态生成请求
 - ✅ **Web 仪表盘**：通过浏览器界面监控和控制测试
@@ -87,8 +91,8 @@ Latency distribution:
 -c  并发的客户端数量（不能大于 HTTP 的请求次数）
 -q  频率限制，每秒的请求数 (QPS)
 -d  压测持续时间（例如：2s, 2m, 2h）
--t  请求超时时间（毫秒）
--o  输出类型（默认：摘要，可选：'csv'）
+-t  请求超时时间（duration 字符串，如 500ms、2s）
+-o  输出类型（summary、csv、html；默认 summary）
 -m  HTTP 方法（GET, POST, PUT, DELETE, HEAD, OPTIONS）
 -H  自定义 HTTP 头部（例如：-H "Accept: text/html" -H "Content-Type: application/xml"）
 -http  支持 http1, http2, http3, ws, wss，默认 http1
@@ -99,13 +103,18 @@ Latency distribution:
 -disable-keepalive    禁用 keep-alive，防止在不同 HTTP 请求之间重用 TCP 连接
 -cpus     使用的 CPU 核心数（默认为当前机器的核心数）
 -url      请求单个 URL
--verbose  打印详细日志，默认级别：2（0:TRACE, 1:DEBUG, 2:INFO ~ ERROR）
+-verbose  日志级别：0=TRACE、1=DEBUG、2=INFO、3=WARN、4=ERROR（默认 3）
+-insecure  跳过 TLS 证书校验（默认 true；生产环境建议使用 -insecure=false）
 -file     从 .http 文件读取请求（支持多请求）
--listen   监听 IP:PORT 用于分布式压测 Worker 或 Dashboard（默认为空）。例如："127.0.0.1:12710"
+-listen   监听 IP:PORT 用于分布式压测 Worker 或 Dashboard（默认为空）。例如："127.0.0.1:12710"；controller 结果包含每个 worker 的成功/失败明细
 -W  运行分布式压测的工作机器列表
       例如：-W "127.0.0.1:12710" -W "127.0.0.1:12711"
 -example  打印压测示例（默认为 false）
 ```
+
+## 重构说明
+
+详细模块布局、关键接口契约、性能基线与长压测脚本见 [docs/REFACTOR_NOTES.md](docs/REFACTOR_NOTES.md)。
 
 ## 使用示例
 
@@ -167,6 +176,14 @@ Latency distribution:
 # 步骤 2：在浏览器中打开仪表盘 URL
 # http://127.0.0.1:12345
 ```
+
+仪表盘在 worker 节点上异步执行压测，并通过 `/api` 接口轮询实时指标，提供：
+
+- 实时 QPS 与各状态码曲线，刷新间隔可调（默认 2000 毫秒）
+- 概览卡片：平均耗时、平均 QPS、最快/最慢耗时、错误总数
+- 响应耗时分布直方图与错误分布饼图
+- 一键开始/停止，压测结束时自动渲染最后一帧数据
+- 中英文界面切换
 
 ## 模板函数和变量
 

@@ -18,6 +18,9 @@ import (
 	"github.com/quic-go/quic-go/http3"
 )
 
+var buildTestBinaryOnce sync.Once
+var buildTestBinaryErr error
+
 const (
 	// Test binary configuration
 	TestBinaryPath = "./http_bench" // Path to the compiled http_bench binary
@@ -58,6 +61,15 @@ type CommandRunner struct {
 // Initialize sets up the command with arguments and environment
 // It creates a context with timeout and configures the command execution environment
 func (c *CommandRunner) Initialize(cmd string, args []string) {
+	if _, err := os.Stat(cmd); err != nil {
+		buildTestBinaryOnce.Do(func() {
+			build := exec.Command("go", "build", "-o", TestBinaryPath, ".")
+			buildTestBinaryErr = build.Run()
+		})
+		if buildTestBinaryErr != nil {
+			cmd = "http_bench"
+		}
+	}
 	fmt.Printf("[CommandRunner] Initializing: %s %s\n", cmd, strings.Join(args, " "))
 
 	// Create context with timeout to prevent hanging tests
@@ -102,12 +114,12 @@ func (c *CommandRunner) Stop() error {
 		return errors.New("command not initialized: nothing to stop")
 	}
 
-	// Cancel context first (graceful shutdown)
+	// Cancel context first, then terminate the process immediately. The
+	// command's output reader is owned by Execute; waiting here would race
+	// with CombinedOutput and can deadlock repeated distributed subtests.
 	if c.cancel != nil {
 		c.cancel()
 	}
-
-	// Force kill if process still exists
 	if c.cmd.Process != nil {
 		return c.cmd.Process.Kill()
 	}
@@ -327,9 +339,9 @@ func RunCommand(t *testing.T, name, args string, expectError bool, description s
 
 	// Log result summary
 	if len(result) > 200 {
-		t.Logf("[%s] Result (truncated): %s...", name, result)
+		t.Logf("[%s] metrics.Result (truncated): %s...", name, result)
 	} else {
-		t.Logf("[%s] Result: %s", name, result)
+		t.Logf("[%s] metrics.Result: %s", name, result)
 	}
 
 	return result
@@ -387,6 +399,76 @@ func buildServerAddress(host, port string) string {
 	return fmt.Sprintf("%s:%s", host, port)
 }
 
+// commonMethodTestCases returns the request-method / flag coverage shared by
+// all HTTP-based protocol tests (HTTP/1, HTTP/2, HTTP/3): DELETE/HEAD/OPTIONS,
+// a custom header, Basic Auth, QPS limiting, and keep-alive/compression
+// toggles. Extracted to avoid the previous copy-pasted duplication where each
+// TestStressHTTPx defined (and ran) this exact set of cases twice.
+func commonMethodTestCases(serverName, serverAddress string) []TestCase {
+	return []TestCase{
+		{
+			Description: "DELETE request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "HEAD request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "OPTIONS request",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with custom header",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Basic Auth",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with QPS limit",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Keep-Alive disabled (single-dash flag)",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-keepalive https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Compression disabled (single-dash flag)",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-compression https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Keep-Alive disabled (double-dash flag)",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET --disable-keepalive https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+		{
+			Description: "GET request with Compression disabled (double-dash flag)",
+			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET --disable-compression https://%s/`,
+				TestDuration, serverName, serverAddress),
+			ExpectError: false,
+		},
+	}
+}
+
 // TestStressHTTP1 tests HTTP/1.1 protocol functionality
 // It validates various HTTP/1.1 request scenarios including GET, POST, and file-based inputs
 func TestStressHTTP1(t *testing.T) {
@@ -401,7 +483,7 @@ func TestStressHTTP1(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Define test cases
-	testCases := []TestCase{
+	testCases := append([]TestCase{
 		{
 			Description: "GET request with empty body",
 			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url https://%s/`,
@@ -432,115 +514,12 @@ func TestStressHTTP1(t *testing.T) {
 				TestDuration, serverName, `{"update":"true"}`, serverAddress),
 			ExpectError: false,
 		},
-		{
-			Description: "DELETE request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "HEAD request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "OPTIONS request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with custom header",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Basic Auth",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with QPS limit",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Keep-Alive disabled",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-keepalive https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Compression disabled",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-compression https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with multiple connections",
-			Args: fmt.Sprintf(`-c 10 -d %ds -http %s -m GET https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "PUT request with JSON body",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m PUT -body '%s' https://%s/`,
-				TestDuration, serverName, `{"update":"true"}`, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "DELETE request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "HEAD request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "OPTIONS request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with custom header",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Basic Auth",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with QPS limit",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Keep-Alive disabled",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET --disable-keepalive https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Compression disabled",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET --disable-compression https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-	}
+	}, append(commonMethodTestCases(serverName, serverAddress), TestCase{
+		Description: "GET request with multiple connections",
+		Args: fmt.Sprintf(`-c 10 -d %ds -http %s -m GET https://%s/`,
+			TestDuration, serverName, serverAddress),
+		ExpectError: false,
+	})...)
 
 	// Run all test cases
 	for _, tc := range testCases {
@@ -562,7 +541,7 @@ func TestStressHTTP2(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Define test cases
-	testCases := []TestCase{
+	testCases := append([]TestCase{
 		{
 			Description: "GET request with empty body",
 			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url https://%s/`,
@@ -587,115 +566,12 @@ func TestStressHTTP2(t *testing.T) {
 				TestDuration, serverName, `{"update":"true"}`, serverAddress),
 			ExpectError: false,
 		},
-		{
-			Description: "DELETE request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "HEAD request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "OPTIONS request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with custom header",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Basic Auth",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with QPS limit",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Keep-Alive disabled",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-keepalive https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Compression disabled",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-compression https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with multiple connections",
-			Args: fmt.Sprintf(`-c 5 -d %ds -http %s -m GET https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "PUT request with JSON body",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m PUT -body '%s' https://%s/`,
-				TestDuration, serverName, `{"update":"true"}`, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "DELETE request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "HEAD request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "OPTIONS request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with custom header",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Basic Auth",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with QPS limit",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Keep-Alive disabled",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET --disable-keepalive https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Compression disabled",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET --disable-compression https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-	}
+	}, append(commonMethodTestCases(serverName, serverAddress), TestCase{
+		Description: "GET request with multiple connections",
+		Args: fmt.Sprintf(`-c 5 -d %ds -http %s -m GET https://%s/`,
+			TestDuration, serverName, serverAddress),
+		ExpectError: false,
+	})...)
 
 	// Run all test cases
 	for _, tc := range testCases {
@@ -740,7 +616,7 @@ func TestStressHTTP3(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Define test cases
-	testCases := []TestCase{
+	testCases := append([]TestCase{
 		{
 			Description: "GET request with empty body",
 			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -url https://%s/`,
@@ -765,55 +641,7 @@ func TestStressHTTP3(t *testing.T) {
 				TestDuration, serverName, `{"update":"true"}`, serverAddress),
 			ExpectError: false,
 		},
-		{
-			Description: "DELETE request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m DELETE https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "HEAD request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m HEAD https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "OPTIONS request",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m OPTIONS https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with custom header",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -H "X-Custom-Header: test-value" https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Basic Auth",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -a "user:pass" https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with QPS limit",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -q 10 https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Keep-Alive disabled",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-keepalive https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-		{
-			Description: "GET request with Compression disabled",
-			Args: fmt.Sprintf(`-c 1 -d %ds -http %s -m GET -disable-compression https://%s/`,
-				TestDuration, serverName, serverAddress),
-			ExpectError: false,
-		},
-	}
+	}, commonMethodTestCases(serverName, serverAddress)...)
 
 	// Run all test cases
 	for _, tc := range testCases {

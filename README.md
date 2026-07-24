@@ -1,10 +1,14 @@
-# a HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC) stress testing tool, and support single and distributed.
+# A HTTP/1, HTTP/2, HTTP/3, and WebSocket stress testing tool with single-node and distributed modes.
+
+Global QPS limiting: `-q` is shared by all concurrent workers.
 
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.23.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.23.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.24.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.24.yml)
 
-http_bench is a tiny program that sends some load to a web application, support single and distributed mechine, http/1, http/2, http/3, websocket, grpc.
+http_bench is a lightweight load-testing tool for HTTP/1, HTTP/2, HTTP/3, and WebSocket, supporting single-node and distributed modes.
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)     
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)    
@@ -19,7 +23,6 @@ http_bench is a tiny program that sends some load to a web application, support 
 - [x] Support variable 
 - [x] Dashboard
 - [ ] Stepping stress testing
-- [ ] gRPC stress testing
 
 ![avatar](./docs/httpbench_en.png)
 
@@ -91,6 +94,24 @@ go build .
 ./http_bench -c 1 -d 10s "http://127.0.0.1:18090/test1" -body "{}" -W "127.0.0.1:12710" -W "127.0.0.1:12711" -verbose 1
 ```
 
+### Refactor notes
+
+See [docs/REFACTOR_NOTES.md](docs/REFACTOR_NOTES.md) for the post-refactor
+module layout, key contracts, performance baselines, and the long-run
+benchmark scripts.
+
+### Command-line options
+
+- `-n`: exact total request count; `-d`: duration (for example `10s`, `2m`); when both are set, `-d` takes precedence — the test runs for the full duration.
+- `-c`: concurrency; `-q`: global requests-per-second limit shared by all workers.
+- `-t`: request timeout duration (for example `500ms`, `2s`), not an implicit millisecond integer.
+- `-o`: `summary`, `csv`, or `html` output format.
+- `-insecure`: skip TLS verification (default `true` for compatibility; use `-insecure=false` in production).
+- `-listen`: start the dashboard/worker API; worker endpoint is `/api`.
+- Worker responses contain a merged snapshot and per-worker success/failure details when dispatched by the controller.
+- `-W`: controller worker addresses; `-H`: repeatable request header; `-file`: load `.http` requests.
+- `-verbose`: log verbosity `0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR` (default: 3).
+
 ### Web Dashboard
 
 ```bash
@@ -100,6 +121,15 @@ go build .
 # Step 2: Open the dashboard URL in your browser
 # http://127.0.0.1:12345
 ```
+
+The dashboard starts the benchmark asynchronously on the worker node and polls
+the `/api` worker endpoint for live metrics. It provides:
+
+- Real-time QPS and per-status-code curves with an adjustable refresh interval (default 2000 ms)
+- Summary cards: average latency, average QPS, fastest/slowest request, total errors
+- Latency distribution histogram and error distribution pie chart
+- One-click start/stop; the final metrics frame is rendered automatically when the run finishes
+- Chinese/English UI switching
 
 ## Template Functions and Variables
 

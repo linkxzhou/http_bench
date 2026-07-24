@@ -272,6 +272,9 @@ EOF
 # CSV format output
 ./http_bench -n 1000 -c 20 -o csv "http://127.0.0.1:8080/api/test" > results.csv
 
+# HTML format output
+./http_bench -n 1000 -c 20 -o html "http://127.0.0.1:8080/api/test" > results.html
+
 # Verbose logging output
 ./http_bench -n 1000 -c 20 "http://127.0.0.1:8080/api/test" -verbose 0  # TRACE
 ./http_bench -n 1000 -c 20 "http://127.0.0.1:8080/api/test" -verbose 1  # DEBUG
@@ -286,6 +289,17 @@ EOF
 
 # Then access in browser: http://127.0.0.1:12345
 ```
+
+The dashboard page runs the benchmark asynchronously on the worker and polls
+`/api` for metrics at a configurable interval (default 2000 ms), rendering:
+
+- Real-time QPS and per-status-code curves
+- Summary cards: average latency, average QPS, fastest/slowest request, total errors
+- Latency distribution histogram and error distribution pie chart
+
+The test can be stopped from the page at any time; when the run finishes, the
+final metrics frame is rendered automatically. The UI language can be switched
+between Chinese and English in the top-right corner.
 
 ## Performance Tuning
 

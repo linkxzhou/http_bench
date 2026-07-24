@@ -1,56 +1,28 @@
 package main
 
 import (
-	"flag"
-	"os"
-	"runtime"
-	"time"
-
 	_ "embed"
+	"time"
 )
 
 //go:embed index.html
 var dashboardHtml string
 
-// Command types for stress testing control
-const (
-	cmdStart   int = iota // Start stress testing
-	cmdStop               // Stop stress testing
-	cmdMetrics            // Get metrics of stress testing
-)
-
-// Protocol types supported by the stress tester
-const (
-	protocolHTTP1 = "http1" // HTTP/1.1 protocol
-	protocolHTTP2 = "http2" // HTTP/2 protocol
-	protocolHTTP3 = "http3" // HTTP/3 protocol
-	protocolWS    = "ws"    // WebSocket protocol
-	protocolWSS   = "wss"   // WebSocket Secure protocol
-)
+// Protocol types are re-exported from internal/transport.
+// Body format types (transport.BodyHex/transport.BodyString) are re-exported from internal/transport.
+// transport.DefaultConcurrency is re-exported from internal/transport.
+// Command enum (CmdStart/CmdStop/CmdMetrics) lives in internal/transport.
 
 // Worker and performance constants
 const (
-	stopChannelSize       = 1000             // Buffer size for worker stop channel
-	resultChannelSize     = 10000000         // Buffer size for result channel
-	circuitBreakerPercent = 50               // Error rate threshold (%) to trigger circuit breaker
-	defaultWorkerTimeout  = 10 * time.Second // Default worker timeout
-)
-
-// HTTP related constants
-const (
-	httpContentTypeJSON = "application/json" // JSON content type header
-	httpWorkerApiURL    = "/api"             // Worker API endpoint path
+	defaultWorkerTimeout = 10 * time.Second // Default worker timeout
 )
 
 // Default values
 const (
-	defaultConcurrency  = 50    // Default number of concurrent requests
 	defaultTimeout      = "3s"  // Default request timeout
 	defaultDuration     = "10s" // Default test duration
-	defaultVerboseLevel = 3     // Default log level (ERROR)
-
-	// Body format types
-	bodyHex = "hex" // Hexadecimal body format
+	defaultVerboseLevel = 3     // Default log level (WARN)
 )
 
 const (
@@ -71,15 +43,16 @@ HTTP Request Options:
   -a  <user:pass>      HTTP Basic Authentication credentials
       -http <version>  HTTP protocol: http1, http2, http3, ws, wss (default: http1)
 
-HTTP Client Options:
+HTTP transport.Client Options:
   -x  <host:port>      HTTP proxy address
       -disable-compression    Disable response compression
       -disable-keepalive      Disable HTTP keep-alive connections
+      -insecure               Skip TLS certificate verification (default: true)
 
 Input/Output Options:
-  -o  <format>         Output format: summary (default) or csv
+  -o  <format>         Output format: summary (default), csv, or html
       -file <path>     Read target URLs from file (one per line)
-      -verbose <level> Log verbosity: 0=TRACE, 1=DEBUG, 2=INFO, 3=ERROR (default: 3)
+      -verbose <level> Log verbosity: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR (default: 3)
 
 Distributed Testing:
       -listen <addr>   Start dashboard and worker node on address (e.g., 127.0.0.1:12710)
@@ -164,59 +137,11 @@ Examples:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Tips:
   • Use -d for duration-based tests or -n for fixed request count
+  • When both -n and -d are set, -d takes precedence (runs full duration)
   • Adjust -c (concurrency) based on your system and target capacity
-  • Use -verbose 1 for debugging, -verbose 3 for production
+  • Use -verbose 1 for debugging, -verbose 4 for production
   • Distributed mode scales testing across multiple machines
   • Dashboard provides real-time metrics visualization
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `
-)
-
-var (
-	// Signal channel for graceful shutdown
-	stopSignal chan os.Signal
-
-	// workerAddrList stores addresses of distributed worker nodes
-	workerAddrList flagSlice
-
-	// Worker authentication header key
-	httpWorkerApiAuthKey string = getEnv("HTTPBENCH_AUTH_KEY")
-	httpWorkerApiPath           = getEnv("HTTPBENCH_WORKERAPI")
-	gogcValue                   = getEnv("HTTPBENCH_GOGC")
-
-	// HTTP request configuration flags
-	m          = flag.String("m", "GET", "")     // HTTP method
-	body       = flag.String("body", "", "")     // Request body
-	bodyType   = flag.String("bodytype", "", "") // Body format type
-	authHeader = flag.String("a", "", "")        // Basic auth credentials
-	output     = flag.String("o", "", "")        // Output format
-
-	// Load testing configuration flags
-	c        = flag.Int("c", defaultConcurrency, "")  // Number of concurrent requests
-	n        = flag.Int("n", 0, "")                   // Total number of requests
-	q        = flag.Int("q", 0, "")                   // Rate limit (QPS)
-	d        = flag.String("d", defaultDuration, "")  // Test duration
-	t        = flag.String("t", defaultTimeout, "")   // Request timeout (ms)
-	httpType = flag.String("http", protocolHTTP1, "") // HTTP protocol version
-	pType    = flag.String("p", "", "")               // TCP/UDP protocol type
-
-	// Utility flags
-	printExample = flag.Bool("example", false, "")              // Print usage examples
-	cpus         = flag.Int("cpus", runtime.GOMAXPROCS(-1), "") // Number of CPU cores
-
-	// HTTP client configuration flags
-	disableCompression = flag.Bool("disable-compression", false, "") // Disable compression
-	disableKeepAlives  = flag.Bool("disable-keepalive", false, "")   // Disable keep-alive
-	proxyAddr          = flag.String("x", "", "")                    // Proxy address
-
-	// Server and worker configuration flags
-	urlstr  = flag.String("url", "", "")                   // Target URL
-	verbose = flag.Int("verbose", defaultVerboseLevel, "") // Log verbosity level
-	listen  = flag.String("listen", "", "")                // Dashboard or Worker listen address
-
-	// File input flags，format:
-	// - URL per line
-	// - Optional headers in format "Key: Value"
-	// - Optional body in JSON format
-	httpFile = flag.String("file", "", "") // File containing URLs
 )

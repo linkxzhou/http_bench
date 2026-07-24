@@ -3,8 +3,10 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/hex"
+	"github.com/linkxzhou/http_bench/internal/transport"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +20,7 @@ import (
 
 // TestGetRequestBody for various input scenarios
 func TestGetRequestBody(t *testing.T) {
-	p := HttpbenchParameters{}
+	p := transport.HttpbenchParameters{}
 	b, r := p.GetRequestBody()
 	if b != nil || r != nil {
 		t.Fatalf("expected nil,nil; got %v,%v", b, r)
@@ -39,7 +41,7 @@ func TestGetRequestBody(t *testing.T) {
 
 	// hex format
 	p.RequestBody = hex.EncodeToString([]byte("world"))
-	p.RequestBodyType = bodyHex
+	p.RequestBodyType = transport.BodyHex
 	b, r = p.GetRequestBody()
 	if !bytes.Equal(b, []byte("world")) {
 		t.Errorf("expected decoded bytes %q; got %q", "world", b)
@@ -51,21 +53,14 @@ func TestGetRequestBody(t *testing.T) {
 	}
 }
 
-// TestClientPool Get/Put behavior
-func TestClientPool(t *testing.T) {
-	p := NewClientPool(1)
-	c1 := p.Get()
-	if c1 == nil {
-		t.Fatal("expected first Get non-nil")
+// TestClientLifecycle verifies independent client initialization and cleanup.
+func TestClientLifecycle(t *testing.T) {
+	client := &transport.Client{}
+	if err := client.Init(transport.ClientOpts{Protocol: transport.ProtocolHTTP1, Params: transport.HttpbenchParameters{URL: "http://127.0.0.1"}, Insecure: true}); err != nil {
+		t.Fatalf("Init failed: %v", err)
 	}
-	c2 := p.Get()
-	if c2 != nil {
-		t.Fatal("expected second Get nil when pool is exhausted")
-	}
-	p.Put(c1)
-	c3 := p.Get()
-	if c3 != c1 {
-		t.Fatalf("expected reused client; got %p vs %p", c3, c1)
+	if err := client.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
 	}
 }
 
@@ -79,24 +74,24 @@ func TestClientDoHTTP1(t *testing.T) {
 	defer srv.Close()
 
 	time.Sleep(100 * time.Millisecond)
-	params := HttpbenchParameters{
-		Url:                srv.URL,
+	params := transport.HttpbenchParameters{
+		URL:                srv.URL,
 		RequestMethod:      http.MethodPost,
 		RequestBody:        "ping",
 		RequestBodyType:    "",
-		RequestType:        protocolHTTP1,
+		RequestType:        transport.ProtocolHTTP1,
 		Timeout:            500 * time.Millisecond,
 		DisableCompression: false,
 		DisableKeepAlives:  false,
 		Headers:            map[string][]string{"X-Test": {"yes"}},
 	}
 
-	c := &Client{}
-	if err := c.Init(ClientOpts{Protocol: protocolHTTP1, Params: params}); err != nil {
+	c := &transport.Client{}
+	if err := c.Init(transport.ClientOpts{Protocol: transport.ProtocolHTTP1, Params: params}); err != nil {
 		t.Fatalf("Init error: %v", err)
 	}
 
-	code, length, err := c.Do([]byte(params.Url), []byte(params.RequestBody), 0)
+	code, length, err := c.Do(context.Background(), []byte(params.URL), []byte(params.RequestBody), 0)
 	if err != nil {
 		t.Fatalf("Do error: %v", err)
 	}
@@ -129,20 +124,20 @@ func TestClientDoHTTP2(t *testing.T) {
 	defer srv.Close()
 
 	time.Sleep(100 * time.Millisecond)
-	params := HttpbenchParameters{
-		Url:             srv.URL,
+	params := transport.HttpbenchParameters{
+		URL:             srv.URL,
 		RequestMethod:   http.MethodPost,
 		RequestBody:     "hello2",
 		RequestBodyType: "",
 		Timeout:         500 * time.Millisecond,
-		RequestType:     protocolHTTP2,
+		RequestType:     transport.ProtocolHTTP2,
 	}
 
-	c := &Client{}
-	if err := c.Init(ClientOpts{Protocol: protocolHTTP2, Params: params}); err != nil {
+	c := &transport.Client{}
+	if err := c.Init(transport.ClientOpts{Protocol: transport.ProtocolHTTP2, Params: params, Insecure: true}); err != nil {
 		t.Fatalf("Init HTTP2 error: %v", err)
 	}
-	code, length, err := c.Do([]byte(params.Url), []byte(params.RequestBody), 0)
+	code, length, err := c.Do(context.Background(), []byte(params.URL), []byte(params.RequestBody), 0)
 	if err != nil {
 		t.Fatalf("Do HTTP2 error: %v", err)
 	}
@@ -176,20 +171,20 @@ func TestClientDoWS(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
-	params := HttpbenchParameters{
-		Url:             wsURL,
+	params := transport.HttpbenchParameters{
+		URL:             wsURL,
 		RequestMethod:   http.MethodGet,
 		RequestBody:     "pingws",
 		RequestBodyType: "",
-		Timeout:         500,
-		RequestType:     protocolWS,
+		Timeout:         500 * time.Millisecond,
+		RequestType:     transport.ProtocolWS,
 	}
 
-	c := &Client{}
-	if err := c.Init(ClientOpts{Protocol: protocolWS, Params: params}); err != nil {
+	c := &transport.Client{}
+	if err := c.Init(transport.ClientOpts{Protocol: transport.ProtocolWS, Params: params}); err != nil {
 		t.Fatalf("Init WS error: %v", err)
 	}
-	code, length, err := c.Do([]byte(params.Url), []byte(params.RequestBody), 0)
+	code, length, err := c.Do(context.Background(), []byte(params.URL), []byte(params.RequestBody), 0)
 	if err != nil {
 		t.Fatalf("Do WS error: %v", err)
 	}
@@ -214,34 +209,20 @@ func TestClientDoTimeout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	params := HttpbenchParameters{
-		Url:           srv.URL,
+	params := transport.HttpbenchParameters{
+		URL:           srv.URL,
 		RequestMethod: http.MethodGet,
 		Timeout:       10, // very short timeout
 	}
 
-	c := &Client{}
-	if err := c.Init(ClientOpts{Protocol: protocolHTTP1, Params: params}); err != nil {
+	c := &transport.Client{}
+	if err := c.Init(transport.ClientOpts{Protocol: transport.ProtocolHTTP1, Params: params}); err != nil {
 		t.Fatalf("Init error: %v", err)
 	}
 
-	_, _, err := c.Do([]byte(params.Url), []byte(params.RequestBody), 0)
+	_, _, err := c.Do(context.Background(), []byte(params.URL), []byte(params.RequestBody), 0)
 	if err == nil {
 		t.Fatal("expected timeout error; got nil")
-	}
-}
-
-// BenchmarkClientPool_GetPut benchmarks the performance of getting and putting clients
-func BenchmarkClientPool_GetPut(b *testing.B) {
-	pool := NewClientPool(100)
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		c := pool.Get()
-		if c != nil {
-			pool.Put(c)
-		}
 	}
 }
 
@@ -254,28 +235,28 @@ func BenchmarkClient_Do(b *testing.B) {
 	}))
 	defer srv.Close()
 
-	params := HttpbenchParameters{
-		Url:                srv.URL,
+	params := transport.HttpbenchParameters{
+		URL:                srv.URL,
 		RequestMethod:      http.MethodGet,
-		RequestType:        protocolHTTP1,
+		RequestType:        transport.ProtocolHTTP1,
 		Timeout:            500,
 		DisableCompression: true,
 		DisableKeepAlives:  false,
 	}
 
-	c := &Client{}
-	if err := c.Init(ClientOpts{Protocol: protocolHTTP1, Params: params}); err != nil {
+	c := &transport.Client{}
+	if err := c.Init(transport.ClientOpts{Protocol: transport.ProtocolHTTP1, Params: params}); err != nil {
 		b.Fatalf("Init error: %v", err)
 	}
 
-	urlBytes := []byte(params.Url)
+	urlBytes := []byte(params.URL)
 	reqBody := []byte("benchmark")
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		code, _, err := c.Do(urlBytes, reqBody, 0)
+		code, _, err := c.Do(context.Background(), urlBytes, reqBody, 0)
 		if err != nil {
 			b.Fatalf("Do error: %v", err)
 		}
