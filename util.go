@@ -16,8 +16,14 @@ import (
 var runIDSeq int64
 
 func genSequenceId() int64 {
+	seq := atomic.AddInt64(&runIDSeq, 1)
 	base := time.Now().UTC().UnixNano()
-	return base ^ atomic.AddInt64(&runIDSeq, 1)
+	// Pack timestamp (upper bits) and monotonic sequence (lower 20 bits)
+	// into a single int64. Each component occupies non-overlapping bits,
+	// so the combination is collision-free as long as fewer than ~1M IDs
+	// are generated in a single process. The previous XOR scheme could
+	// collide when baseΔ == seq1^seq2.
+	return (base &^ 0xFFFFF) | (seq & 0xFFFFF)
 }
 
 var (
