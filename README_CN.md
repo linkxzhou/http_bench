@@ -1,6 +1,5 @@
 # HTTP Bench - 强大的 HTTP 压力测试工具
 
-[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml)
 [![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.23.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.23.yml)
