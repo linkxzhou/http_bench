@@ -122,3 +122,36 @@ func TestParseConfig_ConflictingURL(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
+
+// TestParseConfig_FlagsAfterPositionalURL covers the documented invocation
+// style where flags follow the positional URL (README distributed example).
+// flag.Parse would otherwise stop at the URL and silently drop -body/-W.
+func TestParseConfig_FlagsAfterPositionalURL(t *testing.T) {
+	opts, err := ParseConfig([]string{
+		"-n", "10000", "-c", "10", "-d", "30s", "-m", "POST",
+		"http://www.baidu.com/api/test",
+		"-body", `{"key":"value"}`, "-W", "127.0.0.1:12710", "-W", "127.0.0.1:12711",
+		"-disable-keepalive", "-insecure=false",
+	}, nil, &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("ParseConfig: %v", err)
+	}
+	if opts.URL != "http://www.baidu.com/api/test" {
+		t.Errorf("URL = %q", opts.URL)
+	}
+	if opts.Body != `{"key":"value"}` {
+		t.Errorf("Body = %q", opts.Body)
+	}
+	if len(opts.WorkerAddrs) != 2 || opts.WorkerAddrs[0] != "127.0.0.1:12710" || opts.WorkerAddrs[1] != "127.0.0.1:12711" {
+		t.Errorf("WorkerAddrs = %v", opts.WorkerAddrs)
+	}
+	if !opts.DisableKeepAlives {
+		t.Error("DisableKeepAlives should be true")
+	}
+	if opts.Insecure {
+		t.Error("Insecure should be false")
+	}
+	if opts.Method != "POST" || opts.Count != 10000 || opts.Concurrency != 10 {
+		t.Errorf("unexpected opts: %+v", opts)
+	}
+}

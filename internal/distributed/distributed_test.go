@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/linkxzhou/http_bench/internal/transport"
 )
@@ -97,4 +98,41 @@ func TestPostAllWorkers_Merges(t *testing.T) {
 	if res.Merged.BytesReceived != 30 {
 		t.Errorf("merged.BytesReceived = %d, want 30", res.Merged.BytesReceived)
 	}
+}
+
+// TestServeRequest_LongRunSurvivesWriteTimeout reproduces the controller-side
+// "all worker(s) failed" error: a benchmark run longer than the server
+// WriteTimeout must still deliver its response (the handler clears the write
+// deadline), instead of having the connection force-closed mid-run.
+func TestServeRequest_LongRunSurvivesWriteTimeout(t *testing.T) {
+	slow := WorkerServiceFunc(func(ctx context.Context, _ WorkerRequest) (*WorkerResponse, error) {
+		select {
+		case <-time.After(300 * time.Millisecond):
+			return &WorkerResponse{RPS: 42}, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	})
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+		ServeRequest(slow, nil, w, r)
+	})
+	srv := httptest.NewUnstartedServer(mux)
+	srv.Config.WriteTimeout = 100 * time.Millisecond
+	srv.Start()
+	defer srv.Close()
+
+	res, err := PostWorker(srv.URL+"/api", []byte(`{"c":1,"n":1}`), 5*time.Second)
+	if err != nil {
+		t.Fatalf("PostWorker failed (write deadline not cleared): %v", err)
+	}
+	if res.RPS != 42 {
+		t.Errorf("RPS = %d, want 42", res.RPS)
+	}
+}
+
+type WorkerServiceFunc func(ctx context.Context, req WorkerRequest) (*WorkerResponse, error)
+
+func (f WorkerServiceFunc) Execute(ctx context.Context, req WorkerRequest) (*WorkerResponse, error) {
+	return f(ctx, req)
 }

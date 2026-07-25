@@ -93,6 +93,14 @@ func DefaultValidator(p transport.HttpbenchParameters) error {
 // ServeRequest is the standard worker API entry point. The default validation
 // can be replaced by passing a custom RequestValidator.
 func ServeRequest(service WorkerService, validator RequestValidator, w http.ResponseWriter, r *http.Request) {
+	// A benchmark run may last far longer than the dashboard server's
+	// WriteTimeout (30s default): the handler stays busy for the whole run
+	// and only then writes the response. Without this, the connection is
+	// force-closed mid-run, the response is truncated, and the controller
+	// reports the worker as failed even though it completed the benchmark.
+	// SetWriteDeadline is unsupported on some protocols (e.g. HTTP/2);
+	// the error is safely ignorable there.
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 	setCORSHeaders(w, r)
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)

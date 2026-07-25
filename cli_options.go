@@ -84,7 +84,12 @@ func ParseConfig(args []string, getenv func(string) string, stderr io.Writer) (O
 	fs.Var(stringSliceFlag{&opts.Headers}, "H", "Custom header (repeatable)")
 	fs.Var(stringSliceFlag{&opts.WorkerAddrs}, "W", "Worker address (repeatable)")
 	fs.Var(stringSliceFlag{&opts.WorkerAddrs}, "w", "Worker address alias")
-	if err := fs.Parse(args); err != nil {
+	// flag.Parse stops at the first non-flag argument, so a command like
+	// "http_bench -n 100 -m POST <url> -body '{}' -W host:port" would
+	// silently swallow every flag after the URL (the worker then never
+	// receives a task). Reorder positional args to the end so flags and
+	// the positional URL can be freely mixed (README documents this style).
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return Options{}, err
 	}
 	// Detect whether -d was explicitly set on the command line. When the
@@ -131,6 +136,44 @@ func ParseConfig(args []string, getenv func(string) string, stderr io.Writer) (O
 	}
 	opts.Timeout = timeout
 	return opts, nil
+}
+
+// boolFlags lists the flags that take no value argument. reorderArgs uses it
+// to decide whether the token following a flag is its value or a positional
+// argument.
+var boolFlags = map[string]bool{
+	"disable-compression": true,
+	"disable-keepalive":   true,
+	"insecure":            true,
+	"example":             true,
+	"h":                   true,
+	"help":                true,
+}
+
+// reorderArgs moves positional (non-flag) arguments behind all flags so that
+// flag.Parse — which stops consuming at the first non-flag token — parses
+// every flag. A flag consumes the next token as its value unless it is a
+// boolean flag or uses the -flag=value form.
+func reorderArgs(args []string) []string {
+	var flags, positional []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if len(a) > 1 && a[0] == '-' {
+			flags = append(flags, a)
+			name := strings.TrimLeft(a, "-")
+			if strings.Contains(name, "=") || boolFlags[name] {
+				continue
+			}
+			// Value flag: consume the next token as its value.
+			if i+1 < len(args) {
+				i++
+				flags = append(flags, args[i])
+			}
+			continue
+		}
+		positional = append(positional, a)
+	}
+	return append(flags, positional...)
 }
 
 // stringSliceFlag implements flag.Value for repeatable string flags.

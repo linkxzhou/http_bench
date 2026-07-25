@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -81,6 +82,32 @@ func parseDuration(timeStr string) (time.Duration, error) {
 		return 0, fmt.Errorf("invalid duration %q: must be non-negative", timeStr)
 	}
 	return d, nil
+}
+
+// normalizeWorkerAddrs rewrites bare worker addresses (host:port) into full
+// worker API URLs. A missing scheme defaults to "http"; a missing path
+// defaults to the worker API mount point ("/api" + workerAPIPath), matching
+// the route registered by the dashboard server. Without this, a bare
+// "host:port" address fails in http.NewRequest ("first path segment in URL
+// cannot contain colon") and the task never reaches the worker.
+func normalizeWorkerAddrs(addrs []string, workerAPIPath string) []string {
+	apiPath := "/api" + workerAPIPath
+	out := make([]string, 0, len(addrs))
+	for _, addr := range addrs {
+		addr = strings.TrimSpace(addr)
+		if addr == "" {
+			continue
+		}
+		if !strings.Contains(addr, "://") {
+			addr = "http://" + addr
+		}
+		if u, err := url.Parse(addr); err == nil && (u.Path == "" || u.Path == "/") {
+			u.Path = apiPath
+			addr = u.String()
+		}
+		out = append(out, addr)
+	}
+	return out
 }
 
 func normalizeCaseInsensitive(s string) string {

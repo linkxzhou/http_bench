@@ -57,8 +57,9 @@
         .main-container { max-width: 1400px; margin: 0 auto; position: relative; z-index: 1; }
         .control-panel { position: relative; }
         .language-selector-wrap { position: absolute; top: 20px; right: 20px; width: 130px; z-index: 2; }
-        .language-selector .el-input__inner { color: white; }
-        .language-selector .el-input__suffix { color: white; }
+        .language-selector { width: 100%; }
+        .language-selector .el-input__inner { color: var(--text-main); }
+        .language-selector .el-input__suffix { color: var(--text-muted); }
         .chart-card { min-width: 0; }
         .el-form-item { margin-bottom: 12px; }
         .status-line { min-height: 24px; margin-top: 8px; color: var(--text-muted); font-size: 0.9rem; }
@@ -163,8 +164,10 @@
             background: var(--gradient); color: white; border: none; font-weight: 600; border-radius: 8px 0 0 8px;
         }
         .language-selector .el-input__inner {
-            background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; font-weight: 600;
+            background: #f7f9fc; border: 1px solid #dcdfe6; color: var(--text-main); font-weight: 600; border-radius: 8px;
         }
+        .language-selector .el-input__inner:hover { border-color: var(--primary); }
+        .language-selector .el-select__caret { color: var(--text-muted); }
 
         .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; animation-fill-mode: both; }
         .charts-row .chart-card { margin-bottom: 0; }
@@ -208,7 +211,7 @@
                     qps: 'QPS',
                     statusCode: '状态码',
                     latency: '⏱️ 响应耗时分布',
-                    errorDist: '🚫 错误分布'
+                    errorDist: '⚠️ 错误分布'
                 },
                 stats: {
                     avg: '平均耗时',
@@ -288,10 +291,10 @@
                 start: 'Start Test',
                 stop: 'Stop Test',
                 chart: {
-                    title: '📊 Real-time Performance Metrics',
+                    title: '⚡️ Real-time Performance Metrics',
                     qps: 'QPS',
                     statusCode: 'Status Code',
-                    latency: '📊 Latency Distribution',
+                    latency: '⏱️ Latency Distribution',
                     errorDist: '⚠️ Error Distribution'
                 },
                 stats: {
@@ -382,7 +385,7 @@
         <!-- Chart Card -->
         <div class="chart-card">
             <div class="chart-card-header">
-                <div class="chart-card-title" id="chart-title">📊 Real-time Performance Metrics</div>
+                <div class="chart-card-title" id="chart-title">⚡️ Real-time Performance Metrics</div>
             </div>
             <div id="chart-container" style="height: 400px; width: 100%;"></div>
         </div>

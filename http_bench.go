@@ -84,9 +84,16 @@ func handleDistributedWorkers(params transport.HttpbenchParameters, dc distConfi
 		result.ErrMsg = fmt.Sprintf("parameter marshaling failed: %v", err)
 		return result, nil
 	}
-	distributedHTTPTimeout := params.Duration + 60*time.Second
+	// With -n only (no -d) the run length is unpredictable, so leave the
+	// timeout to PostAllWorkers' default instead of a too-tight 60s cap.
+	var distributedHTTPTimeout time.Duration
+	if params.Duration > 0 {
+		distributedHTTPTimeout = params.Duration + 60*time.Second
+	}
 	distributed.APIKey = dc.authKey
-	distributedResult, err := distributed.PostAllWorkers(dc.workerAddrs, jsonBody, distributedHTTPTimeout)
+	workerURLs := normalizeWorkerAddrs(dc.workerAddrs, dc.workerAPIPath)
+	logging.Info(seqId, "dispatching task to workers: %v", workerURLs)
+	distributedResult, err := distributed.PostAllWorkers(workerURLs, jsonBody, distributedHTTPTimeout)
 	if err != nil {
 		logging.Error(seqId, "distributed workers execution failed: %v", err)
 		result := metrics.NewCollectResult()
@@ -235,7 +242,16 @@ func (r *defaultRunner) RunWorker(ctx context.Context, params transport.Httpbenc
 	default: // transport.CmdStart
 		if params.From == "" {
 			worker := NewWorker(params.SequenceId)
-			return worker.Run(ctx, params)
+			result, err := worker.Run(ctx, params)
+			if err != nil {
+				return nil, err
+			}
+			// RPS/Average 是 Merge 计算的派生指标；先 Merge 与
+			// handleStartup 的本地 CLI 路径保持一致，再在 worker 节点
+			// 本地打印压测 Summary，结果同时经 HTTP 响应返回控制器汇总。
+			result = metrics.Merge(nil, result)
+			result.Print()
+			return result, nil
 		}
 		// 浏览器 dashboard：异步执行，立即返回。压测生命周期由
 		// params.Duration 与 CmdStop 控制，不能使用 HTTP 请求的 ctx

@@ -114,3 +114,63 @@ func TestGenSequenceId_MonotonicWithinNanosecond(t *testing.T) {
 		t.Fatalf("two consecutive calls produced identical ID %d", a)
 	}
 }
+
+// TestNormalizeWorkerAddrs verifies bare host:port addresses are rewritten
+// into full worker API URLs while already-qualified URLs are preserved.
+func TestNormalizeWorkerAddrs(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []string
+		api  string
+		want []string
+	}{
+		{
+			name: "bare host:port gets scheme and default api path",
+			in:   []string{"127.0.0.1:12710"},
+			api:  "",
+			want: []string{"http://127.0.0.1:12710/api"},
+		},
+		{
+			name: "custom worker api path",
+			in:   []string{"127.0.0.1:12710"},
+			api:  "cb9ab101f9f725cb7c3a355bd5631184",
+			want: []string{"http://127.0.0.1:12710/apicb9ab101f9f725cb7c3a355bd5631184"},
+		},
+		{
+			name: "scheme preserved, path appended",
+			in:   []string{"http://192.168.1.10:12710"},
+			api:  "",
+			want: []string{"http://192.168.1.10:12710/api"},
+		},
+		{
+			name: "explicit path preserved",
+			in:   []string{"http://192.168.1.10:12710/custom"},
+			api:  "",
+			want: []string{"http://192.168.1.10:12710/custom"},
+		},
+		{
+			name: "trailing slash treated as empty path",
+			in:   []string{"192.168.1.10:12710/"},
+			api:  "",
+			want: []string{"http://192.168.1.10:12710/api"},
+		},
+		{
+			name: "empty entries dropped",
+			in:   []string{"", "  ", "127.0.0.1:12710"},
+			api:  "",
+			want: []string{"http://127.0.0.1:12710/api"},
+		},
+	}
+	for _, tt := range tests {
+		got := normalizeWorkerAddrs(tt.in, tt.api)
+		if len(got) != len(tt.want) {
+			t.Errorf("%s: normalizeWorkerAddrs(%v) = %v, want %v", tt.name, tt.in, got, tt.want)
+			continue
+		}
+		for i := range got {
+			if got[i] != tt.want[i] {
+				t.Errorf("%s: normalizeWorkerAddrs(%v)[%d] = %q, want %q", tt.name, tt.in, i, got[i], tt.want[i])
+			}
+		}
+	}
+}
