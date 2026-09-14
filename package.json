@@ -1,0 +1,8 @@
+{
+  "name": "http_bench-dashboard",
+  "private": true,
+  "description": "Static dashboard deploy for http_bench (Vercel). Go binary is not built here.",
+  "engines": {
+    "node": "24.x"
+  }
+}
