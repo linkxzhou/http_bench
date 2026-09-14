@@ -102,3 +102,68 @@ func BenchmarkCollectResultSnapshot(b *testing.B) {
 		_ = result.Snapshot()
 	}
 }
+
+func TestCollectResult_RecordSnapshotMerge(t *testing.T) {
+	seq := GenSequenceId()
+	NewResult(seq)
+	if _, err := AppendResult(seq, &Result{StatusCode: 200, Duration: 10 * time.Millisecond, ContentLength: 12}); err != nil {
+		t.Fatalf("append ok: %v", err)
+	}
+	if _, err := AppendResult(seq, &Result{StatusCode: 500, Duration: 20 * time.Millisecond, Err: errBoom{}}); err != nil && err.Error() != "circuit break" {
+		// circuit break is acceptable under aggressive policy; otherwise require nil
+		if err.Error() != "circuit break" {
+			t.Fatalf("append fail sample: %v", err)
+		}
+	}
+	if err := StopResult(seq); err != nil {
+		t.Fatalf("StopResult: %v", err)
+	}
+	if err := SetStopReason(seq, "count"); err != nil {
+		t.Fatalf("SetStopReason: %v", err)
+	}
+	got, err := GetCollectResult(seq)
+	if err != nil || got == nil {
+		t.Fatalf("GetCollectResult: %v %#v", err, got)
+	}
+	if got.TotalRequests < 1 {
+		t.Fatalf("TotalRequests=%d", got.TotalRequests)
+	}
+	snap := got.Snapshot()
+	if snap == nil || snap.TotalRequests != got.TotalRequests {
+		t.Fatalf("snapshot %+v", snap)
+	}
+	other := NewCollectResult()
+	other.TotalRequests = 3
+	other.Duration = time.Second
+	other.StatusCodeCounts = map[int]int{200: 3}
+	merged := Merge(NewCollectResult(), got, other)
+	if merged.TotalRequests < got.TotalRequests+3 {
+		t.Fatalf("merge %+v", merged)
+	}
+	if ToByteSizeStr(1536) == "" {
+		t.Fatal("ToByteSizeStr empty")
+	}
+	_ = got.String()
+	if _, err := got.Marshal(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type errBoom struct{}
+
+func (errBoom) Error() string { return "boom" }
+
+func TestToByteSizeStr_Ranges(t *testing.T) {
+	if got := ToByteSizeStr(500); got != "500.00 B" {
+		t.Fatalf("500 -> %q", got)
+	}
+	if got := ToByteSizeStr(float64(KB)); got != "1.00 KB" {
+		t.Fatalf("KB -> %q", got)
+	}
+	if got := ToByteSizeStr(float64(MB)); got != "1.00 MB" {
+		t.Fatalf("MB -> %q", got)
+	}
+	if got := ToByteSizeStr(float64(GB)); got != "1.00 GB" {
+		t.Fatalf("GB -> %q", got)
+	}
+}

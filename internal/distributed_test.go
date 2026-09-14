@@ -142,3 +142,73 @@ type WorkerServiceFunc func(ctx context.Context, req WorkerRequest) (*WorkerResp
 func (f WorkerServiceFunc) Execute(ctx context.Context, req WorkerRequest) (*WorkerResponse, error) {
 	return f(ctx, req)
 }
+
+func TestDefaultValidator(t *testing.T) {
+	if err := DefaultValidator(HttpbenchParameters{C: 0, N: 1}); err == nil {
+		t.Fatal("want err")
+	}
+	if err := DefaultValidator(HttpbenchParameters{C: 2, N: 1}); err == nil {
+		t.Fatal("want err n<c")
+	}
+	if err := DefaultValidator(HttpbenchParameters{C: 1}); err == nil {
+		t.Fatal("want err neither")
+	}
+	if err := DefaultValidator(HttpbenchParameters{C: 1, N: 1}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestServeRequest_MethodAuthCORS(t *testing.T) {
+	oldKey := APIKey
+	APIKey = "k"
+	defer func() { APIKey = oldKey }()
+
+	svc := NewDefaultService(WorkerRunnerFunc(func(ctx context.Context, p HttpbenchParameters) (*WorkerResponse, error) {
+		return &WorkerResponse{TotalRequests: 1}, nil
+	}))
+
+	// OPTIONS
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodOptions, "/", nil)
+	req.Header.Set("Origin", "http://localhost")
+	ServeRequest(svc, DefaultValidator, rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("OPTIONS code=%d", rr.Code)
+	}
+	if rr.Header().Get("Access-Control-Allow-Origin") == "" {
+		// may set ACAO only when origin allowlisted
+		t.Logf("CORS headers: %v", rr.Header())
+	}
+
+	// GET rejected
+	rr = httptest.NewRecorder()
+	ServeRequest(svc, DefaultValidator, rr, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("GET code=%d", rr.Code)
+	}
+
+	// missing bearer
+	rr = httptest.NewRecorder()
+	body := `{"c":1,"n":1,"sequence_id":1}`
+	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+	ServeRequest(svc, DefaultValidator, rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("unauth code=%d body=%s", rr.Code, rr.Body.String())
+	}
+
+	// success with bearer
+	rr = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer k")
+	ServeRequest(svc, DefaultValidator, rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("ok code=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+// WorkerRunnerFunc adapts a function to WorkerRunner.
+type WorkerRunnerFunc func(ctx context.Context, p HttpbenchParameters) (*WorkerResponse, error)
+
+func (f WorkerRunnerFunc) RunWorker(ctx context.Context, p HttpbenchParameters) (*WorkerResponse, error) {
+	return f(ctx, p)
+}
