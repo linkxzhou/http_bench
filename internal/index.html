@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html :lang="currentLanguage" style="height: 100%">
+<head>
+    <!-- Meta tags for responsive design -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- External dependencies -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    
+    <!-- Custom Styles -->
+    <style>
+        :root {
+            /* 品牌渐变色 */
+            --primary: #667eea;
+            --primary-dark: #764ba2;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --danger: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --aqua: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --sunset: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --mint: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            /* 阴影与圆角 */
+            --shadow: 0 10px 40px rgba(31, 38, 135, 0.15);
+            --shadow-hover: 0 18px 50px rgba(31, 38, 135, 0.22);
+            --shadow-primary: 0 10px 24px rgba(102, 126, 234, 0.45);
+            --shadow-danger: 0 10px 24px rgba(245, 87, 108, 0.45);
+            --radius: 16px;
+            --radius-sm: 8px;
+            --radius-icon: 12px;
+            --radius-btn: 12px;
+            /* 文字与线条 */
+            --text-main: #2d3748;
+            --text-secondary: #4a5568;
+            --text-muted: #8a94a6;
+            --border-light: #eef0f6;
+            --axis-line: #cbd5e0;
+            --input-border: #e8e8e8;
+            --focus-ring: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gradient);
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 24px 16px;
+            color: var(--text-main);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 背景装饰光斑 */
+        body::before, body::after {
+            content: ''; position: fixed; border-radius: 50%;
+            filter: blur(90px); z-index: 0; pointer-events: none;
+        }
+        body::before {
+            width: 420px; height: 420px; top: -120px; right: -80px;
+            background: rgba(255, 255, 255, 0.18);
+        }
+        body::after {
+            width: 360px; height: 360px; bottom: -100px; left: -80px;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .main-container { max-width: 1400px; margin: 0 auto; position: relative; z-index: 1; }
+        .control-panel { position: relative; }
+        .language-selector-wrap { position: absolute; top: 20px; right: 20px; width: 130px; z-index: 2; }
+        .language-selector { width: 100%; }
+        .language-selector .el-input__inner { color: var(--text-main); }
+        .language-selector .el-input__suffix { color: var(--text-muted); }
+        .chart-card { min-width: 0; }
+
+        /* Headers */
+        .page-header {
+            text-align: center; color: white; margin-bottom: 24px; padding-top: 8px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+        .page-header h2 { font-size: 2.2rem; margin-bottom: 8px; text-shadow: 2px 2px 8px rgba(0,0,0,0.25); letter-spacing: 0.5px; }
+        .page-header p { opacity: 0.92; font-size: 1.05rem; font-weight: 300; letter-spacing: 1px; }
+
+        /* Cards & Panels — hover 效果统一收敛，避免三处重复 */
+        .chart-card, .control-panel, .stat-card {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            margin-bottom: 16px;
+            animation: fadeInUp 0.6s ease-out;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .chart-card:hover, .control-panel:hover, .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .chart-card-header, .control-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light);
+        }
+        .chart-card-title, .control-title { font-size: 1.15rem; font-weight: 600; letter-spacing: 0.3px; }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px; margin-bottom: 16px;
+        }
+        .stat-card {
+            display: flex; align-items: center; gap: 14px;
+            padding: 18px 20px; margin-bottom: 0;
+        }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: var(--radius-icon); flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; color: white; box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        }
+        .stat-icon.avg { background: var(--gradient); }
+        .stat-icon.rps { background: var(--aqua); }
+        .stat-icon.fast { background: var(--mint); }
+        .stat-icon.slow { background: var(--sunset); }
+        .stat-icon.err { background: var(--danger); }
+        .stat-info { min-width: 0; }
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; white-space: nowrap; }
+        .stat-value {
+            font-size: 1.35rem; font-weight: 700; color: var(--text-main);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Buttons */
+        .button-group { display: flex; gap: 12px; margin-bottom: 18px; }
+        .button-group .el-button {
+            flex: 1; height: 52px; font-size: 16px; font-weight: 600; letter-spacing: 1px;
+            border-radius: var(--radius-btn); border: none;
+            transition: transform 0.3s, box-shadow 0.3s, opacity 0.3s;
+            margin-left: 0px;
+        }
+        .button-group .el-button:hover:not(.is-disabled) { transform: translateY(-2px); }
+        .button-group .el-button:active { transform: translateY(0); }
+        /* 键盘导航 focus 环，与鼠标 hover 区分 */
+        .button-group .el-button:focus-visible {
+            outline: none; box-shadow: var(--focus-ring);
+        }
+        .button-group .el-button--primary { background: var(--gradient); }
+        .button-group .el-button--primary:hover:not(:disabled):not(.is-disabled) { box-shadow: var(--shadow-primary); }
+        .button-group .el-button--danger { background: var(--danger); }
+        .button-group .el-button--danger:hover:not(:disabled):not(.is-disabled) { box-shadow: var(--shadow-danger); }
+        .button-group .el-button.is-disabled { opacity: 0.55; transform: none; box-shadow: none; }
+
+        /* Forms */
+        .form-section { margin-bottom: 18px; }
+        .form-section:last-child { margin-bottom: 4px; }
+        .section-title {
+            font-size: 1.05rem; font-weight: 600; color: var(--text-secondary);
+            margin-bottom: 12px; padding-left: 12px; position: relative;
+        }
+        .section-title::before {
+            content: ''; position: absolute; left: 0; top: 2px; bottom: 2px;
+            width: 4px; border-radius: 2px; background: var(--gradient);
+        }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+        .form-item-full { grid-column: 1 / -1; }
+        .el-input, .el-select { margin: 0 !important; }
+        
+        .el-input__inner, .el-textarea__inner {
+            border-radius: var(--radius-sm); border: 2px solid var(--input-border); transition: all 0.3s;
+        }
+        .el-input__inner:focus, .el-textarea__inner:focus {
+            border-color: var(--primary); box-shadow: var(--focus-ring);
+        }
+        /* 键盘导航时的输入框 focus 环（不被 Element-UI 默认 outline 抹掉） */
+        .el-input__inner:focus-visible, .el-textarea__inner:focus-visible { outline: none; }
+        .el-input-group__prepend {
+            background: var(--gradient); color: white; border: none; font-weight: 600;
+            border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+        }
+        .language-selector .el-input__inner {
+            background: #f7f9fc; border: 1px solid #dcdfe6; color: var(--text-main);
+            font-weight: 600; border-radius: var(--radius-sm);
+        }
+        .language-selector .el-input__inner:hover { border-color: var(--primary); }
+        .language-selector .el-select__caret { color: var(--text-muted); }
+
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .charts-row .chart-card { margin-bottom: 0; }
+        /* 图表容器统一高度管理（替代 inline style，便于响应式覆盖） */
+        .chart-container { width: 100%; height: 400px; }
+        .chart-container--secondary { height: 350px; }
+        /* 运行态指示：标题旁脉冲圆点，提示监控进行中 */
+        .live-dot {
+            display: inline-block; width: 10px; height: 10px; margin-left: 10px;
+            border-radius: 50%; background: #43e97b; vertical-align: middle;
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        /* Animations */
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 无障碍：用户偏好减少动效时关闭装饰动画与位移 */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            .chart-card, .control-panel, .stat-card,
+            .chart-card:hover, .control-panel:hover, .stat-card:hover,
+            .button-group .el-button:hover:not(.is-disabled) {
+                transform: none;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) { .charts-row { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            body { padding: 12px 8px; }
+            .page-header { margin-bottom: 16px; }
+            .page-header h2 { font-size: 1.5rem; }
+            .page-header p { font-size: 0.9rem; }
+            .chart-card, .control-panel, .stat-card { padding: 14px; margin-bottom: 12px; }
+            .stats-row { gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+            .stat-value { font-size: 1.1rem; }
+            .stat-icon { width: 40px; height: 40px; font-size: 1.15rem; }
+            .button-group { flex-direction: column; }
+            .button-group .el-button { width: 100%; }
+            .form-grid { grid-template-columns: 1fr; }
+            .control-panel { padding: 20px 14px; }
+            .language-selector-wrap { position: static; width: 100%; margin-bottom: 12px; }
+            #chart-container { height: 300px !important; }
+            .charts-row .chart-card > div:last-child { height: 280px !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .live-dot { animation: none; }
+        }
+    </style>
+    
+    <script type="text/javascript">
+        // i18n configuration for multilingual support
+        const translations = {
+            'zh-CN': {
+                title: '🚀 HTTP 压力测试工具',
+                subtitle: '专业的HTTP/1/2/3性能测试工具',
+                start: '开始压测',
+                stop: '停止压测',
+                chart: {
+                    title: '⚡️ 实时性能指标',
+                    qps: 'QPS',
+                    statusCode: '状态码',
+                    latency: '⏱️ 响应耗时分布',
+                    errorDist: '⚠️ 错误分布'
+                },
+                stats: {
+                    avg: '平均耗时',
+                    rps: '平均 QPS',
+                    fastest: '最快耗时',
+                    slowest: '最慢耗时',
+                    errors: '错误总数'
+                },
+                section: {
+                    testConfig: '⚙️ 测试配置',
+                    requestConfig: '🌐 请求配置',
+                    stressParams: '⚡ 压测参数',
+                    advancedSettings: '🔧 高级设置'
+                },
+                metrics: {
+                    duration: '采集间隔（毫秒）',
+                    durationPlaceholder: '监控数据刷新间隔，默认2000ms'
+                },
+                request: {
+                    url: '请求地址',
+                    urlPlaceholder: '请输入压测目标URL',
+                    method: '请求方法',
+                    methodPlaceholder: '选择请求方法',
+                    body: '请求体',
+                    bodyPlaceholder: '请输入请求体内容',
+                    bodyType: '请求体类型',
+                    bodyTypePlaceholder: 'string 或 hex，默认 string',
+                    type: '协议类型',
+                    typePlaceholder: 'http1, http2, http3, ws, wss，默认http1',
+                    headers: '请求头',
+                    headersPlaceholder: '每行一个，例如 Content-Type: application/json',
+                    proxy: '代理地址',
+                    proxyPlaceholder: 'http://host:port，可选'
+                },
+                stress: {
+                    total: '总请求数',
+                    totalPlaceholder: '0 = 无限制',
+                    concurrent: '并发数',
+                    concurrentPlaceholder: '1-10000',
+                    duration: '持续时间（毫秒）',
+                    durationPlaceholder: '毫秒',
+                    timeout: '超时时间（毫秒）',
+                    timeoutPlaceholder: '毫秒',
+                    qps: 'QPS限制',
+                    qpsPlaceholder: '0 = 无限制',
+                    worker: 'Worker API',
+                    workerPlaceholder: '/api 或自定义端点'
+                },
+                advanced: {
+                    compression: '禁用压缩',
+                    keepalive: '禁用Keep-Alive',
+                    insecure: '跳过 TLS 证书验证',
+                    auth: '认证信息',
+                    username: '用户名',
+                    usernamePlaceholder: '可选',
+                    password: '密码',
+                    passwordPlaceholder: '可选'
+                },
+                message: {
+                    start: '压测已开始',
+                    stop: '压测已停止',
+                    error: '压测错误',
+                    success: '操作成功',
+                    warning: '警告',
+                    info: '提示'
+                },
+                validation: {
+                    urlRequired: '请输入请求地址',
+                    urlInvalid: '请输入有效的URL',
+                    concurrentInvalid: '并发数必须在1-10000之间',
+                    durationInvalid: '持续时间必须大于0'
+                }
+            },
+            'en-US': {
+                title: '🚀 HTTP Benchmark Tool',
+                subtitle: 'Professional HTTP Performance Testing Tool',
+                start: 'Start Test',
+                stop: 'Stop Test',
+                chart: {
+                    title: '⚡️ Real-time Performance Metrics',
+                    qps: 'QPS',
+                    statusCode: 'Status Code',
+                    latency: '⏱️ Latency Distribution',
+                    errorDist: '⚠️ Error Distribution'
+                },
+                stats: {
+                    avg: 'Average Latency',
+                    rps: 'Average RPS',
+                    fastest: 'Fastest Request',
+                    slowest: 'Slowest Request',
+                    errors: 'Total Errors'
+                },
+                section: {
+                    testConfig: '⚙️ Test Configuration',
+                    requestConfig: '🌐 Request Configuration',
+                    stressParams: '⚡ Stress Test Parameters',
+                    advancedSettings: '🔧 Advanced Settings'
+                },
+                metrics: {
+                    duration: 'Metrics Interval (MS)',
+                    durationPlaceholder: 'Metrics refresh interval, default 2000ms'
+                },
+                request: {
+                    url: 'Request URL',
+                    urlPlaceholder: 'Enter target URL for stress test',
+                    method: 'Request Method',
+                    methodPlaceholder: 'Select HTTP method',
+                    body: 'Request Body',
+                    bodyPlaceholder: 'Enter request body content',
+                    bodyType: 'Body Type',
+                    bodyTypePlaceholder: 'string or hex, default string',
+                    type: 'Protocol Type',
+                    typePlaceholder: 'http1, http2, http3, ws, wss, default http1',
+                    headers: 'Request Headers',
+                    headersPlaceholder: 'One header per line, e.g. Content-Type: application/json',
+                    proxy: 'Proxy Address',
+                    proxyPlaceholder: 'http://host:port, optional'
+                },
+                stress: {
+                    total: 'Total Requests',
+                    totalPlaceholder: '0 = unlimited',
+                    concurrent: 'Concurrent Connections',
+                    concurrentPlaceholder: '1-10000',
+                    duration: 'Duration (MS)',
+                    durationPlaceholder: 'milliseconds',
+                    timeout: 'Timeout (MS)',
+                    timeoutPlaceholder: 'milliseconds',
+                    qps: 'QPS Limit',
+                    qpsPlaceholder: '0 = unlimited',
+                    worker: 'Worker API',
+                    workerPlaceholder: '/api or custom endpoint'
+                },
+                advanced: {
+                    compression: 'Disable Compression',
+                    keepalive: 'Disable Keep-Alive',
+                    insecure: 'Skip TLS Certificate Verification',
+                    auth: 'Authentication',
+                    username: 'Username',
+                    usernamePlaceholder: 'optional',
+                    password: 'Password',
+                    passwordPlaceholder: 'optional'
+                },
+                message: {
+                    start: 'Benchmark test started',
+                    stop: 'Benchmark test stopped',
+                    error: 'Benchmark test error',
+                    success: 'Operation successful',
+                    warning: 'Warning',
+                    info: 'Information'
+                },
+                validation: {
+                    urlRequired: 'Please enter request URL',
+                    urlInvalid: 'Please enter a valid URL',
+                    concurrentInvalid: 'Concurrent connections must be between 1-10000',
+                    durationInvalid: 'Duration must be greater than 0'
+                }
+            }
+        };
+    </script>
+    <title id="document-title">HTTP Benchmark Tool</title>
+</head>
+
+<body>
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 id="page-title">🚀 HTTP Benchmark Tool</h2>
+        <p id="page-subtitle">Professional HTTP1/2/3 Performance Testing Tool</p>
+    </div>
+    
+    <div class="main-container" id="app">
+        <!-- Chart Card -->
+        <div class="chart-card">
+            <div class="chart-card-header">
+                <div class="chart-card-title" id="chart-title">
+                    ⚡️ Real-time Performance Metrics
+                    <span class="live-dot" v-if="isRunning" aria-hidden="true"></span>
+                </div>
+            </div>
+            <div id="chart-container" class="chart-container"></div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="stats-row" style="display: none;" :style="{ display: hasData ? 'grid' : 'none' }">
+            <div class="stat-card" v-for="item in statItems" :key="item.key">
+                <div class="stat-icon" :class="item.key">{{item.icon}}</div>
+                <div class="stat-info">
+                    <div class="stat-label">{{item.label}}</div>
+                    <div class="stat-value">{{item.value}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secondary Charts -->
+        <div class="charts-row" style="display: none;" :style="{ display: hasData ? 'grid' : 'none' }">
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <div class="chart-card-title">{{translate('chart.latency')}}</div>
+                </div>
+                <div id="latency-chart" class="chart-container chart-container--secondary"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <div class="chart-card-title">{{translate('chart.errorDist')}}</div>
+                </div>
+                <div id="error-chart" class="chart-container chart-container--secondary"></div>
+            </div>
+        </div>
+        
+        <!-- Control Panel (Vue App) -->
+        <div>
+            <div class="control-panel">
+                <!-- Language selector -->
+                <div class="language-selector-wrap">
+                    <el-select v-model="currentLanguage" @change="changeLanguage" size="small" class="language-selector">
+                        <el-option label="🇨🇳 中文" value="zh-CN"></el-option>
+                        <el-option label="🇺🇸 English" value="en-US"></el-option>
+                    </el-select>
+                </div>
+                <div class="control-header">
+                    <div class="control-title" id="control-title">⚙️ Test Configuration</div>
+                </div>
+                
+                <!-- Control Buttons -->
+                <div class="button-group">
+                    <el-button type="primary" :loading="isRunning" @click="startTest" icon="el-icon-video-play">
+                        {{translate('start')}}
+                    </el-button>
+                    <el-button type="danger" @click="stopTest" :disabled="!isRunning" icon="el-icon-video-pause">
+                        {{translate('stop')}}
+                    </el-button>
+                </div>
+                
+                <!-- Request Configuration Section -->
+                <div class="form-section">
+                    <div class="section-title" id="section-request">🌐 Request Configuration</div>
+                    <div class="form-grid">
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('request.urlPlaceholder')" v-model="requestUrl">
+                                <template slot="prepend">{{translate('request.url')}}</template>
+                            </el-input>
+                        </div>
+                        <el-select v-model="protocolType" :placeholder="translate('request.typePlaceholder')" style="width: 100%;">
+                            <template slot="prepend">{{translate('request.type')}}</template>
+                            <el-option
+                                v-for="protocol in protocolOptions"
+                                :key="protocol.value"
+                                :label="protocol.label"
+                                :value="protocol.value">
+                            </el-option>
+                        </el-select>
+                        <el-select v-model="requestMethod" :placeholder="translate('request.methodPlaceholder')" style="width: 100%;">
+                            <template slot="prepend">{{translate('request.method')}}</template>
+                            <el-option
+                                v-for="method in httpMethods"
+                                :key="method.value"
+                                :label="method.label"
+                                :value="method.value">
+                            </el-option>
+                        </el-select>
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('request.bodyPlaceholder')" v-model="requestBody" type="textarea"
+                                :autosize="{ minRows: 3, maxRows: 10}">
+                                <template slot="prepend">{{translate('request.body')}}</template>
+                            </el-input>
+                        </div>
+                        <el-input :placeholder="translate('request.bodyTypePlaceholder')" v-model="requestBodyType">
+                            <template slot="prepend">{{translate('request.bodyType')}}</template>
+                        </el-input>
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('request.headersPlaceholder')" v-model="requestHeaders" type="textarea"
+                                :autosize="{ minRows: 2, maxRows: 6}">
+                                <template slot="prepend">{{translate('request.headers')}}</template>
+                            </el-input>
+                        </div>
+                        <el-input :placeholder="translate('request.proxyPlaceholder')" v-model="proxyUrl">
+                            <template slot="prepend">{{translate('request.proxy')}}</template>
+                        </el-input>
+                    </div>
+                </div>
+                
+                <!-- Stress Test Parameters Section -->
+                <div class="form-section">
+                    <div class="section-title" id="section-stress">⚡ Stress Test Parameters</div>
+                    <div class="form-grid">
+                        <el-input :placeholder="translate('stress.totalPlaceholder')" v-model="totalRequests" type="number">
+                            <template slot="prepend">{{translate('stress.total')}}</template>
+                        </el-input>
+                        <el-input :placeholder="translate('stress.concurrentPlaceholder')" v-model="concurrentConnections" type="number">
+                            <template slot="prepend">{{translate('stress.concurrent')}}</template>
+                        </el-input>
+                        <el-input :placeholder="translate('stress.durationPlaceholder')" v-model="testDuration" type="number">
+                            <template slot="prepend">{{translate('stress.duration')}}</template>
+                        </el-input>
+                        <el-input :placeholder="translate('stress.timeoutPlaceholder')" v-model="requestTimeout" type="number">
+                            <template slot="prepend">{{translate('stress.timeout')}}</template>
+                        </el-input>
+                        <el-input :placeholder="translate('stress.qpsPlaceholder')" v-model="qpsLimit" type="number">
+                            <template slot="prepend">{{translate('stress.qps')}}</template>
+                        </el-input>
+                        <el-input :placeholder="translate('metrics.durationPlaceholder')" v-model="metricsInterval" type="number">
+                            <template slot="prepend">{{translate('metrics.duration')}}</template>
+                        </el-input>
+                    </div>
+                </div>
+                
+                <!-- Advanced Settings Section -->
+                <div class="form-section">
+                    <div class="section-title" id="section-advanced">🔧 Advanced Settings</div>
+                    <div class="form-grid">
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('stress.workerPlaceholder')" v-model="workerApiEndpoint">
+                                <template slot="prepend">{{translate('stress.worker')}}</template>
+                            </el-input>
+                        </div>
+                        <el-checkbox v-model="disableCompression">{{translate('advanced.compression')}}</el-checkbox>
+                        <el-checkbox v-model="disableKeepalives">{{translate('advanced.keepalive')}}</el-checkbox>
+                        <el-checkbox v-model="insecure">{{translate('advanced.insecure')}}</el-checkbox>
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('advanced.usernamePlaceholder')" v-model="authUsername">
+                                <template slot="prepend">{{translate('advanced.username')}}</template>
+                            </el-input>
+                        </div>
+                        <div class="form-item-full">
+                            <el-input :placeholder="translate('advanced.passwordPlaceholder')" v-model="authPassword" show-password>
+                                <template slot="prepend">{{translate('advanced.password')}}</template>
+                            </el-input>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="text/javascript">
+        // Date formatting utility
+        Date.prototype.format = function (fmt) {
+            const formatOptions = {
+                "M+": this.getMonth() + 1,
+                "d+": this.getDate(),
+                "h+": this.getHours(),
+                "m+": this.getMinutes(),
+                "s+": this.getSeconds(),
+                "q+": Math.floor((this.getMonth() + 3) / 3),
+                "S": this.getMilliseconds()
+            };
+            
+            if (/(y+)/.test(fmt)) {
+                fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
+            }
+            
+            for (let key in formatOptions) {
+                if (new RegExp("(" + key + ")").test(fmt)) {
+                    fmt = fmt.replace(RegExp.$1, 
+                        (RegExp.$1.length === 1) ? 
+                            (formatOptions[key]) : 
+                            (("00" + formatOptions[key]).substr(("" + formatOptions[key]).length)));
+                }
+            }
+            return fmt;
+        };
+
+        // Constants
+        const API_COMMANDS = {
+            START: 0,
+            STOP: 1,
+            GET_METRICS: 2
+        };
+        const DEFAULT_API_PATH = "/api";
+        const CONTENT_TYPE_JSON = { 'Content-Type': 'application/json;charset=utf-8' };
+        const DEFAULT_METRICS_INTERVAL = 2000;
+        const TIME_FORMAT = "hh:mm:ss";
+        // 全局图表色板（与 CSS 品牌色系保持一致：primary 起头，冷色系铺开）
+        const CHART_PALETTE = ['#667eea', '#4facfe', '#43e97b', '#fa709a', '#f5576c', '#e8c43a', '#30cfd0', '#a18cd1'];
+        const ERROR_PALETTE = ['#f5576c', '#fa709a', '#e8c43a', '#4facfe', '#a18cd1', '#30cfd0'];
+        // 图表文字/轴线色（与 CSS 变量同源；canvas 内无法读 CSS var，故在此镜像）
+        const CHART_TEXT = '#4a5568';
+        const CHART_TEXT_MUTED = '#8a94a6';
+        const CHART_AXIS_LINE = '#cbd5e0';
+        const CHART_SPLIT_LINE = '#eef0f6';
+        // 读取 CSS 变量的兜底：优先用 getComputedStyle，失败时回退镜像值
+        const cssVar = (name, fallback) => {
+            const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            return v || fallback;
+        };
+        const chartColors = () => ({
+            text: cssVar('--text-secondary', CHART_TEXT),
+            muted: cssVar('--text-muted', CHART_TEXT_MUTED),
+            axis: cssVar('--axis-line', CHART_AXIS_LINE),
+            split: cssVar('--border-light', CHART_SPLIT_LINE),
+        });
+
+        // Helper functions
+        const formatDuration = ns => {
+            if (!ns) return '0ms';
+            if (ns < 1e6) return (ns / 1e3).toFixed(2) + 'µs';
+            if (ns < 1e9) return (ns / 1e6).toFixed(2) + 'ms';
+            return (ns / 1e9).toFixed(2) + 's';
+        };
+
+        const debounce = (fn, delay) => {
+            let timer = null;
+            return function() {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, arguments), delay);
+            };
+        };
+
+        // Vue application instance
+        new Vue({
+            el: '#app',
+            data: {
+                // Application state
+                currentLanguage: 'zh-CN',
+                metricsInterval: DEFAULT_METRICS_INTERVAL,
+                requestMethod: "GET",
+                requestBody: "",
+                requestBodyType: "string",
+                requestHeaders: "",
+                proxyUrl: "",
+                protocolType: "http1",
+                protocolOptions: [
+                    { value: 'http1', label: 'HTTP(S) / 1.1' },
+                    { value: 'http2', label: 'HTTP(S) / 2' },
+                    { value: 'http3', label: 'HTTP(S) / 3' },
+                    { value: 'ws', label: 'WebSocket(ws://)' },
+                    { value: 'wss', label: 'WebSocket Secure(wss://)' }
+                ],
+                httpMethods: [
+                    { value: 'OPTIONS', label: 'OPTIONS' },
+                    { value: 'GET', label: 'GET' },
+                    { value: 'HEAD', label: 'HEAD' },
+                    { value: 'POST', label: 'POST' },
+                    { value: 'PUT', label: 'PUT' },
+                    { value: 'DELETE', label: 'DELETE' },
+                    { value: 'PATCH', label: 'PATCH' },
+                    { value: 'TRACE', label: 'TRACE' },
+                    { value: 'CONNECT', label: 'CONNECT' }
+                ],
+                totalRequests: 0,
+                concurrentConnections: 1,
+                testDuration: 10000,
+                requestTimeout: 3000,
+                qpsLimit: 0,
+                disableCompression: false,
+                disableKeepalives: false,
+                insecure: true,
+                authUsername: "",
+                authPassword: "",
+                requestUrl: "https://www.http3check.net",
+                workerApiEndpoint: "",
+                isRunning: false,
+                metricsTimer: undefined,
+                hasData: false,
+                stats: { average: '0ms', rps: 0, fastest: '0ms', slowest: '0ms', errTotal: 0 },
+                monitor: {
+                    timeLabels: [],
+                    qpsData: [],
+                    total: 0,
+                    statusCodes: {},
+                    prevStatusCounts: {}
+                }
+            },
+            computed: {
+                // 统计卡片数据（图标 + 标签 + 数值）
+                statItems() {
+                    return [
+                        { key: 'avg', icon: '⏱️', label: this.translate('stats.avg'), value: this.stats.average },
+                        { key: 'rps', icon: '🚀', label: this.translate('stats.rps'), value: this.stats.rps },
+                        { key: 'fast', icon: '⚡', label: this.translate('stats.fastest'), value: this.stats.fastest },
+                        { key: 'slow', icon: '🐢', label: this.translate('stats.slowest'), value: this.stats.slowest },
+                        { key: 'err', icon: '🚫', label: this.translate('stats.errors'), value: this.stats.errTotal }
+                    ];
+                }
+            },
+            methods: {
+                // i18n translation method
+                translate(key) {
+                    const keyParts = key.split('.');
+                    let translation = translations[this.currentLanguage];
+                    
+                    for (const part of keyParts) {
+                        translation = translation[part];
+                        if (!translation) break;
+                    }
+                    
+                    return translation || key;
+                },
+                
+                // Switch language
+                changeLanguage(language) {
+                    this.currentLanguage = language;
+                    localStorage.setItem('preferred-language', language);
+                    
+                    // Update all static text elements
+                    this.updateStaticTexts();
+                    document.documentElement.setAttribute('lang', language);
+                },
+                
+                // Update static text elements
+                updateStaticTexts() {
+                    document.getElementById('document-title').textContent = this.translate('title');
+                    document.querySelector('.page-header h2').textContent = this.translate('title');
+                    document.getElementById('page-subtitle').innerText = this.translate('subtitle');
+                    document.getElementById('chart-title').innerText = this.translate('chart.title');
+                    document.getElementById('control-title').innerText = this.translate('section.testConfig');
+                    document.getElementById('section-request').innerText = this.translate('section.requestConfig');
+                    document.getElementById('section-stress').innerText = this.translate('section.stressParams');
+                    document.getElementById('section-advanced').innerText = this.translate('section.advancedSettings');
+                },
+                
+                // Show message
+                showMessage(messageKey, type = 'success', duration = 2000) {
+                    this.$message({
+                        showClose: true,
+                        message: this.translate(`${messageKey}`) || messageKey,
+                        type: type,
+                        duration: duration,
+                    });
+                },
+                
+                // Start stress test
+                startTest() {
+                    if (this.isRunning) return;
+                    const validationError = this.validateConfig();
+                    if (validationError) {
+                        this.showMessage(validationError, 'warning', 4000);
+                        return;
+                    }
+                    this.sequenceId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+                    const requestData = this.buildRequestData(API_COMMANDS.START);
+                    const apiEndpoint = this.getWorkerApiEndpoint();
+                    this.showMessage('start');
+                    this.isRunning = true;
+                    this.setupMetricsMonitoring(requestData, apiEndpoint);
+                    fetch(apiEndpoint, {
+                        method: 'POST',
+                        headers: CONTENT_TYPE_JSON,
+                        body: JSON.stringify(requestData)
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.err_code !== 0) throw new Error(data.err_msg || 'Start request failed');
+                    })
+                    .catch(error => {
+                        this.isRunning = false;
+                        clearInterval(this.metricsTimer);
+                        this.metricsTimer = undefined;
+                        this.showMessage(error.message, 'error', 5000);
+                    });
+                },
+                
+                validateConfig() {
+                    if (!this.requestUrl.trim()) return this.translate('validation.urlRequired');
+                    try {
+                        const url = new URL(this.requestUrl);
+                        if (!['http:', 'https:', 'ws:', 'wss:'].includes(url.protocol)) {
+                            return this.translate('validation.urlInvalid');
+                        }
+                    } catch (_) {
+                        return this.translate('validation.urlInvalid');
+                    }
+                    const concurrency = parseInt(this.concurrentConnections);
+                    const total = parseInt(this.totalRequests) || 0;
+                    const duration = parseInt(this.testDuration) || 0;
+                    if (concurrency < 1 || concurrency > 10000) return this.translate('validation.concurrentInvalid');
+                    if (total > 0 && total < concurrency) return 'Total requests must be at least concurrency';
+                    if (total <= 0 && duration <= 0) return this.translate('validation.durationInvalid');
+                    if (this.proxyUrl.trim()) {
+                        try { new URL(this.proxyUrl); } catch (_) { return 'Invalid proxy URL'; }
+                    }
+                    return '';
+                },
+
+                // Build request data
+                buildRequestData(command) {
+                    return {
+                        cmd: command,
+                        sequence_id: this.sequenceId,
+                        request_method: this.requestMethod,
+                        request_body: this.requestBody,
+                        request_bodytype: this.requestBodyType,
+                        request_type: this.protocolType,
+                        n: parseInt(this.totalRequests) || 0,
+                        c: parseInt(this.concurrentConnections) || 1,
+                        duration: parseInt(this.testDuration) * 1000000 || 1000 * 1000000,
+                        timeout: parseInt(this.requestTimeout) * 1000000 || 3000 * 1000000,
+                        qps: parseInt(this.qpsLimit) || 0,
+                        disable_compression: this.disableCompression,
+                        disable_keepalives: this.disableKeepalives,
+                        insecure: this.insecure,
+                        headers: this.parseHeaders(this.requestHeaders),
+                        proxy_url: this.proxyUrl,
+                        url: this.requestUrl,
+                        from: 'browser',
+                    };
+                },
+                
+                parseHeaders(raw) {
+                    const headers = {};
+                    raw.split(/\r?\n/).forEach(line => {
+                        const index = line.indexOf(':');
+                        if (index <= 0) return;
+                        const key = line.slice(0, index).trim();
+                        const value = line.slice(index + 1).trim();
+                        if (key && value) {
+                            if (!headers[key]) headers[key] = [];
+                            headers[key].push(value);
+                        }
+                    });
+                    if (this.authUsername || this.authPassword) {
+                        const credentials = btoa(`${this.authUsername}:${this.authPassword}`);
+                        headers.Authorization = [`Basic ${credentials}`];
+                    }
+                    return headers;
+                },
+
+                // Get Worker API address
+                getWorkerApiEndpoint() {
+                    return this.workerApiEndpoint.length > 0 ? this.workerApiEndpoint : DEFAULT_API_PATH;
+                },
+                
+                initCharts() {
+                    const init = (id) => {
+                        const el = document.getElementById(id);
+                        if (!el) return null;
+                        try {
+                            return echarts.init(el, null, { renderer: 'canvas', useDirtyRect: false });
+                        } catch (e) {
+                            console.error('Failed to init chart:', id, e);
+                            return null;
+                        }
+                    };
+                    this.charts = {
+                        perf: init('chart-container'),
+                        lat: init('latency-chart'),
+                        err: init('error-chart')
+                    };
+                    this.renderPerfChart([], []);
+                },
+
+                renderPerfChart(times, qps, status = {}) {
+                    if (!this.charts.perf) return;
+                    const series = [{
+                        name: "qps", data: qps, type: 'line', smooth: true,
+                        symbol: 'circle', symbolSize: 6, lineStyle: { width: 3 },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(102, 126, 234, 0.35)' },
+                                { offset: 1, color: 'rgba(102, 126, 234, 0.02)' }
+                            ])
+                        }
+                    }];
+                    const legend = ['qps'];
+                    Object.keys(status).forEach(code => {
+                        series.push({
+                            name: code, data: status[code], type: 'line', smooth: true,
+                            symbol: 'circle', symbolSize: 5, lineStyle: { width: 2 }
+                        });
+                        legend.push(code);
+                    });
+                    const colors = chartColors();
+                    this.charts.perf.setOption({
+                        color: CHART_PALETTE,
+                        legend: { data: legend, top: 0, textStyle: { color: colors.text } },
+                        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+                        grid: { left: '2%', right: '2%', bottom: '2%', top: 42, containLabel: true },
+                        xAxis: {
+                            type: 'category', data: times, boundaryGap: false,
+                            axisLine: { lineStyle: { color: colors.axis } },
+                            axisLabel: { color: colors.muted }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            splitLine: { lineStyle: { color: colors.split } },
+                            axisLabel: { color: colors.muted }
+                        },
+                        series
+                    });
+                },
+
+                renderLatChart(lats) {
+                    if (!this.charts.lat || !lats) return;
+                    const entries = Object.entries(lats).map(([k, v]) => ({ val: parseInt(k)/1e6, count: v }));
+                    if (!entries.length) return;
+
+                    const min = Math.min(...entries.map(e => e.val));
+                    const max = Math.max(...entries.map(e => e.val));
+                    const buckets = 20;
+                    const step = (max - min) / buckets || 1;
+                    
+                    const data = new Array(buckets).fill(0);
+                    const cats = new Array(buckets).fill(0).map((_, i) => `${(min + i*step).toFixed(1)}-${(min + (i+1)*step).toFixed(1)}ms`);
+                    
+                    entries.forEach(e => {
+                        let idx = Math.floor((e.val - min) / step);
+                        if (idx >= buckets) idx = buckets - 1;
+                        data[idx] += e.count;
+                    });
+
+                    const colors = chartColors();
+                    this.charts.lat.setOption({
+                        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                        grid: { left: '3%', right: '4%', bottom: '3%', top: 30, containLabel: true },
+                        xAxis: {
+                            type: 'category', data: cats,
+                            axisLabel: { interval: 'auto', rotate: 30, color: colors.muted },
+                            axisLine: { lineStyle: { color: colors.axis } }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            splitLine: { lineStyle: { color: colors.split } },
+                            axisLabel: { color: colors.muted }
+                        },
+                        series: [{
+                            name: 'Count', type: 'bar', data, barMaxWidth: 30,
+                            itemStyle: {
+                                borderRadius: [6, 6, 0, 0],
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: '#667eea' },
+                                    { offset: 1, color: '#764ba2' }
+                                ])
+                            }
+                        }]
+                    });
+                },
+
+                renderErrChart(dist) {
+                    if (!this.charts.err || !dist) return;
+                    const data = Object.entries(dist).map(([name, value]) => ({ value, name }));
+                    this.charts.err.setOption({
+                        color: ERROR_PALETTE,
+                        tooltip: { trigger: 'item' },
+                        legend: { top: '5%', left: 'center', textStyle: { color: chartColors().text } },
+                        series: [{
+                            name: 'Errors', type: 'pie', radius: ['45%', '72%'], center: ['50%', '58%'],
+                            avoidLabelOverlap: true,
+                            itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                            label: { show: false, position: 'center' },
+                            emphasis: {
+                                label: { show: true, fontSize: '14', fontWeight: 'bold' },
+                                itemStyle: { shadowBlur: 16, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.25)' }
+                            },
+                            data
+                        }]
+                    });
+                },
+
+                setupMetricsMonitoring(requestData, apiEndpoint) {
+                    clearInterval(this.metricsTimer);
+                    this.monitor = { timeLabels: [], qpsData: [], total: 0, statusCodes: {}, prevStatusCounts: {} };
+                    const interval = parseInt(this.metricsInterval) || DEFAULT_METRICS_INTERVAL;
+                    let errTimes = 0;
+
+                    this.isRunning = true;
+                    this.metricsTimer = setInterval(() => {
+                        fetch(apiEndpoint, {
+                            method: 'POST',
+                            headers: CONTENT_TYPE_JSON,
+                            body: JSON.stringify({ ...requestData, cmd: API_COMMANDS.GET_METRICS })
+                        })
+                        .then(r => {
+                            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                            return r.json();
+                        })
+                        .then(data => {
+                            if (data.err_code !== 0) {
+                                if (++errTimes > 2) {
+                                    this.stopTest();
+                                    this.showMessage(data.err_msg, 'error', 5000);
+                                }
+                                return;
+                            }
+                            errTimes = 0;
+                            this.processMetricsData(data, interval);
+                        })
+                        .catch(e => console.error("Metrics fetch failed:", e));
+                    }, interval);
+                },
+
+                processMetricsData(data, interval) {
+                    if (!data) return;
+                    if (!this.hasData) {
+                        this.hasData = true;
+                        this.$nextTick(() => {
+                            Object.values(this.charts).forEach(c => c && c.resize());
+                        });
+                    }
+
+                    this.stats = {
+                        average: formatDuration(data.average),
+                        rps: data.rps || 0,
+                        fastest: formatDuration(data.fastest),
+                        slowest: formatDuration(data.slowest),
+                        errTotal: data.failed_requests || 0
+                    };
+                    this.renderLatChart(data.latency_histogram);
+                    this.renderErrChart(data.error_counts);
+
+                    if (data.total_requests && (data.total_requests - this.monitor.total) >= 0) {
+                        this.monitor.timeLabels.push(new Date().format(TIME_FORMAT));
+                        const currentQps = (data.total_requests - this.monitor.total) * 1000 / interval;
+                        this.monitor.qpsData.push(currentQps);
+                        this.monitor.total = data.total_requests;
+
+                        const statusCounts = data.status_code_counts || {};
+                        // 本次未出现的状态码补 0，保证各 series 与 X 轴对齐
+                        for (let code in this.monitor.statusCodes) {
+                            if (!(code in statusCounts)) this.monitor.statusCodes[code].push(0);
+                        }
+                        for (let code in statusCounts) {
+                            // 中途新出现的状态码补前导 0，避免曲线错位
+                            if (!this.monitor.statusCodes[code]) {
+                                this.monitor.statusCodes[code] = new Array(this.monitor.timeLabels.length - 1).fill(0);
+                            }
+                            const count = statusCounts[code];
+                            const prev = this.monitor.prevStatusCounts[code] || 0;
+                            this.monitor.statusCodes[code].push((count - prev) * 1000 / interval);
+                            this.monitor.prevStatusCounts[code] = count;
+                        }
+                        this.renderPerfChart(this.monitor.timeLabels, this.monitor.qpsData, this.monitor.statusCodes);
+                    }
+
+                    // 先渲染最后一帧数据再停止，避免短测试曲线完全丢失
+                    if (data.is_last) {
+                        this.stopTest();
+                    }
+                },
+                
+                stopTest() {
+                    const wasRunning = this.isRunning;
+                    this.isRunning = false;
+                    clearInterval(this.metricsTimer);
+                    this.metricsTimer = undefined;
+                    if (!wasRunning) return;
+                    this.showMessage('stop');
+                    
+                    fetch(this.getWorkerApiEndpoint(), {
+                        method: 'POST',
+                        headers: CONTENT_TYPE_JSON,
+                        body: JSON.stringify(this.buildRequestData(API_COMMANDS.STOP))
+                    }).catch(e => console.error(e));
+                }
+            },
+            created() {
+                // echarts 实例保持非响应式，避免 Vue 深度 observe 图表内部对象
+                this.charts = {};
+                // Load saved language preference
+                const savedLanguage = localStorage.getItem('preferred-language');
+                if (savedLanguage && translations[savedLanguage]) {
+                    this.currentLanguage = savedLanguage;
+                }
+            },
+            mounted() {
+                this.$nextTick(() => {
+                    this.initCharts();
+                    this.updateStaticTexts();
+                    window.addEventListener('resize', debounce(() => {
+                        Object.values(this.charts).forEach(c => c && c.resize());
+                    }, 250));
+                });
+                document.documentElement.setAttribute('lang', this.currentLanguage);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -6,41 +6,13 @@
 # Exit:   0 = all pass, 1 = at least one failure
 
 set -u
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
 
-# ── Setup ──────────────────────────────────────────────────────────────────
+resolve_bench "${1:-./http_bench}" || exit 1
 
-BENCH="${1:-./http_bench}"
-if [ ! -x "$BENCH" ]; then
-	echo "ERROR: http_bench binary not found at: $BENCH"
-	exit 1
-fi
-
-PASS=0
-FAIL=0
-FAILED_TESTS=()
-
-# Colors
-if [ -t 1 ]; then
-	GREEN='\033[0;32m'
-	RED='\033[0;31m'
-	YELLOW='\033[1;33m'
-	CYAN='\033[0;36m'
-	DIM='\033[2m'
-	NC='\033[0m'
-else
-	GREEN=''; RED=''; YELLOW=''; CYAN=''; DIM=''; NC=''
-fi
-
-log_pass() {
-	((PASS++))
-	echo -e "  ${GREEN}[PASS]${NC} $1"
-}
-log_fail() {
-	((FAIL++))
-	FAILED_TESTS+=("$1")
-	echo -e "  ${RED}[FAIL]${NC} $1"
-	echo -e "       ${YELLOW}detail:${NC} $2"
-}
+header "CLI flag matrix"
 
 # Verify a substring exists in output
 assert_contains() {
@@ -418,21 +390,5 @@ OUT="$BENCH_OUT"
 assert_contains "-h (help output)" "Usage of" "$OUT"
 assert_no_panic "-h (no panic)" "$OUT"
 
-# ════════════════════════════════════════════════════════════════════════════
-# Summary
-# ════════════════════════════════════════════════════════════════════════════
-echo ""
-echo "=== Summary ==="
-echo -e "  ${GREEN}Passed:${NC} $PASS"
-echo -e "  ${RED}Failed:${NC} $FAIL"
-if [ "$FAIL" -gt 0 ]; then
-	echo ""
-	echo "  Failed tests:"
-	for t in "${FAILED_TESTS[@]}"; do
-		echo -e "    ${RED}- $t${NC}"
-	done
-	exit 1
-fi
-echo ""
-echo -e "  ${GREEN}All flag tests passed!${NC}"
+print_summary "CLI flag matrix" || exit 1
 exit 0
