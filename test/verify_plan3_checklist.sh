@@ -62,10 +62,13 @@ for f in internal/*.go; do
 done
 [ "$hdr_bad" -eq 0 ] && ok "non-test internal sources have ASCII headers"
 
-if [ -f internal/index.html ] && grep -q '//go:embed index.html' internal/config.go; then
-	ok "index.html embedded from internal/"
+if [ -f index.html ] && grep -q '//go:embed index.html' http_bench.go && grep -q 'SetDashboardHTML' http_bench.go; then
+	ok "index.html at repo root, embedded from package main"
 else
-	bad "embed index.html" "internal/index.html or //go:embed missing"
+	bad "embed index.html" "root index.html or main //go:embed/SetDashboardHTML missing"
+fi
+if [ -f internal/index.html ]; then
+	bad "index.html location" "internal/index.html should not exist (moved to repo root)"
 fi
 
 if grep -q 'func ToByteSizeStr' internal/report.go && \

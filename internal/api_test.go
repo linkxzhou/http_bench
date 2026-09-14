@@ -1,10 +1,25 @@
 package bench
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestMain(m *testing.M) {
+	// package main embeds ../index.html; internal tests inject it here.
+	_, file, _, _ := runtime.Caller(0)
+	root := filepath.Clean(filepath.Join(filepath.Dir(file), ".."))
+	html, err := os.ReadFile(filepath.Join(root, "index.html"))
+	if err != nil {
+		panic(err)
+	}
+	SetDashboardHTML(string(html))
+	os.Exit(m.Run())
+}
 
 func TestAPI_DashboardHTMLAndDocs(t *testing.T) {
 	html := DashboardHTML()

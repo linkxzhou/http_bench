@@ -4,13 +4,14 @@
  *   internal 包内部实现大多为小写（Go 惯例），根目录 http_bench.go
  *   通过本文件的薄包装访问：
  *
- *     Usage / Examples / DashboardHTML        ← config.go 的 usage/examples/dashboardHTML
+ *     Usage / Examples / DashboardHTML
+ *     SetDashboardHTML(html)                   ← main //go:embed index.html 注入
  *     GenSequenceId()                          ← util.go 的 genSequenceId
  *     NormalizeWorkerAddrs(addrs, path)        ← util.go 的 normalizeWorkerAddrs
  *     ValidateParams / ValidateOutputFormat / ValidateProxyURL   ← validate.go
  *     CompileHeaders(headers, auth)            ← validate.go 的 compileHeaders
  *
- * 依赖：config.go, util.go, validate.go
+ * 依赖：config.go (usage/examples), util.go, validate.go
  * 被依赖：http_bench.go (package main)
  */
 
@@ -22,7 +23,14 @@ const Usage = usage
 // Examples is the detailed usage examples text printed by -example.
 const Examples = examples
 
-// DashboardHTML returns the embedded dashboard HTML page.
+// dashboardHTML holds the dashboard page. Package main embeds root
+// index.html and calls SetDashboardHTML at init.
+var dashboardHTML string
+
+// SetDashboardHTML injects the dashboard HTML (from main's //go:embed).
+func SetDashboardHTML(html string) { dashboardHTML = html }
+
+// DashboardHTML returns the dashboard HTML page.
 func DashboardHTML() string { return dashboardHTML }
 
 // GenSequenceId returns a process-unique run ID (see util.go).

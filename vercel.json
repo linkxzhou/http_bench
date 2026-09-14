@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "echo 'no npm deps'",
-  "buildCommand": "mkdir -p public && sed 's|/api|https://httpbench.su007.club/api|g' internal/index.html > public/index.html && ls -al public && head -c 200 public/index.html",
+  "buildCommand": "mkdir -p public && sed 's|/api|https://httpbench.su007.club/api|g' ./index.html > public/index.html && ls -al public && wc -c public/index.html",
   "outputDirectory": "public"
 }

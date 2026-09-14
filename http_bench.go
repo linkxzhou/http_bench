@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -39,6 +40,13 @@ import (
 
 	bench "github.com/linkxzhou/http_bench/internal"
 )
+
+//go:embed index.html
+var embeddedDashboardHTML string
+
+func init() {
+	bench.SetDashboardHTML(embeddedDashboardHTML)
+}
 
 // distConfig carries the distributed-mode settings that were formerly
 // package-level mutable globals. main() builds it from parsed CLI options and

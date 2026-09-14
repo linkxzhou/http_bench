@@ -1,26 +1,22 @@
 /*
- * config.go — 全局常量与嵌入资源
- *
- *   //go:embed index.html
- *   var dashboardHTML — 前端单页（编译期嵌入）
+ * config.go — 全局常量与 CLI 文案
  *
  *   const defaultWorkerTimeout 10s — N/D 均缺省时的兜底时长
  *   const defaultTimeout 3s / defaultDuration 10s / defaultVerboseLevel 3
  *   const usage / examples — CLI 帮助文本（-h / -example 输出）
  *
- * 依赖：无（embed 指令要求 index.html 与本文件同目录）
- * 被依赖：cli.go (默认值), http_bench.go (usage/examples/dashboardHTML)
+ *   仪表盘 HTML：根目录 index.html，由 package main //go:embed 后
+ *   经 SetDashboardHTML 注入（go:embed 不能引用上级目录）。
+ *
+ * 依赖：无
+ * 被依赖：cli.go (默认值), http_bench.go (usage/examples)
  */
 
 package bench
 
 import (
-	_ "embed"
 	"time"
 )
-
-//go:embed index.html
-var dashboardHTML string
 
 // Worker and performance constants
 const (
