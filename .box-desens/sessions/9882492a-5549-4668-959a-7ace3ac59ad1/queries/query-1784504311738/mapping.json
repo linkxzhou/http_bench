@@ -1,6 +1,0 @@
-{
-  "version": 1,
-  "source_file": "不需要兼容 JSON tag 全部保留旧 snake_case，dashboard/worker API 跨版本兼容，检查/Volumes/my/github/http_bench/plan.md 是否都完成",
-  "locale": "zh",
-  "entries": []
-}

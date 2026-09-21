@@ -1,6 +1,0 @@
-{
-  "version": 1,
-  "source_file": "执行：删除所有根目录适配层并完成完整目录迁移。\n实现 RunManager 和公开 BenchmarkScenario。\n分布式 controller 返回逐节点成功/失败明细。\n长时间协议集成压测和重构前后性能对比。",
-  "locale": "zh",
-  "entries": []
-}
