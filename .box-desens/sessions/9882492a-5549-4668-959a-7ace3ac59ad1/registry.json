@@ -1,0 +1,3052 @@
+{
+  "version": 1,
+  "sessionId": "9882492a-5549-4668-959a-7ace3ac59ad1",
+  "locale": "zh",
+  "counters": {
+    "目录": 2,
+    "产物": 19,
+    "Password": 2
+  },
+  "entities": [
+    {
+      "entity_id": "entity:1",
+      "category": "密码",
+      "canonical_token": "[Password00002]",
+      "display_name": "this.authPassword,",
+      "aliases": [
+        {
+          "original": "this.authPassword,",
+          "token": "[Password00002]",
+          "kind": "full",
+          "sourceRef": "/Volumes/my/github/http_bench/index.html"
+        }
+      ],
+      "provenance": "document",
+      "sourceRef": "/Volumes/my/github/http_bench/index.html"
+    }
+  ],
+  "sources": [
+    {
+      "kind": "query",
+      "path": "query-1784428337550",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T02:32:19.352Z",
+      "entryCount": 0,
+      "messageId": "query-1784428337550",
+      "originalQuery": "现在要对 /Volumes/my/github/http_bench 版本进行重构，将代码实现的更加优美，包括变量，函数名等设计，先读 README.md + go 代码，然后给出详细的优化 plan.md ，先不写代码",
+      "desensitizedQuery": "现在要对 /Volumes/my/github/http_bench 版本进行重构，将代码实现的更加优美，包括变量，函数名等设计，先读 README.md + go 代码，然后给出详细的优化 plan.md ，先不写代码"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784429007376",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T02:43:30.476Z",
+      "entryCount": 0,
+      "messageId": "query-1784429007376",
+      "originalQuery": "基于 plan.md 开始重构当前代码",
+      "desensitizedQuery": "基于 plan.md 开始重构当前代码"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784431121875",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T03:18:44.271Z",
+      "entryCount": 0,
+      "messageId": "query-1784431121875",
+      "originalQuery": "继续修复",
+      "desensitizedQuery": "继续修复"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784431462950",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T03:24:23.533Z",
+      "entryCount": 0,
+      "messageId": "query-1784431462950",
+      "originalQuery": "继续推进修改，如果完成了，将已经完成的打勾，更新 plan.md 中",
+      "desensitizedQuery": "继续推进修改，如果完成了，将已经完成的打勾，更新 plan.md 中"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784434508758",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T04:15:11.117Z",
+      "entryCount": 0,
+      "messageId": "query-1784434508758",
+      "originalQuery": "继续推进",
+      "desensitizedQuery": "继续推进"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784435850101",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T04:37:31.870Z",
+      "entryCount": 0,
+      "messageId": "query-1784435850101",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784441829029",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T06:17:11.252Z",
+      "entryCount": 0,
+      "messageId": "query-1784441829029",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784445700662",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T07:21:42.211Z",
+      "entryCount": 0,
+      "messageId": "query-1784445700662",
+      "originalQuery": "继续重构",
+      "desensitizedQuery": "继续重构"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784447251879",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T07:47:34.178Z",
+      "entryCount": 0,
+      "messageId": "query-1784447251879",
+      "originalQuery": "第一阶段完成了么？如果完成了，进行第二阶段拆目录",
+      "desensitizedQuery": "第一阶段完成了么？如果完成了，进行第二阶段拆目录"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784449168683",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T08:19:29.224Z",
+      "entryCount": 0,
+      "messageId": "query-1784449168683",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784450249272",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T08:37:31.484Z",
+      "entryCount": 0,
+      "messageId": "query-1784450249272",
+      "originalQuery": "检查plan 是否完全迁移完成，然后清理不需要的文件",
+      "desensitizedQuery": "检查plan 是否完全迁移完成，然后清理不需要的文件"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784450479852",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T08:41:20.262Z",
+      "entryCount": 0,
+      "messageId": "query-1784450479852",
+      "originalQuery": "继续 阶段 B 余项",
+      "desensitizedQuery": "继续 阶段 B 余项"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784452223346",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T09:10:25.863Z",
+      "entryCount": 0,
+      "messageId": "query-1784452223346",
+      "originalQuery": "继续 ：阶段 D：传输层与连接生命周期重构",
+      "desensitizedQuery": "继续 ：阶段 D：传输层与连接生命周期重构"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784454629247",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T09:50:30.678Z",
+      "entryCount": 0,
+      "messageId": "query-1784454629247",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784456569973",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T10:22:51.606Z",
+      "entryCount": 0,
+      "messageId": "query-1784456569973",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784457311885",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T10:35:14.378Z",
+      "entryCount": 0,
+      "messageId": "query-1784457311885",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784458010764",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T10:46:51.616Z",
+      "entryCount": 0,
+      "messageId": "query-1784458010764",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784473006804",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T14:56:47.704Z",
+      "entryCount": 0,
+      "messageId": "query-1784473006804",
+      "originalQuery": "继续处理",
+      "desensitizedQuery": "继续处理"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784473250795",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T15:00:51.644Z",
+      "entryCount": 0,
+      "messageId": "query-1784473250795",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784473885516",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T15:11:31.856Z",
+      "entryCount": 0,
+      "messageId": "query-1784473885516",
+      "originalQuery": "继续完成 阶段 F，不需要再确认",
+      "desensitizedQuery": "继续完成 阶段 F，不需要再确认"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784504311738",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T23:38:34.088Z",
+      "entryCount": 0,
+      "messageId": "query-1784504311738",
+      "originalQuery": "不需要兼容 JSON tag 全部保留旧 snake_case，dashboard/worker API 跨版本兼容，检查/Volumes/my/github/http_bench/plan.md 是否都完成",
+      "desensitizedQuery": "不需要兼容 JSON tag 全部保留旧 snake_case，dashboard/worker API 跨版本兼容，检查[文件sfusbacj] 是否都完成"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784505353121",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T23:55:55.709Z",
+      "entryCount": 0,
+      "messageId": "query-1784505353121",
+      "originalQuery": "继续完成这些功能",
+      "desensitizedQuery": "继续完成这些功能"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784505540490",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-19T23:59:01.290Z",
+      "entryCount": 0,
+      "messageId": "query-1784505540490",
+      "originalQuery": "解决阶段 H 收尾",
+      "desensitizedQuery": "解决阶段 H 收尾"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784510524986",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T01:22:08.636Z",
+      "entryCount": 0,
+      "messageId": "query-1784510524986",
+      "originalQuery": "执行：删除所有根目录适配层并完成完整目录迁移。\n实现 RunManager 和公开 BenchmarkScenario。\n分布式 controller 返回逐节点成功/失败明细。\n长时间协议集成压测和重构前后性能对比。",
+      "desensitizedQuery": "执行：删除所有根目录适配层并完成完整目录迁移。\n实现 RunManager 和公开 BenchmarkScenario。\n分布式 controller 返回逐节点成功/失败明细。\n长时间协议集成压测和重构前后性能对比。"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784513471345",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T02:11:11.815Z",
+      "entryCount": 0,
+      "messageId": "query-1784513471345",
+      "originalQuery": "按照 plan 进行进行迁移",
+      "desensitizedQuery": "按照 plan 进行进行迁移"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784514135787",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T02:22:18.094Z",
+      "entryCount": 0,
+      "messageId": "query-1784514135787",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784514787758",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T02:33:09.391Z",
+      "entryCount": 0,
+      "messageId": "query-1784514787758",
+      "originalQuery": "继续，一次性处理完这些",
+      "desensitizedQuery": "继续，一次性处理完这些"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784515620294",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T02:47:02.138Z",
+      "entryCount": 0,
+      "messageId": "query-1784515620294",
+      "originalQuery": "继续处理",
+      "desensitizedQuery": "继续处理"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784517468524",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T03:17:51.734Z",
+      "entryCount": 0,
+      "messageId": "query-1784517468524",
+      "originalQuery": "继续处理",
+      "desensitizedQuery": "继续处理"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784523790586",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T05:03:12.507Z",
+      "entryCount": 0,
+      "messageId": "query-1784523790586",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784524909564",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T05:21:51.476Z",
+      "entryCount": 0,
+      "messageId": "query-1784524909564",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784527922620",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T06:12:06.021Z",
+      "entryCount": 0,
+      "messageId": "query-1784527922620",
+      "originalQuery": "继续清理和迁移",
+      "desensitizedQuery": "继续清理和迁移"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784530385152",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T06:53:07.709Z",
+      "entryCount": 0,
+      "messageId": "query-1784530385152",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784532887407",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T07:34:48.144Z",
+      "entryCount": 0,
+      "messageId": "query-1784532887407",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784534607431",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-20T08:03:30.020Z",
+      "entryCount": 0,
+      "messageId": "query-1784534607431",
+      "originalQuery": "是否还有其他的优化点",
+      "desensitizedQuery": "是否还有其他的优化点"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784618419618",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-21T07:20:20.769Z",
+      "entryCount": 0,
+      "messageId": "query-1784618419618",
+      "originalQuery": "继续优化代码",
+      "desensitizedQuery": "继续优化代码"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784619766163",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-21T07:42:48.146Z",
+      "entryCount": 0,
+      "messageId": "query-1784619766163",
+      "originalQuery": "看看还有哪些代码可以清理的或者可以合并的，小于 50 行的代码应该合并",
+      "desensitizedQuery": "看看还有哪些代码可以清理的或者可以合并的，小于 50 行的代码应该合并"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784620811503",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-21T08:00:12.466Z",
+      "entryCount": 0,
+      "messageId": "query-1784620811503",
+      "originalQuery": "其他是否还有合并的代码",
+      "desensitizedQuery": "其他是否还有合并的代码"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784621141472",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-21T08:05:41.490Z",
+      "entryCount": 0,
+      "messageId": "query-1784621141472",
+      "originalQuery": "优化 /Volumes/my/github/http_bench/index.html 页面",
+      "desensitizedQuery": "优化 [文件pnvdjzsc] 页面"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784623086904",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-21T08:38:09.488Z",
+      "entryCount": 0,
+      "messageId": "query-1784623086904",
+      "originalQuery": "功能和 http_bench 对齐",
+      "desensitizedQuery": "功能和 http_bench 对齐"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784623103799",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-21T08:38:26.082Z",
+      "entryCount": 0,
+      "messageId": "query-1784623103799",
+      "originalQuery": "index.html 的功能和 http_bench 对齐",
+      "desensitizedQuery": "[文件pnvdjzsc] 的功能和 http_bench 对齐"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784635985014",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-21T12:13:06.525Z",
+      "entryCount": 0,
+      "messageId": "query-1784635985014",
+      "originalQuery": "/Volumes/my/github/http_bench/long_benchmark.sh 这个移动到 /Volumes/my/github/http_bench/test 中",
+      "desensitizedQuery": "[文件wvlparus] 这个移动到 /Volumes/my/github/http_bench/test 中"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784700399032",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-22T06:06:40.988Z",
+      "entryCount": 0,
+      "messageId": "query-1784700399032",
+      "originalQuery": "重新优化，将一些小于<100 行的的文件合并为大的模块，变量名，文件名等检查是否合理，先写 plan2.0.md",
+      "desensitizedQuery": "重新优化，将一些小于<100 行的的文件合并为大的模块，变量名，文件名等检查是否合理，先写 plan2.0.md"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784720606445",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-22T11:43:27.936Z",
+      "entryCount": 0,
+      "messageId": "query-1784720606445",
+      "originalQuery": "按照 plan2.0.md 执行",
+      "desensitizedQuery": "按照 plan2.0.md 执行"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784775263211",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-23T02:54:24.879Z",
+      "entryCount": 0,
+      "messageId": "query-1784775263211",
+      "originalQuery": "继续按照 plan2.0.md 优化，更新已经优化的点",
+      "desensitizedQuery": "继续按照 plan2.0.md 优化，更新已经优化的点"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784779373665",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-23T04:02:56.050Z",
+      "entryCount": 0,
+      "messageId": "query-1784779373665",
+      "originalQuery": "继续重构",
+      "desensitizedQuery": "继续重构"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784784399696",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-23T05:26:41.189Z",
+      "entryCount": 0,
+      "messageId": "query-1784784399696",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "query",
+      "path": "query-1784786730583",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-23T06:05:32.276Z",
+      "entryCount": 0,
+      "messageId": "query-1784786730583",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续"
+    },
+    {
+      "kind": "document",
+      "path": "/Volumes/my/github/http_bench/plan.md",
+      "mappingPath": "/Volumes/my/github/http_bench/.box-desens/sfusbacj/by-scheme/7fd9e7c2e7ec3dae/mapping.json",
+      "entryCount": 0
+    },
+    {
+      "kind": "document",
+      "path": "/Volumes/my/github/http_bench/index.html",
+      "mappingPath": "/Volumes/my/github/http_bench/.box-desens/pnvdjzsc/by-scheme/7fd9e7c2e7ec3dae/mapping.json",
+      "entryCount": 1
+    },
+    {
+      "kind": "query",
+      "path": "query-1784794069066",
+      "mappingPath": "",
+      "confirmedAt": "2026-07-23T08:07:51.440Z",
+      "entryCount": 0,
+      "messageId": "query-1784794069066",
+      "originalQuery": "这里执行 10 秒，似乎没有执行 10s，./http_bench -n 1000 -c 10 -d 10s  http://www.baidu.com/api/test\n[http1][GET] running 10 connections for 10 secs @ http://www.baidu.com/api/test\nSummary:\n  Total:\t1.6820 secs\n  Slowest:\t0.1480 secs\n  Fastest:\t0.0110 secs\n  Average:\t0.0170 secs\n  Requests/sec:\t594.00\n  Total data:\t201.17 KB\n  Size/request:\t206 bytes\n  Stop reason:\tcount\n\nStatus code distribution:\n  [404]\t1000 responses\n\nLatency distribution:\n  10% in 0.0130 secs\n  25% in 0.0140 secs\n  50% in 0.0150 secs\n  75% in 0.0160 secs\n  90% in 0.0190 secs\n  95% in 0.0240 secs\n  99% in 0.0930 secs",
+      "desensitizedQuery": "[目录00001]执行 10 秒，似乎没有执行 10s，./http_bench -n 1000 -c 10 -d 10s  http://www.baidu.com/api/test\n[http1][GET] running 10 connections for 10 secs @ http://www.baidu.com/api/test\nSummary:\n  Total:\t1.6820 secs\n  Slowest:\t0.1480 secs\n  Fastest:\t0.0110 secs\n  Average:\t0.0170 secs\n  Requests/sec:\t594.00\n  Total data:\t201.17 KB\n  Size/request:\t206 bytes\n  Stop reason:\tcount\n\nStatus code distribution:\n  [404]\t1000 responses\n\nLatency distribution:\n  10% in 0.0130 secs\n  25% in 0.0140 secs\n  50% in 0.0150 secs\n  75% in 0.0160 secs\n  90% in 0.0190 secs\n  95% in 0.0240 secs\n  99% in 0.0930 secs"
+    }
+  ],
+  "updatedAt": "2026-07-23T08:37:33.047Z",
+  "artifact_refs": [
+    {
+      "token": "[脱敏文档hjmuhqrk]",
+      "doc_id": "hjmuhqrk",
+      "source_path": "/Volumes/my/github/http_bench/Query",
+      "artifact_dir": "/Volumes/my/github/http_bench/.box-desens/hjmuhqrk/by-scheme/7fd9e7c2e7ec3dae",
+      "display_name": "Query",
+      "legacy": false
+    },
+    {
+      "token": "[脱敏文档nhgzsclp]",
+      "doc_id": "nhgzsclp",
+      "source_path": "/Volumes/my/github/http_bench/.box-desens/pnvdjzsc/by-scheme/7fd9e7c2e7ec3dae/reviewed.txt",
+      "artifact_dir": "/Volumes/my/github/http_bench/.box-desens/pnvdjzsc/by-scheme/7fd9e7c2e7ec3dae/.box-desens/nhgzsclp/by-scheme/7fd9e7c2e7ec3dae",
+      "display_name": "reviewed.txt",
+      "legacy": false
+    },
+    {
+      "token": "[脱敏文档wvlparus]",
+      "doc_id": "wvlparus",
+      "source_path": "/Volumes/my/github/http_bench/long_benchmark.sh",
+      "artifact_dir": "/Volumes/my/github/http_bench/.box-desens/wvlparus/by-scheme/7fd9e7c2e7ec3dae",
+      "display_name": "long_benchmark.sh",
+      "legacy": false
+    },
+    {
+      "token": "[脱敏文档vdckfjlv]",
+      "doc_id": "vdckfjlv",
+      "source_path": "/Volumes/my/github/http_bench/test/echotcp_test.go",
+      "artifact_dir": "/Volumes/my/github/http_bench/test/.box-desens/vdckfjlv/by-scheme/7fd9e7c2e7ec3dae",
+      "display_name": "echotcp_test.go",
+      "legacy": false
+    },
+    {
+      "token": "[脱敏文档ashslarv]",
+      "doc_id": "ashslarv",
+      "source_path": "/Volumes/my/github/http_bench/test/server.crt",
+      "artifact_dir": "/Volumes/my/github/http_bench/test/.box-desens/ashslarv/by-scheme/7fd9e7c2e7ec3dae",
+      "display_name": "server.crt",
+      "legacy": false
+    },
+    {
+      "token": "[脱敏文档rtthnvnp]",
+      "doc_id": "rtthnvnp",
+      "source_path": "/Volumes/my/github/http_bench/test/resturl_test.http",
+      "artifact_dir": "/Volumes/my/github/http_bench/test/.box-desens/rtthnvnp/by-scheme/7fd9e7c2e7ec3dae",
+      "display_name": "resturl_test.http",
+      "legacy": false
+    },
+    {
+      "token": "[脱敏文档ppolsqrr]",
+      "doc_id": "ppolsqrr",
+      "source_path": "/Volumes/my/github/http_bench/.box-desens/sfusbacj/by-scheme/7fd9e7c2e7ec3dae/reviewed.txt",
+      "artifact_dir": "/Volumes/my/github/http_bench/.box-desens/sfusbacj/by-scheme/7fd9e7c2e7ec3dae/.box-desens/ppolsqrr/by-scheme/7fd9e7c2e7ec3dae",
+      "display_name": "reviewed.txt",
+      "legacy": false
+    },
+    {
+      "token": "[脱敏文档bcgwleya]",
+      "doc_id": "bcgwleya",
+      "source_path": "/Volumes/my/github/http_bench/test/restbody_test.http",
+      "artifact_dir": "/Volumes/my/github/http_bench/test/.box-desens/bcgwleya/by-scheme/7fd9e7c2e7ec3dae",
+      "display_name": "restbody_test.http",
+      "legacy": false
+    },
+    {
+      "token": "[脱敏文档uktxxzga]",
+      "doc_id": "uktxxzga",
+      "source_path": "/Volumes/my/github/http_bench/test/server.key",
+      "artifact_dir": "/Volumes/my/github/http_bench/test/.box-desens/uktxxzga/by-scheme/7fd9e7c2e7ec3dae",
+      "display_name": "server.key",
+      "legacy": false
+    }
+  ],
+  "desens_process_logs": [
+    {
+      "id": "dpl-1784428337550-jqyy7v",
+      "timestamp": "2026-07-19T02:32:17.550Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784428337550",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784428337567-3qefoa",
+      "timestamp": "2026-07-19T02:32:17.567Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784428337550",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784428339351-t1y75w",
+      "timestamp": "2026-07-19T02:32:19.351Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784428337550",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784428339354-nwl11e",
+      "timestamp": "2026-07-19T02:32:19.354Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784428337550",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784429007376-kd3zdc",
+      "timestamp": "2026-07-19T02:43:27.376Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784429007376",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784429007387-8h28ar",
+      "timestamp": "2026-07-19T02:43:27.387Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784429007376",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784429010474-sizxve",
+      "timestamp": "2026-07-19T02:43:30.474Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784429007376",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784429010478-vqxanw",
+      "timestamp": "2026-07-19T02:43:30.478Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784429007376",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784431121875-21ejz7",
+      "timestamp": "2026-07-19T03:18:41.875Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784431121875",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784431121893-phdyqt",
+      "timestamp": "2026-07-19T03:18:41.893Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784431121875",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784431124269-he9jkw",
+      "timestamp": "2026-07-19T03:18:44.270Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784431121875",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784431124273-nr0ohh",
+      "timestamp": "2026-07-19T03:18:44.273Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784431121875",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784431462950-bgity7",
+      "timestamp": "2026-07-19T03:24:22.950Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784431462950",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784431462961-jg26su",
+      "timestamp": "2026-07-19T03:24:22.961Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784431462950",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784431463532-c51zke",
+      "timestamp": "2026-07-19T03:24:23.532Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784431462950",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784431463536-mjmta9",
+      "timestamp": "2026-07-19T03:24:23.536Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784431462950",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784434508758-av4y7f",
+      "timestamp": "2026-07-19T04:15:08.758Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784434508758",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784434508771-k6wha9",
+      "timestamp": "2026-07-19T04:15:08.771Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784434508758",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784434511116-zkf1ve",
+      "timestamp": "2026-07-19T04:15:11.116Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784434508758",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784434511118-s8ks3t",
+      "timestamp": "2026-07-19T04:15:11.118Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784434508758",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784435850101-l2148o",
+      "timestamp": "2026-07-19T04:37:30.101Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784435850101",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784435850111-uhbnd7",
+      "timestamp": "2026-07-19T04:37:30.111Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784435850101",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784435851869-4zqw87",
+      "timestamp": "2026-07-19T04:37:31.869Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784435850101",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784435851872-m3ip42",
+      "timestamp": "2026-07-19T04:37:31.872Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784435850101",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784441829029-l1rfwx",
+      "timestamp": "2026-07-19T06:17:09.029Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784441829029",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784441829055-keizfx",
+      "timestamp": "2026-07-19T06:17:09.055Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784441829029",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784441831251-gwj077",
+      "timestamp": "2026-07-19T06:17:11.251Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784441829029",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784441831255-7q87va",
+      "timestamp": "2026-07-19T06:17:11.255Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784441829029",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784445700662-l2ncpq",
+      "timestamp": "2026-07-19T07:21:40.662Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784445700662",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784445700683-tdhzr0",
+      "timestamp": "2026-07-19T07:21:40.683Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784445700662",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784445702210-vk910o",
+      "timestamp": "2026-07-19T07:21:42.210Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784445700662",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784445702214-fwgkfk",
+      "timestamp": "2026-07-19T07:21:42.214Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784445700662",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784445799644-zpbzj3",
+      "timestamp": "2026-07-19T07:23:19.644Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784445700662",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784445959274-bw0osl",
+      "timestamp": "2026-07-19T07:25:59.274Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784445700662",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784447251879-kxdhup",
+      "timestamp": "2026-07-19T07:47:31.879Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784447251879",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784447251890-zijif2",
+      "timestamp": "2026-07-19T07:47:31.890Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784447251879",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784447254177-sjnp31",
+      "timestamp": "2026-07-19T07:47:34.177Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784447251879",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784447254179-58zsvg",
+      "timestamp": "2026-07-19T07:47:34.179Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784447251879",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784449168683-1p2upl",
+      "timestamp": "2026-07-19T08:19:28.683Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784449168683",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784449168694-13k9ck",
+      "timestamp": "2026-07-19T08:19:28.694Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784449168683",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784449169223-8thg49",
+      "timestamp": "2026-07-19T08:19:29.223Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784449168683",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784449169226-m2kbke",
+      "timestamp": "2026-07-19T08:19:29.226Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784449168683",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784449678957-f5yojj",
+      "timestamp": "2026-07-19T08:27:58.958Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784449168683",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784449787525-0hem09",
+      "timestamp": "2026-07-19T08:29:47.525Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784449168683",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784450249272-z11jm0",
+      "timestamp": "2026-07-19T08:37:29.272Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784450249272",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784450249283-vsgsxe",
+      "timestamp": "2026-07-19T08:37:29.283Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784450249272",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784450251483-uzinxv",
+      "timestamp": "2026-07-19T08:37:31.483Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784450249272",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784450251486-z3j33d",
+      "timestamp": "2026-07-19T08:37:31.486Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784450249272",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784450479852-nd5f0l",
+      "timestamp": "2026-07-19T08:41:19.852Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784450479852",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784450479861-wrtnw8",
+      "timestamp": "2026-07-19T08:41:19.861Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784450479852",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784450480261-6c0dd6",
+      "timestamp": "2026-07-19T08:41:20.261Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784450479852",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784450480264-2xa99e",
+      "timestamp": "2026-07-19T08:41:20.264Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784450479852",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784452223346-dpwmzj",
+      "timestamp": "2026-07-19T09:10:23.346Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784452223346",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784452223363-xl8gcy",
+      "timestamp": "2026-07-19T09:10:23.363Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784452223346",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784452225861-jy1fdp",
+      "timestamp": "2026-07-19T09:10:25.861Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784452223346",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784452225865-8j6w3s",
+      "timestamp": "2026-07-19T09:10:25.865Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784452223346",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784454629247-vkgt5g",
+      "timestamp": "2026-07-19T09:50:29.247Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784454629247",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784454629265-9r7rkl",
+      "timestamp": "2026-07-19T09:50:29.265Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784454629247",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784454630677-s3aw4k",
+      "timestamp": "2026-07-19T09:50:30.677Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784454629247",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784454630680-k42jls",
+      "timestamp": "2026-07-19T09:50:30.680Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784454629247",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784456569973-8o63x3",
+      "timestamp": "2026-07-19T10:22:49.973Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784456569973",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784456570002-7w8zco",
+      "timestamp": "2026-07-19T10:22:50.002Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784456569973",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784456571604-0uxn0q",
+      "timestamp": "2026-07-19T10:22:51.604Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784456569973",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784456571609-4j8p8l",
+      "timestamp": "2026-07-19T10:22:51.609Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784456569973",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784457311885-v38sz2",
+      "timestamp": "2026-07-19T10:35:11.885Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784457311885",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784457311902-5eordd",
+      "timestamp": "2026-07-19T10:35:11.902Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784457311885",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784457314377-9f991n",
+      "timestamp": "2026-07-19T10:35:14.377Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784457311885",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784457314380-u4g63y",
+      "timestamp": "2026-07-19T10:35:14.380Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784457311885",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784457383190-0kmgz9",
+      "timestamp": "2026-07-19T10:36:23.190Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784457311885",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784457427568-yem9p0",
+      "timestamp": "2026-07-19T10:37:07.568Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784457311885",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784458010764-w8ogjz",
+      "timestamp": "2026-07-19T10:46:50.764Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784458010764",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784458010780-78sa8b",
+      "timestamp": "2026-07-19T10:46:50.780Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784458010764",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784458011615-n20yyr",
+      "timestamp": "2026-07-19T10:46:51.615Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784458010764",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784458011618-wnx9kp",
+      "timestamp": "2026-07-19T10:46:51.618Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784458010764",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473006804-fpbbki",
+      "timestamp": "2026-07-19T14:56:46.804Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784473006804",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473006818-ueq0lk",
+      "timestamp": "2026-07-19T14:56:46.818Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784473006804",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473007701-7x6xdw",
+      "timestamp": "2026-07-19T14:56:47.701Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784473006804",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473007707-93lozp",
+      "timestamp": "2026-07-19T14:56:47.707Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784473006804",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473250795-xqoi32",
+      "timestamp": "2026-07-19T15:00:50.795Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784473250795",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473250814-6kmyfr",
+      "timestamp": "2026-07-19T15:00:50.814Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784473250795",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473251642-d42kd1",
+      "timestamp": "2026-07-19T15:00:51.643Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784473250795",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473251647-fqzksz",
+      "timestamp": "2026-07-19T15:00:51.647Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784473250795",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473533677-jci67k",
+      "timestamp": "2026-07-19T15:05:33.677Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784473250795",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784473885516-5uflff",
+      "timestamp": "2026-07-19T15:11:25.516Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784473885516",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473885533-9dsgov",
+      "timestamp": "2026-07-19T15:11:25.533Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784473885516",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473891855-vqsqd9",
+      "timestamp": "2026-07-19T15:11:31.855Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784473885516",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784473891861-6xxl8y",
+      "timestamp": "2026-07-19T15:11:31.861Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784473885516",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784504311738-cseas0",
+      "timestamp": "2026-07-19T23:38:31.738Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784504311738",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784504311757-l5sp1t",
+      "timestamp": "2026-07-19T23:38:31.757Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784504311738",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784504314087-9fnrsx",
+      "timestamp": "2026-07-19T23:38:34.087Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784504311738",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784504314090-ogjm7m",
+      "timestamp": "2026-07-19T23:38:34.090Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784504311738",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784505353145-6rjy5v",
+      "timestamp": "2026-07-19T23:55:53.145Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784505353121",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784505355708-lf6knq",
+      "timestamp": "2026-07-19T23:55:55.708Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784505353121",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784505355711-0mpqc5",
+      "timestamp": "2026-07-19T23:55:55.711Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784505353121",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784505540505-ymwx86",
+      "timestamp": "2026-07-19T23:59:00.505Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784505540490",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784505541288-rx0c7e",
+      "timestamp": "2026-07-19T23:59:01.288Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784505540490",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784505541293-mu4t90",
+      "timestamp": "2026-07-19T23:59:01.293Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784505540490",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784510524986-rrb6kc",
+      "timestamp": "2026-07-20T01:22:04.986Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784510524986",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784510525007-kbzdp7",
+      "timestamp": "2026-07-20T01:22:05.007Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784510524986",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784510528635-h7wid7",
+      "timestamp": "2026-07-20T01:22:08.635Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784510524986",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784510528639-baze8t",
+      "timestamp": "2026-07-20T01:22:08.639Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784510524986",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784510565120-u7bj1k",
+      "timestamp": "2026-07-20T01:22:45.120Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784510524986",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784510621926-iata1k",
+      "timestamp": "2026-07-20T01:23:41.926Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784510524986",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784510644786-6aogw8",
+      "timestamp": "2026-07-20T01:24:04.786Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784510524986",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784510693368-g8hxgf",
+      "timestamp": "2026-07-20T01:24:53.368Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784510524986",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784513471357-nmeejm",
+      "timestamp": "2026-07-20T02:11:11.357Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784513471345",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784513471813-7f00q0",
+      "timestamp": "2026-07-20T02:11:11.813Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784513471345",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784513471818-61606m",
+      "timestamp": "2026-07-20T02:11:11.818Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784513471345",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784513638878-owup1p",
+      "timestamp": "2026-07-20T02:13:58.878Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784513471345",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784514135806-rwdt4p",
+      "timestamp": "2026-07-20T02:22:15.806Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784514135787",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784514138093-jhiqod",
+      "timestamp": "2026-07-20T02:22:18.093Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784514135787",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784514138096-8j21bk",
+      "timestamp": "2026-07-20T02:22:18.096Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784514135787",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784514186190-jl8e50",
+      "timestamp": "2026-07-20T02:23:06.190Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784514135787",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784514787777-se2s2z",
+      "timestamp": "2026-07-20T02:33:07.777Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784514787758",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784514789390-lwf89m",
+      "timestamp": "2026-07-20T02:33:09.390Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784514787758",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784514789394-57cmp1",
+      "timestamp": "2026-07-20T02:33:09.394Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784514787758",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784514809408-n6k2gu",
+      "timestamp": "2026-07-20T02:33:29.408Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784514787758",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784515620311-6n4h9t",
+      "timestamp": "2026-07-20T02:47:00.311Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784515620294",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784515622137-wxbhzm",
+      "timestamp": "2026-07-20T02:47:02.137Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784515620294",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784515622140-53ppps",
+      "timestamp": "2026-07-20T02:47:02.140Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784515620294",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784515666404-h2au33",
+      "timestamp": "2026-07-20T02:47:46.404Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784515620294",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784517468524-6fyyau",
+      "timestamp": "2026-07-20T03:17:48.524Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784517468524",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784517468542-xgv1se",
+      "timestamp": "2026-07-20T03:17:48.542Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784517468524",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784517471732-llig6k",
+      "timestamp": "2026-07-20T03:17:51.732Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784517468524",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784517471736-5bkivy",
+      "timestamp": "2026-07-20T03:17:51.736Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784517468524",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784517531367-ll42lk",
+      "timestamp": "2026-07-20T03:18:51.367Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784517468524",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784517607926-bv932y",
+      "timestamp": "2026-07-20T03:20:07.926Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784517468524",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784517656261-qfl8ey",
+      "timestamp": "2026-07-20T03:20:56.261Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784517468524",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784517861221-tro2fn",
+      "timestamp": "2026-07-20T03:24:21.221Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784517468524",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784523790601-pbcbui",
+      "timestamp": "2026-07-20T05:03:10.601Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784523790586",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784523792504-rgvt9y",
+      "timestamp": "2026-07-20T05:03:12.505Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784523790586",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784523792511-kd7e4l",
+      "timestamp": "2026-07-20T05:03:12.511Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784523790586",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784523836751-pofdm5",
+      "timestamp": "2026-07-20T05:03:56.751Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784523790586",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784524909564-fduydk",
+      "timestamp": "2026-07-20T05:21:49.564Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784524909564",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784524909588-y5h6h2",
+      "timestamp": "2026-07-20T05:21:49.588Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784524909564",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784524911472-78ceac",
+      "timestamp": "2026-07-20T05:21:51.472Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784524909564",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784524911481-kuipx8",
+      "timestamp": "2026-07-20T05:21:51.481Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784524909564",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784527922620-108i4v",
+      "timestamp": "2026-07-20T06:12:02.620Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784527922620",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784527922637-a0lwou",
+      "timestamp": "2026-07-20T06:12:02.637Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784527922620",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784527926020-adnes6",
+      "timestamp": "2026-07-20T06:12:06.020Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784527922620",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784527926023-idtopt",
+      "timestamp": "2026-07-20T06:12:06.023Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784527922620",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784528134516-38ls4b",
+      "timestamp": "2026-07-20T06:15:34.516Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784527922620",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784530385172-dldu2s",
+      "timestamp": "2026-07-20T06:53:05.172Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784530385152",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784530387708-wyjlps",
+      "timestamp": "2026-07-20T06:53:07.708Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784530385152",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784530387714-081dgi",
+      "timestamp": "2026-07-20T06:53:07.714Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784530385152",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784532887426-7a3nii",
+      "timestamp": "2026-07-20T07:34:47.426Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784532887407",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784532888136-5ti54w",
+      "timestamp": "2026-07-20T07:34:48.136Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784532887407",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784532888146-tmsc3x",
+      "timestamp": "2026-07-20T07:34:48.146Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784532887407",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784534607449-eybxy6",
+      "timestamp": "2026-07-20T08:03:27.450Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784534607431",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784534610019-e20yoc",
+      "timestamp": "2026-07-20T08:03:30.019Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784534607431",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784534610024-rbcvre",
+      "timestamp": "2026-07-20T08:03:30.024Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784534607431",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784618419630-58ws6z",
+      "timestamp": "2026-07-21T07:20:19.630Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784618419618",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784618420768-c27l8k",
+      "timestamp": "2026-07-21T07:20:20.768Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784618419618",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784618420772-1px3kl",
+      "timestamp": "2026-07-21T07:20:20.772Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784618419618",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784619766182-oejczd",
+      "timestamp": "2026-07-21T07:42:46.183Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784619766163",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784619768144-11znlk",
+      "timestamp": "2026-07-21T07:42:48.144Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784619766163",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784619768148-7y3cpd",
+      "timestamp": "2026-07-21T07:42:48.148Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784619766163",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784620811519-iaaphd",
+      "timestamp": "2026-07-21T08:00:11.519Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784620811503",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784620812464-tqpf46",
+      "timestamp": "2026-07-21T08:00:12.464Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784620811503",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784620812469-yg43fs",
+      "timestamp": "2026-07-21T08:00:12.469Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784620811503",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784620939602-ye6iwz",
+      "timestamp": "2026-07-21T08:02:19.602Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784620811503",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784620998505-gnndnv",
+      "timestamp": "2026-07-21T08:03:18.505Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784620811503",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784621141489-a0v99p",
+      "timestamp": "2026-07-21T08:05:41.489Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784621141472",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784621141492-phsoxa",
+      "timestamp": "2026-07-21T08:05:41.492Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784621141472",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784623086918-frw8wz",
+      "timestamp": "2026-07-21T08:38:06.918Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784623086904",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784623089486-r9edfw",
+      "timestamp": "2026-07-21T08:38:09.486Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784623086904",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784623089491-x61nfv",
+      "timestamp": "2026-07-21T08:38:09.491Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784623086904",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784623103816-wnw6ov",
+      "timestamp": "2026-07-21T08:38:23.816Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784623103799",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784623106080-d2sexp",
+      "timestamp": "2026-07-21T08:38:26.080Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784623103799",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784623106087-pxvga2",
+      "timestamp": "2026-07-21T08:38:26.087Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784623103799",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784635985014-k47bwz",
+      "timestamp": "2026-07-21T12:13:05.014Z",
+      "text": "正在分析用户提示词中的敏感信息…",
+      "messageId": "query-1784635985014",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784635985043-6nkt46",
+      "timestamp": "2026-07-21T12:13:05.043Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784635985014",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784635986522-81rj9z",
+      "timestamp": "2026-07-21T12:13:06.522Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784635985014",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784635986532-o4hk8p",
+      "timestamp": "2026-07-21T12:13:06.532Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784635985014",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784635993305-4eu098",
+      "timestamp": "2026-07-21T12:13:13.305Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件cglyistd]…",
+      "messageId": "query-1784635985014",
+      "sourcePath": "/Volumes/my/github/http_bench/test/http3client_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784635993305-mczoir",
+      "timestamp": "2026-07-21T12:13:13.305Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件bcgwleya]…",
+      "messageId": "query-1784635985014",
+      "sourcePath": "/Volumes/my/github/http_bench/test/restbody_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784635993319-hvdta9",
+      "timestamp": "2026-07-21T12:13:13.319Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784635985014",
+      "sourcePath": "/Volumes/my/github/http_bench/test/http3client_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784635993321-qq6hpr",
+      "timestamp": "2026-07-21T12:13:13.321Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784635985014",
+      "sourcePath": "/Volumes/my/github/http_bench/test/restbody_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784635993321-mo43et",
+      "timestamp": "2026-07-21T12:13:13.321Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784635985014",
+      "sourcePath": "/Volumes/my/github/http_bench/test/resturl_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784635993323-f00615",
+      "timestamp": "2026-07-21T12:13:13.323Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784635985014",
+      "sourcePath": "/Volumes/my/github/http_bench/test/server.key",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784635993324-azzrqm",
+      "timestamp": "2026-07-21T12:13:13.324Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784635985014",
+      "sourcePath": "/Volumes/my/github/http_bench/test/httpsvr_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784635993324-d9wvob",
+      "timestamp": "2026-07-21T12:13:13.324Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784635985014",
+      "sourcePath": "/Volumes/my/github/http_bench/test/echotcp_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784635993326-v9igye",
+      "timestamp": "2026-07-21T12:13:13.326Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784635985014",
+      "sourcePath": "/Volumes/my/github/http_bench/test/server.crt",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784635993327-eaj1hb",
+      "timestamp": "2026-07-21T12:13:13.327Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784635985014",
+      "sourcePath": "/Volumes/my/github/http_bench/long_benchmark.sh",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784700400986-w4uim4",
+      "timestamp": "2026-07-22T06:06:40.986Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784700399032",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784700400992-ufjbac",
+      "timestamp": "2026-07-22T06:06:40.992Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784700399032",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784701028409-7dlwot",
+      "timestamp": "2026-07-22T06:17:08.409Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件vdckfjlv]…",
+      "messageId": "query-1784700399032",
+      "sourcePath": "/Volumes/my/github/http_bench/test/echotcp_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720607934-kj8bk3",
+      "timestamp": "2026-07-22T11:43:27.934Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784720606445",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784720607939-mahcsd",
+      "timestamp": "2026-07-22T11:43:27.939Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784720606445",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784720642130-5wthln",
+      "timestamp": "2026-07-22T11:44:02.130Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件wvlparus]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/long_benchmark.sh",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720642130-1tbhpt",
+      "timestamp": "2026-07-22T11:44:02.130Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件vdckfjlv]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/test/echotcp_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720642130-usp97v",
+      "timestamp": "2026-07-22T11:44:02.130Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件ashslarv]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/test/server.crt",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720642130-pfp5do",
+      "timestamp": "2026-07-22T11:44:02.130Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件bcgwleya]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/test/restbody_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720642130-w5w7fp",
+      "timestamp": "2026-07-22T11:44:02.130Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件cglyistd]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/test/http3client_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720642130-fjgdmb",
+      "timestamp": "2026-07-22T11:44:02.130Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件tqyeyvza]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/test/httpsvr_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720642130-b5zxys",
+      "timestamp": "2026-07-22T11:44:02.130Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件uktxxzga]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/test/server.key",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720642130-rc35g2",
+      "timestamp": "2026-07-22T11:44:02.130Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件rtthnvnp]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/test/resturl_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720770618-pwi34i",
+      "timestamp": "2026-07-22T11:46:10.618Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件tqyeyvza]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/test/httpsvr_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720770618-z0j4cc",
+      "timestamp": "2026-07-22T11:46:10.618Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件cglyistd]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/test/http3client_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784720770618-e582z5",
+      "timestamp": "2026-07-22T11:46:10.618Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件vdckfjlv]…",
+      "messageId": "query-1784720606445",
+      "sourcePath": "/Volumes/my/github/http_bench/test/echotcp_test.go",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784721010633-crr108",
+      "timestamp": "2026-07-22T11:50:10.633Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784720606445",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784721010634-r30kzb",
+      "timestamp": "2026-07-22T11:50:10.634Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784720606445",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784721010634-xnwbcu",
+      "timestamp": "2026-07-22T11:50:10.634Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784720606445",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784721010635-4v3dr0",
+      "timestamp": "2026-07-22T11:50:10.635Z",
+      "text": "脱敏产物已加入产物区（1 个文件）",
+      "messageId": "query-1784720606445",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784775264877-qiobg2",
+      "timestamp": "2026-07-23T02:54:24.877Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784775263211",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784775264882-dj3g6f",
+      "timestamp": "2026-07-23T02:54:24.882Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784775263211",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784779376048-62l3bm",
+      "timestamp": "2026-07-23T04:02:56.048Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784779373665",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784779376054-ya389v",
+      "timestamp": "2026-07-23T04:02:56.054Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784779373665",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784784399719-f35e87",
+      "timestamp": "2026-07-23T05:26:39.719Z",
+      "text": "正在使用内部脱敏模型分析用户提示词…",
+      "messageId": "query-1784784399696",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784784401186-z7tzx9",
+      "timestamp": "2026-07-23T05:26:41.186Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784784399696",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784784401193-7wrue6",
+      "timestamp": "2026-07-23T05:26:41.193Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784784399696",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784784877699-gciisd",
+      "timestamp": "2026-07-23T05:34:37.699Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件wvlparus]…",
+      "messageId": "query-1784784399696",
+      "sourcePath": "/Volumes/my/github/http_bench/long_benchmark.sh",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784784877700-3tts2a",
+      "timestamp": "2026-07-23T05:34:37.700Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件uktxxzga]…",
+      "messageId": "query-1784784399696",
+      "sourcePath": "/Volumes/my/github/http_bench/test/server.key",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784784877700-hos90r",
+      "timestamp": "2026-07-23T05:34:37.700Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件bcgwleya]…",
+      "messageId": "query-1784784399696",
+      "sourcePath": "/Volumes/my/github/http_bench/test/restbody_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784784877700-2ewfpw",
+      "timestamp": "2026-07-23T05:34:37.700Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件ashslarv]…",
+      "messageId": "query-1784784399696",
+      "sourcePath": "/Volumes/my/github/http_bench/test/server.crt",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784784877700-1vmx55",
+      "timestamp": "2026-07-23T05:34:37.700Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件rtthnvnp]…",
+      "messageId": "query-1784784399696",
+      "sourcePath": "/Volumes/my/github/http_bench/test/resturl_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784785023290-fdszzb",
+      "timestamp": "2026-07-23T05:37:03.290Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784784399696",
+      "sourcePath": "/Volumes/my/github/http_bench/long_benchmark.sh",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784786732274-cbwjqc",
+      "timestamp": "2026-07-23T06:05:32.274Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784786730583",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784786732278-vyh2bz",
+      "timestamp": "2026-07-23T06:05:32.278Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784786730583",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784786898326-ieogwz",
+      "timestamp": "2026-07-23T06:08:18.326Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件rtthnvnp]…",
+      "messageId": "query-1784786730583",
+      "sourcePath": "/Volumes/my/github/http_bench/test/resturl_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784786898326-y7och0",
+      "timestamp": "2026-07-23T06:08:18.326Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件ashslarv]…",
+      "messageId": "query-1784786730583",
+      "sourcePath": "/Volumes/my/github/http_bench/test/server.crt",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784786898326-21c3p3",
+      "timestamp": "2026-07-23T06:08:18.326Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件uktxxzga]…",
+      "messageId": "query-1784786730583",
+      "sourcePath": "/Volumes/my/github/http_bench/test/server.key",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784786898326-wj00wl",
+      "timestamp": "2026-07-23T06:08:18.326Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件bcgwleya]…",
+      "messageId": "query-1784786730583",
+      "sourcePath": "/Volumes/my/github/http_bench/test/restbody_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784786898326-38qx1v",
+      "timestamp": "2026-07-23T06:08:18.326Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件wvlparus]…",
+      "messageId": "query-1784786730583",
+      "sourcePath": "/Volumes/my/github/http_bench/long_benchmark.sh",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784787198819-eidq7j",
+      "timestamp": "2026-07-23T06:13:18.819Z",
+      "text": "正在重新脱敏用户提示词引用文件 [文件bcgwleya]…",
+      "messageId": "query-1784786730583",
+      "sourcePath": "/Volumes/my/github/http_bench/test/restbody_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784787198999-4iqlo4",
+      "timestamp": "2026-07-23T06:13:18.999Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784786730583",
+      "sourcePath": "/Volumes/my/github/http_bench/test/restbody_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784787199001-1x88zl",
+      "timestamp": "2026-07-23T06:13:19.001Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784786730583",
+      "sourcePath": "/Volumes/my/github/http_bench/test/resturl_test.http",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784787199002-wx6rs1",
+      "timestamp": "2026-07-23T06:13:19.002Z",
+      "text": "正在读取文档…",
+      "messageId": "query-1784786730583",
+      "sourcePath": "/Volumes/my/github/http_bench/long_benchmark.sh",
+      "phase": "document"
+    },
+    {
+      "id": "dpl-1784794071437-qd2wlc",
+      "timestamp": "2026-07-23T08:07:51.437Z",
+      "text": "用户提示词脱敏分析完成",
+      "messageId": "query-1784794069066",
+      "phase": "query"
+    },
+    {
+      "id": "dpl-1784794071443-ja89gs",
+      "timestamp": "2026-07-23T08:07:51.443Z",
+      "text": "Query 脱敏完成，正在启动 Agent…",
+      "messageId": "query-1784794069066",
+      "phase": "query"
+    }
+  ],
+  "dir_refs": [
+    {
+      "token": "[目录00001]",
+      "original_dir": "/Volumes/my/github/http_bench",
+      "message_id": "query-1784428337550",
+      "label": "http_bench"
+    },
+    {
+      "token": "[目录00002]",
+      "original_dir": "/Volumes/my/github/http_bench/test",
+      "message_id": "query-1784635985014",
+      "label": "test"
+    }
+  ],
+  "approval_previews": [
+    {
+      "kind": "query",
+      "messageId": "query-1784428337550",
+      "originalQuery": "现在要对 /Volumes/my/github/http_bench 版本进行重构，将代码实现的更加优美，包括变量，函数名等设计，先读 README.md + go 代码，然后给出详细的优化 plan.md ，先不写代码",
+      "desensitizedQuery": "现在要对 /Volumes/my/github/http_bench 版本进行重构，将代码实现的更加优美，包括变量，函数名等设计，先读 README.md + go 代码，然后给出详细的优化 plan.md ，先不写代码",
+      "approvedAt": "2026-07-19T02:32:19.354Z",
+      "roundNumber": 1,
+      "roundSeq": 1,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784429007376",
+      "originalQuery": "基于 plan.md 开始重构当前代码",
+      "desensitizedQuery": "基于 plan.md 开始重构当前代码",
+      "approvedAt": "2026-07-19T02:43:30.480Z",
+      "roundNumber": 2,
+      "roundSeq": 2,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784431121875",
+      "originalQuery": "继续修复",
+      "desensitizedQuery": "继续修复",
+      "approvedAt": "2026-07-19T03:18:44.274Z",
+      "roundNumber": 3,
+      "roundSeq": 3,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784431462950",
+      "originalQuery": "继续推进修改，如果完成了，将已经完成的打勾，更新 plan.md 中",
+      "desensitizedQuery": "继续推进修改，如果完成了，将已经完成的打勾，更新 plan.md 中",
+      "approvedAt": "2026-07-19T03:24:23.536Z",
+      "roundNumber": 4,
+      "roundSeq": 4,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784434508758",
+      "originalQuery": "继续推进",
+      "desensitizedQuery": "继续推进",
+      "approvedAt": "2026-07-19T04:15:11.121Z",
+      "roundNumber": 3,
+      "roundSeq": 3,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784435850101",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-19T04:37:31.872Z",
+      "roundNumber": 4,
+      "roundSeq": 4,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784441829029",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-19T06:17:11.256Z",
+      "roundNumber": 5,
+      "roundSeq": 5,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784445700662",
+      "originalQuery": "继续重构",
+      "desensitizedQuery": "继续重构",
+      "approvedAt": "2026-07-19T07:21:42.214Z",
+      "roundNumber": 2,
+      "roundSeq": 2,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784447251879",
+      "originalQuery": "第一阶段完成了么？如果完成了，进行第二阶段拆目录",
+      "desensitizedQuery": "第一阶段完成了么？如果完成了，进行第二阶段拆目录",
+      "approvedAt": "2026-07-19T07:47:34.180Z",
+      "roundNumber": 3,
+      "roundSeq": 3,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784449168683",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-19T08:19:29.227Z",
+      "roundNumber": 4,
+      "roundSeq": 4,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784450249272",
+      "originalQuery": "检查plan 是否完全迁移完成，然后清理不需要的文件",
+      "desensitizedQuery": "检查plan 是否完全迁移完成，然后清理不需要的文件",
+      "approvedAt": "2026-07-19T08:37:31.486Z",
+      "roundNumber": 5,
+      "roundSeq": 5,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784450479852",
+      "originalQuery": "继续 阶段 B 余项",
+      "desensitizedQuery": "继续 阶段 B 余项",
+      "approvedAt": "2026-07-19T08:41:20.265Z",
+      "roundNumber": 6,
+      "roundSeq": 6,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784452223346",
+      "originalQuery": "继续 ：阶段 D：传输层与连接生命周期重构",
+      "desensitizedQuery": "继续 ：阶段 D：传输层与连接生命周期重构",
+      "approvedAt": "2026-07-19T09:10:25.867Z",
+      "roundNumber": 7,
+      "roundSeq": 7,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784454629247",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-19T09:50:30.681Z",
+      "roundNumber": 8,
+      "roundSeq": 8,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784456569973",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-19T10:22:51.611Z",
+      "roundNumber": 9,
+      "roundSeq": 9,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784457311885",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-19T10:35:14.381Z",
+      "roundNumber": 10,
+      "roundSeq": 10,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784458010764",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-19T10:46:51.619Z",
+      "roundNumber": 11,
+      "roundSeq": 11,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784473006804",
+      "originalQuery": "继续处理",
+      "desensitizedQuery": "继续处理",
+      "approvedAt": "2026-07-19T14:56:47.709Z",
+      "roundNumber": 2,
+      "roundSeq": 2,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784473250795",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-19T15:00:51.649Z",
+      "roundNumber": 3,
+      "roundSeq": 3,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784473885516",
+      "originalQuery": "继续完成 阶段 F，不需要再确认",
+      "desensitizedQuery": "继续完成 阶段 F，不需要再确认",
+      "approvedAt": "2026-07-19T15:11:31.861Z",
+      "roundNumber": 4,
+      "roundSeq": 4,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784504311738",
+      "originalQuery": "不需要兼容 JSON tag 全部保留旧 snake_case，dashboard/worker API 跨版本兼容，检查/Volumes/my/github/http_bench/plan.md 是否都完成",
+      "desensitizedQuery": "不需要兼容 JSON tag 全部保留旧 snake_case，dashboard/worker API 跨版本兼容，检查[文件sfusbacj] 是否都完成",
+      "approvedAt": "2026-07-19T23:38:34.091Z",
+      "roundNumber": 2,
+      "roundSeq": 2,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784505353121",
+      "originalQuery": "继续完成这些功能",
+      "desensitizedQuery": "继续完成这些功能",
+      "approvedAt": "2026-07-19T23:55:55.712Z",
+      "roundNumber": 3,
+      "roundSeq": 3,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784505540490",
+      "originalQuery": "解决阶段 H 收尾",
+      "desensitizedQuery": "解决阶段 H 收尾",
+      "approvedAt": "2026-07-19T23:59:01.294Z",
+      "roundNumber": 4,
+      "roundSeq": 4,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784510524986",
+      "originalQuery": "执行：删除所有根目录适配层并完成完整目录迁移。\n实现 RunManager 和公开 BenchmarkScenario。\n分布式 controller 返回逐节点成功/失败明细。\n长时间协议集成压测和重构前后性能对比。",
+      "desensitizedQuery": "执行：删除所有根目录适配层并完成完整目录迁移。\n实现 RunManager 和公开 BenchmarkScenario。\n分布式 controller 返回逐节点成功/失败明细。\n长时间协议集成压测和重构前后性能对比。",
+      "approvedAt": "2026-07-20T01:22:08.640Z",
+      "roundNumber": 5,
+      "roundSeq": 5,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784513471345",
+      "originalQuery": "按照 plan 进行进行迁移",
+      "desensitizedQuery": "按照 plan 进行进行迁移",
+      "approvedAt": "2026-07-20T02:11:11.819Z",
+      "roundNumber": 6,
+      "roundSeq": 6,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784514135787",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-20T02:22:18.096Z",
+      "roundNumber": 7,
+      "roundSeq": 7,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784514787758",
+      "originalQuery": "继续，一次性处理完这些",
+      "desensitizedQuery": "继续，一次性处理完这些",
+      "approvedAt": "2026-07-20T02:33:09.394Z",
+      "roundNumber": 8,
+      "roundSeq": 8,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784515620294",
+      "originalQuery": "继续处理",
+      "desensitizedQuery": "继续处理",
+      "approvedAt": "2026-07-20T02:47:02.141Z",
+      "roundNumber": 9,
+      "roundSeq": 9,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784517468524",
+      "originalQuery": "继续处理",
+      "desensitizedQuery": "继续处理",
+      "approvedAt": "2026-07-20T03:17:51.737Z",
+      "roundNumber": 10,
+      "roundSeq": 10,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784523790586",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-20T05:03:12.514Z",
+      "roundNumber": 11,
+      "roundSeq": 11,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784524909564",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-20T05:21:51.485Z",
+      "roundNumber": 12,
+      "roundSeq": 12,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784530385152",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-20T06:53:07.715Z",
+      "roundNumber": 3,
+      "roundSeq": 3,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784532887407",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-20T07:34:48.147Z",
+      "roundNumber": 4,
+      "roundSeq": 4,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784618419618",
+      "originalQuery": "继续优化代码",
+      "desensitizedQuery": "继续优化代码",
+      "approvedAt": "2026-07-21T07:20:20.773Z",
+      "roundNumber": 3,
+      "roundSeq": 3,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784619766163",
+      "originalQuery": "看看还有哪些代码可以清理的或者可以合并的，小于 50 行的代码应该合并",
+      "desensitizedQuery": "看看还有哪些代码可以清理的或者可以合并的，小于 50 行的代码应该合并",
+      "approvedAt": "2026-07-21T07:42:48.148Z",
+      "roundNumber": 4,
+      "roundSeq": 4,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784620811503",
+      "originalQuery": "其他是否还有合并的代码",
+      "desensitizedQuery": "其他是否还有合并的代码",
+      "approvedAt": "2026-07-21T08:00:12.471Z",
+      "roundNumber": 5,
+      "roundSeq": 5,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784621141472",
+      "originalQuery": "优化 /Volumes/my/github/http_bench/index.html 页面",
+      "desensitizedQuery": "优化 [文件pnvdjzsc] 页面",
+      "approvedAt": "2026-07-21T08:05:41.493Z",
+      "roundNumber": 6,
+      "roundSeq": 6,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784623086904",
+      "originalQuery": "功能和 http_bench 对齐",
+      "desensitizedQuery": "功能和 http_bench 对齐",
+      "approvedAt": "2026-07-21T08:38:09.492Z",
+      "roundNumber": 7,
+      "roundSeq": 7,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784623103799",
+      "originalQuery": "index.html 的功能和 http_bench 对齐",
+      "desensitizedQuery": "[文件pnvdjzsc] 的功能和 http_bench 对齐",
+      "approvedAt": "2026-07-21T08:38:26.090Z",
+      "roundNumber": 8,
+      "roundSeq": 8,
+      "mappingEntries": [
+        {
+          "original": "this.authPassword,",
+          "token": "[Password00002]",
+          "category": "密码"
+        }
+      ]
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784635985014",
+      "originalQuery": "/Volumes/my/github/http_bench/long_benchmark.sh 这个移动到 /Volumes/my/github/http_bench/test 中",
+      "desensitizedQuery": "[文件wvlparus] 这个移动到 /Volumes/my/github/http_bench/test 中",
+      "approvedAt": "2026-07-21T12:13:06.536Z",
+      "roundNumber": 9,
+      "roundSeq": 9,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784700399032",
+      "originalQuery": "重新优化，将一些小于<100 行的的文件合并为大的模块，变量名，文件名等检查是否合理，先写 plan2.0.md",
+      "desensitizedQuery": "重新优化，将一些小于<100 行的的文件合并为大的模块，变量名，文件名等检查是否合理，先写 plan2.0.md",
+      "approvedAt": "2026-07-22T06:06:40.993Z",
+      "roundNumber": 10,
+      "roundSeq": 10,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784720606445",
+      "originalQuery": "按照 plan2.0.md 执行",
+      "desensitizedQuery": "按照 plan2.0.md 执行",
+      "approvedAt": "2026-07-22T11:43:27.940Z",
+      "roundNumber": 11,
+      "roundSeq": 11,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784775263211",
+      "originalQuery": "继续按照 plan2.0.md 优化，更新已经优化的点",
+      "desensitizedQuery": "继续按照 plan2.0.md 优化，更新已经优化的点",
+      "approvedAt": "2026-07-23T02:54:24.883Z",
+      "roundNumber": 2,
+      "roundSeq": 2,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784779373665",
+      "originalQuery": "继续重构",
+      "desensitizedQuery": "继续重构",
+      "approvedAt": "2026-07-23T04:02:56.055Z",
+      "roundNumber": 3,
+      "roundSeq": 3,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784784399696",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-23T05:26:41.194Z",
+      "roundNumber": 4,
+      "roundSeq": 4,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784786730583",
+      "originalQuery": "继续",
+      "desensitizedQuery": "继续",
+      "approvedAt": "2026-07-23T06:05:32.279Z",
+      "roundNumber": 5,
+      "roundSeq": 5,
+      "mappingEntries": []
+    },
+    {
+      "kind": "query",
+      "messageId": "query-1784794069066",
+      "originalQuery": "这里执行 10 秒，似乎没有执行 10s，./http_bench -n 1000 -c 10 -d 10s  http://www.baidu.com/api/test\n[http1][GET] running 10 connections for 10 secs @ http://www.baidu.com/api/test\nSummary:\n  Total:\t1.6820 secs\n  Slowest:\t0.1480 secs\n  Fastest:\t0.0110 secs\n  Average:\t0.0170 secs\n  Requests/sec:\t594.00\n  Total data:\t201.17 KB\n  Size/request:\t206 bytes\n  Stop reason:\tcount\n\nStatus code distribution:\n  [404]\t1000 responses\n\nLatency distribution:\n  10% in 0.0130 secs\n  25% in 0.0140 secs\n  50% in 0.0150 secs\n  75% in 0.0160 secs\n  90% in 0.0190 secs\n  95% in 0.0240 secs\n  99% in 0.0930 secs",
+      "desensitizedQuery": "[目录00001]执行 10 秒，似乎没有执行 10s，./http_bench -n 1000 -c 10 -d 10s  http://www.baidu.com/api/test\n[http1][GET] running 10 connections for 10 secs @ http://www.baidu.com/api/test\nSummary:\n  Total:\t1.6820 secs\n  Slowest:\t0.1480 secs\n  Fastest:\t0.0110 secs\n  Average:\t0.0170 secs\n  Requests/sec:\t594.00\n  Total data:\t201.17 KB\n  Size/request:\t206 bytes\n  Stop reason:\tcount\n\nStatus code distribution:\n  [404]\t1000 responses\n\nLatency distribution:\n  10% in 0.0130 secs\n  25% in 0.0140 secs\n  50% in 0.0150 secs\n  75% in 0.0160 secs\n  90% in 0.0190 secs\n  95% in 0.0240 secs\n  99% in 0.0930 secs",
+      "approvedAt": "2026-07-23T08:07:51.444Z",
+      "roundNumber": 2,
+      "roundSeq": 2,
+      "mappingEntries": []
+    }
+  ],
+  "deliverable_refs": [
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/http_client_parser-desens.go",
+      "model_path": "[产物00001]-desens.go",
+      "linked_token": "[产物00001]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/util-desens.go",
+      "model_path": "[产物00002]-desens.go",
+      "linked_token": "[产物00002]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/http_client_result_test-desens.go",
+      "model_path": "[产物00003]-desens.go",
+      "linked_token": "[产物00003]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/internal/templatefn/crypto-desens.go",
+      "model_path": "[产物00004]-desens.go",
+      "linked_token": "[产物00004]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/internal/templatefn/url-desens.go",
+      "model_path": "[产物00005]-desens.go",
+      "linked_token": "[产物00005]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/internal/metrics/reporter_test-desens.go",
+      "model_path": "[产物00006]-desens.go",
+      "linked_token": "[产物00006]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/output/9882492a-5549-4668-959a-7ace3ac59ad1/plan-desens.md",
+      "model_path": "[产物00007]-desens.md",
+      "linked_token": "[产物00007]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/run_manager-desens.go",
+      "model_path": "[产物00008]-desens.go",
+      "linked_token": "[产物00008]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/benchmark_compare-desens.sh",
+      "model_path": "[产物00009]-desens.sh",
+      "linked_token": "[产物00009]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/duration-desens.go",
+      "model_path": "[产物00010]-desens.go",
+      "linked_token": "[产物00010]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/internal/benchmark/scenario-desens.go",
+      "model_path": "[产物00011]-desens.go",
+      "linked_token": "[产物00011]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/internal/request/parser-desens.go",
+      "model_path": "[产物00012]-desens.go",
+      "linked_token": "[产物00012]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/internal/app/cli-desens.go",
+      "model_path": "[产物00013]-desens.go",
+      "linked_token": "[产物00013]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/internal/logging/log-desens.go",
+      "model_path": "[产物00014]-desens.go",
+      "linked_token": "[产物00014]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/http_bench-desens.go",
+      "model_path": "[产物00015]-desens.go",
+      "linked_token": "[产物00015]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/output/9882492a-5549-4668-959a-7ace3ac59ad1/index-desens.html",
+      "model_path": "[产物00016]-desens.html",
+      "linked_token": "[产物00016]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/internal/templatefn/data-desens.go",
+      "model_path": "[产物00017]-desens.go",
+      "linked_token": "[产物00017]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/test/servers_test-desens.go",
+      "model_path": "[产物00018]-desens.go",
+      "linked_token": "[产物00018]"
+    },
+    {
+      "kind": "desens",
+      "original_path": "/Volumes/my/github/http_bench/internal/metrics/result_test-desens.go",
+      "model_path": "[产物00019]-desens.go",
+      "linked_token": "[产物00019]"
+    }
+  ],
+  "path_refs": [
+    {
+      "token": "[文件sfusbacj]",
+      "original_path": "/Volumes/my/github/http_bench/plan.md",
+      "source": "query",
+      "message_id": "query-1784504311738",
+      "staging_path": "/Volumes/my/github/http_bench/.box-desens/sessions/9882492a-5549-4668-959a-7ace3ac59ad1/refs/query-1784504311738/sfusbacj/sfusbacj.md",
+      "neutral_staging_name": "sfusbacj.md",
+      "registration": "path_mention",
+      "filename_ref_token": "[文件sfusbacj]",
+      "reviewed_path": "/Volumes/my/github/http_bench/.box-desens/sfusbacj/by-scheme/7fd9e7c2e7ec3dae/reviewed.txt",
+      "preprocess_status": "ready",
+      "last_redact_at": "2026-07-23T04:10:40.476Z",
+      "artifact_ref_token": "[脱敏文档sfusbacj]",
+      "source_mtime": 1784795853044.032,
+      "source_size": 49126,
+      "source_sha256": "8d42c6c5d4fa3b8377b897a595c44029902a929a811d3912b616b38fd587b5f1"
+    },
+    {
+      "token": "[文件pnvdjzsc]",
+      "original_path": "/Volumes/my/github/http_bench/index.html",
+      "source": "query",
+      "message_id": "query-1784621141472",
+      "staging_path": "/Volumes/my/github/http_bench/.box-desens/sessions/9882492a-5549-4668-959a-7ace3ac59ad1/refs/query-1784621141472/pnvdjzsc/pnvdjzsc.html",
+      "neutral_staging_name": "pnvdjzsc.html",
+      "registration": "path_mention",
+      "filename_ref_token": "[文件pnvdjzsc]",
+      "reviewed_path": "/Volumes/my/github/http_bench/.box-desens/pnvdjzsc/by-scheme/7fd9e7c2e7ec3dae/reviewed.txt",
+      "preprocess_status": "ready",
+      "last_redact_at": "2026-07-21T08:40:13.857Z",
+      "artifact_ref_token": "[脱敏文档pnvdjzsc]",
+      "source_mtime": 1784623287747.2485,
+      "source_size": 44600,
+      "source_sha256": "43bff6019dc9368b6fee23db7a20eb74a4691db01a72971f412f685dba807fd8"
+    },
+    {
+      "token": "[文件wvlparus]",
+      "original_path": "/Volumes/my/github/http_bench/long_benchmark.sh",
+      "source": "query",
+      "message_id": "query-1784635985014",
+      "staging_path": "/Volumes/my/github/http_bench/.box-desens/sessions/9882492a-5549-4668-959a-7ace3ac59ad1/refs/query-1784635985014/wvlparus/wvlparus.sh",
+      "neutral_staging_name": "wvlparus.sh",
+      "registration": "path_mention",
+      "filename_ref_token": "[文件wvlparus]"
+    },
+    {
+      "token": "[文件vdckfjlv]",
+      "original_path": "/Volumes/my/github/http_bench/test/echotcp_test.go",
+      "source": "query",
+      "message_id": "query-1784635985014",
+      "staging_path": "/Volumes/my/github/http_bench/.box-desens/sessions/9882492a-5549-4668-959a-7ace3ac59ad1/refs/query-1784635985014/vdckfjlv/vdckfjlv.go",
+      "neutral_staging_name": "vdckfjlv.go",
+      "registration": "directory_expansion",
+      "filename_ref_token": "[文件vdckfjlv]"
+    },
+    {
+      "token": "[文件cglyistd]",
+      "original_path": "/Volumes/my/github/http_bench/test/http3client_test.go",
+      "source": "query",
+      "message_id": "query-1784635985014",
+      "staging_path": "/Volumes/my/github/http_bench/.box-desens/sessions/9882492a-5549-4668-959a-7ace3ac59ad1/refs/query-1784635985014/cglyistd/cglyistd.go",
+      "neutral_staging_name": "cglyistd.go",
+      "registration": "directory_expansion",
+      "filename_ref_token": "[文件cglyistd]"
+    },
+    {
+      "token": "[文件tqyeyvza]",
+      "original_path": "/Volumes/my/github/http_bench/test/httpsvr_test.go",
+      "source": "query",
+      "message_id": "query-1784635985014",
+      "staging_path": "/Volumes/my/github/http_bench/.box-desens/sessions/9882492a-5549-4668-959a-7ace3ac59ad1/refs/query-1784635985014/tqyeyvza/tqyeyvza.go",
+      "neutral_staging_name": "tqyeyvza.go",
+      "registration": "directory_expansion",
+      "filename_ref_token": "[文件tqyeyvza]"
+    },
+    {
+      "token": "[文件bcgwleya]",
+      "original_path": "/Volumes/my/github/http_bench/test/restbody_test.http",
+      "source": "query",
+      "message_id": "query-1784635985014",
+      "staging_path": "/Volumes/my/github/http_bench/.box-desens/sessions/9882492a-5549-4668-959a-7ace3ac59ad1/refs/query-1784635985014/bcgwleya/bcgwleya.http",
+      "neutral_staging_name": "bcgwleya.http",
+      "registration": "directory_expansion",
+      "filename_ref_token": "[文件bcgwleya]"
+    },
+    {
+      "token": "[文件rtthnvnp]",
+      "original_path": "/Volumes/my/github/http_bench/test/resturl_test.http",
+      "source": "query",
+      "message_id": "query-1784635985014",
+      "staging_path": "/Volumes/my/github/http_bench/.box-desens/sessions/9882492a-5549-4668-959a-7ace3ac59ad1/refs/query-1784635985014/rtthnvnp/rtthnvnp.http",
+      "neutral_staging_name": "rtthnvnp.http",
+      "registration": "directory_expansion",
+      "filename_ref_token": "[文件rtthnvnp]"
+    },
+    {
+      "token": "[文件ashslarv]",
+      "original_path": "/Volumes/my/github/http_bench/test/server.crt",
+      "source": "query",
+      "message_id": "query-1784635985014",
+      "staging_path": "/Volumes/my/github/http_bench/.box-desens/sessions/9882492a-5549-4668-959a-7ace3ac59ad1/refs/query-1784635985014/ashslarv/ashslarv.crt",
+      "neutral_staging_name": "ashslarv.crt",
+      "registration": "directory_expansion",
+      "filename_ref_token": "[文件ashslarv]"
+    },
+    {
+      "token": "[文件uktxxzga]",
+      "original_path": "/Volumes/my/github/http_bench/test/server.key",
+      "source": "query",
+      "message_id": "query-1784635985014",
+      "staging_path": "/Volumes/my/github/http_bench/.box-desens/sessions/9882492a-5549-4668-959a-7ace3ac59ad1/refs/query-1784635985014/uktxxzga/uktxxzga.key",
+      "neutral_staging_name": "uktxxzga.key",
+      "registration": "directory_expansion",
+      "filename_ref_token": "[文件uktxxzga]"
+    }
+  ],
+  "filename_refs": [
+    {
+      "token": "[文件sfusbacj]",
+      "original_name": "plan.md",
+      "path_ref_token": "[文件sfusbacj]",
+      "message_id": "query-1784504311738",
+      "source": "query"
+    },
+    {
+      "token": "[文件pnvdjzsc]",
+      "original_name": "index.html",
+      "path_ref_token": "[文件pnvdjzsc]",
+      "message_id": "query-1784621141472",
+      "source": "query"
+    },
+    {
+      "token": "[文件wvlparus]",
+      "original_name": "long_benchmark.sh",
+      "path_ref_token": "[文件wvlparus]",
+      "message_id": "query-1784635985014",
+      "source": "query"
+    },
+    {
+      "token": "[文件vdckfjlv]",
+      "original_name": "echotcp_test.go",
+      "path_ref_token": "[文件vdckfjlv]",
+      "message_id": "query-1784635985014",
+      "source": "query"
+    },
+    {
+      "token": "[文件cglyistd]",
+      "original_name": "http3client_test.go",
+      "path_ref_token": "[文件cglyistd]",
+      "message_id": "query-1784635985014",
+      "source": "query"
+    },
+    {
+      "token": "[文件tqyeyvza]",
+      "original_name": "httpsvr_test.go",
+      "path_ref_token": "[文件tqyeyvza]",
+      "message_id": "query-1784635985014",
+      "source": "query"
+    },
+    {
+      "token": "[文件bcgwleya]",
+      "original_name": "restbody_test.http",
+      "path_ref_token": "[文件bcgwleya]",
+      "message_id": "query-1784635985014",
+      "source": "query"
+    },
+    {
+      "token": "[文件rtthnvnp]",
+      "original_name": "resturl_test.http",
+      "path_ref_token": "[文件rtthnvnp]",
+      "message_id": "query-1784635985014",
+      "source": "query"
+    },
+    {
+      "token": "[文件ashslarv]",
+      "original_name": "server.crt",
+      "path_ref_token": "[文件ashslarv]",
+      "message_id": "query-1784635985014",
+      "source": "query"
+    },
+    {
+      "token": "[文件uktxxzga]",
+      "original_name": "server.key",
+      "path_ref_token": "[文件uktxxzga]",
+      "message_id": "query-1784635985014",
+      "source": "query"
+    }
+  ]
+}

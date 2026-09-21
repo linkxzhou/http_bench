@@ -1,0 +1,101 @@
+{
+  "schemeMode": "preset",
+  "activeTemplateId": "general-privacy",
+  "profileName": "default",
+  "queryDesens": {
+    "mode": "merge",
+    "allowNewEntities": true,
+    "llmSuggestLevel": 2,
+    "confirmation": {
+      "autoApproveKnownEntities": false
+    },
+    "deliverables": {
+      "autoPublishToArtifacts": true
+    }
+  },
+  "activeProtectionCardId": "preset:general-privacy",
+  "cardTitle": "通用",
+  "desensModel": "hy3-preview-box",
+  "schemeRevisionId": "acc262cb-ef6a-4c0f-a9be-abb88aa67a06",
+  "selection": {
+    "norms": [
+      {
+        "norm_id": "norm-box-token-format",
+        "enabled": true,
+        "clauses": "all"
+      },
+      {
+        "norm_id": "norm-box-behavior",
+        "enabled": true,
+        "clauses": "all"
+      },
+      {
+        "norm_id": "norm-box-exclude",
+        "enabled": true,
+        "clauses": "all"
+      },
+      {
+        "norm_id": "norm-box-principle",
+        "enabled": true,
+        "clauses": "all"
+      },
+      {
+        "norm_id": "norm-box-global",
+        "enabled": true,
+        "clauses": "all"
+      }
+    ],
+    "types": [
+      {
+        "type_id": "type-box-person-name",
+        "enabled": true,
+        "clauses": "default"
+      },
+      {
+        "type_id": "type-box-id-numbers",
+        "enabled": true,
+        "clauses": "default"
+      },
+      {
+        "type_id": "type-box-contact",
+        "enabled": true,
+        "clauses": "default"
+      },
+      {
+        "type_id": "type-box-address",
+        "enabled": true,
+        "clauses": "default"
+      },
+      {
+        "type_id": "type-box-org-name",
+        "enabled": true,
+        "clauses": "default"
+      },
+      {
+        "type_id": "type-box-uscc",
+        "enabled": true,
+        "clauses": "default"
+      },
+      {
+        "type_id": "type-box-contract-id",
+        "enabled": true,
+        "clauses": "default"
+      },
+      {
+        "type_id": "type-box-secrets",
+        "enabled": true,
+        "clauses": "default"
+      },
+      {
+        "type_id": "type-box-tokens",
+        "enabled": true,
+        "clauses": "default"
+      },
+      {
+        "type_id": "type-box-account-ids",
+        "enabled": true,
+        "clauses": "default"
+      }
+    ]
+  }
+}

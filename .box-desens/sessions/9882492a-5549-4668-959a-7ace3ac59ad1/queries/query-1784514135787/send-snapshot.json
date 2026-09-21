@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "messageId": "query-1784514135787",
+  "originalQuery": "继续",
+  "desensitizedQuery": "继续\n\n<file_refs>\nAttached files are referenced by token above. Internal desensitization already finished before you run.\nYou MUST load each file ONLY via read_file using the exact token (one call per file):\n- [文件sfusbacj] → read_file(\"[文件sfusbacj]\") (already desensitized; read_file returns the reviewed view)\nDo NOT use desens_redact, execute_command, use_skill, local paths, staging copies under .box-desens/sessions/, or artifact directories — those are internal and may contain raw PII.\n</file_refs>",
+  "displayQuery": "继续",
+  "roundNumber": 7,
+  "roundSeq": 7,
+  "frozenAt": "2026-07-20T02:22:18.095Z",
+  "registryUpdatedAt": "2026-07-20T02:22:18.094Z",
+  "mappingEntries": [],
+  "pathRefs": [],
+  "tokenToOriginal": {}
+}

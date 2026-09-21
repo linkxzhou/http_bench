@@ -284,22 +284,26 @@ func (r *defaultRunner) RunWorker(ctx context.Context, params bench.HttpbenchPar
 			// handleStartup 的本地 CLI 路径保持一致，再在 worker 节点
 			// 本地打印压测 Summary，结果同时经 HTTP 响应返回控制器汇总。
 			result = bench.Merge(nil, result)
+			result.SequenceId = params.SequenceId
 			result.Print()
 			return result, nil
 		}
-		// 浏览器 dashboard：异步执行，立即返回。压测生命周期由
-		// params.Duration 与 CmdStop 控制，不能使用 HTTP 请求的 ctx
-		// （响应返回后即被取消）。
+		// 浏览器 dashboard：若未带 sequence_id（0），由后端生成权威 RunID。
+		if params.SequenceId == 0 {
+			params.SequenceId = bench.GenSequenceId()
+		}
+		// 异步执行，立即返回。压测生命周期由 params.Duration 与 CmdStop
+		// 控制，不能使用 HTTP 请求的 ctx（响应返回后即被取消）。
 		bench.NewResult(params.SequenceId)
 		worker := bench.NewWorker(params.SequenceId)
 		r.dashboardWorkers.Store(params.SequenceId, worker)
-		go func() {
-			defer r.dashboardWorkers.Delete(params.SequenceId)
+		go func(seqId int64) {
+			defer r.dashboardWorkers.Delete(seqId)
 			if _, err := worker.Run(context.Background(), params); err != nil {
-				bench.Error(params.SequenceId, "dashboard benchmark failed: %v", err)
+				bench.Error(seqId, "dashboard benchmark failed: %v", err)
 			}
-		}()
-		return emptyPendingResult(), nil
+		}(params.SequenceId)
+		return emptyPendingResult(params.SequenceId), nil
 	}
 }
 
@@ -307,17 +311,21 @@ func (r *defaultRunner) RunWorker(ctx context.Context, params bench.HttpbenchPar
 // 结果（err_code=0），避免前端把启动初期的轮询误判为失败。
 func snapshotOrPending(seqId int64) *bench.CollectResult {
 	if result, err := bench.GetCollectResult(seqId); err == nil {
+		if result != nil && result.SequenceId == 0 {
+			result.SequenceId = seqId
+		}
 		return result
 	}
-	return emptyPendingResult()
+	return emptyPendingResult(seqId)
 }
 
 // emptyPendingResult 构造启动初期的空指标结果（Fastest/Slowest 归零，
 // 避免 NewCollectResult 的哨兵值直接展示到前端）。
-func emptyPendingResult() *bench.CollectResult {
+func emptyPendingResult(seqId int64) *bench.CollectResult {
 	result := bench.NewCollectResult()
 	result.Fastest = 0
 	result.Slowest = 0
+	result.SequenceId = seqId
 	return result
 }
 

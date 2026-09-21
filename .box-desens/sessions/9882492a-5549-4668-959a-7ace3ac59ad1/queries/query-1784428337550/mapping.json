@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "source_file": "现在要对 /Volumes/my/github/http_bench 版本进行重构，将代码实现的更加优美，包括变量，函数名等设计，先读 README.md + go 代码，然后给出详细的优化 plan.md ，先不写代码",
+  "locale": "zh",
+  "entries": []
+}

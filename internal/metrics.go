@@ -272,6 +272,9 @@ type CollectResult struct {
 	// Stop / signal), or empty if not set. Reported to the user so they can
 	// distinguish a clean completion from an interrupted one.
 	StopReason string `json:"stop_reason"`
+	// SequenceId is the run ID. Set on dashboard Start/Metrics/Stop responses
+	// so the browser can adopt a backend-generated ID when it sent 0.
+	SequenceId int64 `json:"sequence_id,omitempty"`
 }
 
 // NewCollectResult creates and initializes a new CollectResult.
@@ -347,6 +350,7 @@ func (result *CollectResult) Snapshot() *CollectResult {
 		CurrentTime:    result.CurrentTime,
 		IsLast:         result.IsLast,
 		StopReason:     result.StopReason,
+		SequenceId:     result.SequenceId,
 	}
 	if result.ErrorCounts != nil {
 		cp.ErrorCounts = make(map[string]int, len(result.ErrorCounts))

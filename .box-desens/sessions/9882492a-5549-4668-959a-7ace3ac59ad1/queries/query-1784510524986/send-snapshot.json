@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "messageId": "query-1784510524986",
+  "originalQuery": "执行：删除所有根目录适配层并完成完整目录迁移。\n实现 RunManager 和公开 BenchmarkScenario。\n分布式 controller 返回逐节点成功/失败明细。\n长时间协议集成压测和重构前后性能对比。",
+  "desensitizedQuery": "执行：删除所有根目录适配层并完成完整目录迁移。\n实现 RunManager 和公开 BenchmarkScenario。\n分布式 controller 返回逐节点成功/失败明细。\n长时间协议集成压测和重构前后性能对比。\n\n<file_refs>\nAttached files are referenced by token above. Internal desensitization already finished before you run.\nYou MUST load each file ONLY via read_file using the exact token (one call per file):\n- [文件sfusbacj] → read_file(\"[文件sfusbacj]\") (already desensitized; read_file returns the reviewed view)\nDo NOT use desens_redact, execute_command, use_skill, local paths, staging copies under .box-desens/sessions/, or artifact directories — those are internal and may contain raw PII.\n</file_refs>",
+  "displayQuery": "执行：删除所有根目录适配层并完成完整目录迁移。\n实现 RunManager 和公开 BenchmarkScenario。\n分布式 controller 返回逐节点成功/失败明细。\n长时间协议集成压测和重构前后性能对比。",
+  "roundNumber": 5,
+  "roundSeq": 5,
+  "frozenAt": "2026-07-20T01:22:08.639Z",
+  "registryUpdatedAt": "2026-07-20T01:22:08.636Z",
+  "mappingEntries": [],
+  "pathRefs": [],
+  "tokenToOriginal": {}
+}

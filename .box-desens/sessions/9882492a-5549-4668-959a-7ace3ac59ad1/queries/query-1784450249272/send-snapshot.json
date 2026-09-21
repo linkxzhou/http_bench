@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "messageId": "query-1784450249272",
+  "originalQuery": "检查plan 是否完全迁移完成，然后清理不需要的文件",
+  "desensitizedQuery": "检查plan 是否完全迁移完成，然后清理不需要的文件",
+  "displayQuery": "检查plan 是否完全迁移完成，然后清理不需要的文件",
+  "roundNumber": 5,
+  "roundSeq": 5,
+  "frozenAt": "2026-07-19T08:37:31.485Z",
+  "registryUpdatedAt": "2026-07-19T08:37:31.484Z",
+  "mappingEntries": [],
+  "pathRefs": [],
+  "tokenToOriginal": {}
+}

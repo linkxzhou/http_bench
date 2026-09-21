@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "messageId": "query-1784447251879",
+  "originalQuery": "第一阶段完成了么？如果完成了，进行第二阶段拆目录",
+  "desensitizedQuery": "第一阶段完成了么？如果完成了，进行第二阶段拆目录",
+  "displayQuery": "第一阶段完成了么？如果完成了，进行第二阶段拆目录",
+  "roundNumber": 3,
+  "roundSeq": 3,
+  "frozenAt": "2026-07-19T07:47:34.179Z",
+  "registryUpdatedAt": "2026-07-19T07:47:34.178Z",
+  "mappingEntries": [],
+  "pathRefs": [],
+  "tokenToOriginal": {}
+}

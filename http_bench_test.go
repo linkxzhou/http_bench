@@ -1900,3 +1900,61 @@ func TestStressMultipleWorkerHTTP1(t *testing.T) {
 		})
 	}
 }
+
+// ── Dashboard SeqID (plan4.0) ──
+
+func TestDashboardStart_GeneratesSequenceIdWhenZero(t *testing.T) {
+	r := &defaultRunner{}
+	res, err := r.RunWorker(context.Background(), bench.HttpbenchParameters{
+		From:          "browser",
+		SequenceId:    0,
+		Cmd:           bench.CmdStart,
+		URL:           "http://127.0.0.1:1/",
+		RequestMethod: "GET",
+		RequestType:   bench.ProtocolHTTP1,
+		N:             1,
+		C:             1,
+		Timeout:       200 * time.Millisecond,
+		Insecure:      true,
+	})
+	if err != nil {
+		t.Fatalf("RunWorker: %v", err)
+	}
+	if res == nil || res.SequenceId == 0 {
+		t.Fatalf("expected backend-generated sequence_id, got %+v", res)
+	}
+	// stop to avoid leaking goroutine work
+	_, _ = r.RunWorker(context.Background(), bench.HttpbenchParameters{
+		From:       "browser",
+		SequenceId: res.SequenceId,
+		Cmd:        bench.CmdStop,
+	})
+}
+
+func TestDashboardStart_PreservesNonZeroSequenceId(t *testing.T) {
+	r := &defaultRunner{}
+	const want int64 = 424242
+	res, err := r.RunWorker(context.Background(), bench.HttpbenchParameters{
+		From:          "browser",
+		SequenceId:    want,
+		Cmd:           bench.CmdStart,
+		URL:           "http://127.0.0.1:1/",
+		RequestMethod: "GET",
+		RequestType:   bench.ProtocolHTTP1,
+		N:             1,
+		C:             1,
+		Timeout:       200 * time.Millisecond,
+		Insecure:      true,
+	})
+	if err != nil {
+		t.Fatalf("RunWorker: %v", err)
+	}
+	if res.SequenceId != want {
+		t.Fatalf("SequenceId=%d, want %d", res.SequenceId, want)
+	}
+	_, _ = r.RunWorker(context.Background(), bench.HttpbenchParameters{
+		From:       "browser",
+		SequenceId: want,
+		Cmd:        bench.CmdStop,
+	})
+}

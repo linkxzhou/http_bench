@@ -155,6 +155,23 @@
         /* Forms */
         .form-section { margin-bottom: 18px; }
         .form-section:last-child { margin-bottom: 4px; }
+        .run-history-bar {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border-light, #eef0f6);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 16px;
+        }
+        .run-history-bar .hist-label { color: var(--text-secondary, #4a5568); font-size: 13px; white-space: nowrap; }
+        .run-history-bar .hist-meta { color: var(--text-muted, #8a94a6); font-size: 12px; }
+        /* 宽度优先级：flex-basis 320px 保证完整展示「…短码 · hh:mm:ss」，min-width 兜底 */
+        .run-history-bar .el-select { min-width: 320px; flex: 0 1 340px; }
+        .run-history-bar .el-select .el-input__inner { text-overflow: clip; }
+        .run-history-bar .hist-clear { margin-left: auto; color: var(--text-muted, #8a94a6); }
+        .run-history-bar .hist-clear:hover { color: var(--danger, #f5576c); }
+
         .section-title {
             font-size: 1.05rem; font-weight: 600; color: var(--text-secondary);
             margin-bottom: 12px; padding-left: 12px; position: relative;
@@ -235,6 +252,9 @@
             .button-group .el-button { width: 100%; }
             .form-grid { grid-template-columns: 1fr; }
             .control-panel { padding: 20px 14px; }
+            /* 窄屏：历史选择框撑满整行，元信息换行展示 */
+            .run-history-bar .el-select { flex: 1 1 100%; min-width: 0; }
+            .run-history-bar .hist-clear { margin-left: 0; }
             .language-selector-wrap { position: static; width: 100%; margin-bottom: 12px; }
             #chart-container { height: 300px !important; }
             .charts-row .chart-card > div:last-child { height: 280px !important; }
@@ -329,6 +349,21 @@
                     urlInvalid: '请输入有效的URL',
                     concurrentInvalid: '并发数必须在1-10000之间',
                     durationInvalid: '持续时间必须大于0'
+                },
+                history: {
+                    seqId: '执行历史',
+                    select: '选择历史压测',
+                    startedAt: '发起',
+                    status: '状态',
+                    clear: '清除历史',
+                    clearConfirm: '确定清除本地压测历史？不会停止当前压测。',
+                    generating: '生成中…',
+                    empty: '暂无历史',
+                    cleared: '历史已清除',
+                    running: '进行中',
+                    finished: '已结束',
+                    failed: '失败',
+                    saveFailed: '本地历史写入失败（配额或隐私模式）'
                 }
             },
             'en-US': {
@@ -413,6 +448,21 @@
                     urlInvalid: 'Please enter a valid URL',
                     concurrentInvalid: 'Concurrent connections must be between 1-10000',
                     durationInvalid: 'Duration must be greater than 0'
+                },
+                history: {
+                    seqId: 'Run History',
+                    select: 'Select a run',
+                    startedAt: 'Started',
+                    status: 'Status',
+                    clear: 'Clear history',
+                    clearConfirm: 'Clear local run history? This will not stop a running test.',
+                    generating: 'Generating…',
+                    empty: 'No history yet',
+                    cleared: 'History cleared',
+                    running: 'Running',
+                    finished: 'Finished',
+                    failed: 'Failed',
+                    saveFailed: 'Failed to save run history (quota or private mode)'
                 }
             }
         };
@@ -587,6 +637,35 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Run History Bar (plan4.0) -->
+                <div class="run-history-bar">
+                    <span class="hist-label">{{translate('history.seqId')}}</span>
+                    <el-select v-model="activeSeqId"
+                        :placeholder="isStarting ? translate('history.generating') : translate('history.select')"
+                        size="small"
+                        :disabled="isStarting || !runOptions.length"
+                        @change="onSelectRun">
+                        <el-option v-if="!runOptions.length" :label="translate('history.empty')" value=""></el-option>
+                        <el-option
+                            v-for="opt in runOptions"
+                            :key="opt.value"
+                            :label="opt.label"
+                            :value="opt.value">
+                        </el-option>
+                    </el-select>
+                    <span class="hist-meta" v-if="startedAtDisplay">
+                        {{translate('history.startedAt')}}: {{startedAtDisplay}}
+                    </span>
+                    <span class="hist-meta" v-if="runStatusDisplay">
+                        {{translate('history.status')}}: {{runStatusDisplay}}
+                    </span>
+                    <el-button type="text" size="small" class="hist-clear"
+                        :disabled="!runOrder.length"
+                        @click="clearHistory">
+                        {{translate('history.clear')}}
+                    </el-button>
+                </div>
             </div>
         </div>
     </div>
@@ -629,6 +708,70 @@
         const CONTENT_TYPE_JSON = { 'Content-Type': 'application/json;charset=utf-8' };
         const DEFAULT_METRICS_INTERVAL = 2000;
         const TIME_FORMAT = "hh:mm:ss";
+        const RUN_STORE_KEY = 'http_bench.runs.v1';
+        const RUN_STORE_MAX = 5;
+        const SERIES_POINT_CAP = 600;
+        const RUN_PERSIST_DEBOUNCE_MS = 400;
+
+        // Preserve int64 sequence_id: JSON.parse would lose precision above 2^53-1.
+        const parseWorkerJson = (text) => {
+            const patched = String(text).replace(/"sequence_id"\s*:\s*(-?\d+)/g, '"sequence_id":"$1"');
+            return JSON.parse(patched);
+        };
+
+        const stringifyWorkerBody = (obj) => {
+            const sid = obj.sequence_id;
+            const copy = Object.assign({}, obj);
+            delete copy.sequence_id;
+            const base = JSON.stringify(copy);
+            const digits = (sid === undefined || sid === null || sid === '') ? '0' : String(sid);
+            if (!/^-?\d+$/.test(digits)) throw new Error('invalid sequence_id');
+            return base.slice(0, -1) + ',"sequence_id":' + digits + '}';
+        };
+
+        const trimSeries = (series) => {
+            if (!series) return series;
+            const labels = series.timeLabels || [];
+            const overflow = labels.length - SERIES_POINT_CAP;
+            if (overflow <= 0) return series;
+            const trimArr = (arr) => Array.isArray(arr) ? arr.slice(overflow) : arr;
+            const statusCodes = {};
+            const src = series.statusCodes || {};
+            for (const code in src) statusCodes[code] = trimArr(src[code]);
+            return {
+                timeLabels: trimArr(labels),
+                qpsData: trimArr(series.qpsData),
+                statusCodes,
+                latencyHistogram: series.latencyHistogram || null,
+                errorCounts: series.errorCounts || null
+            };
+        };
+
+        const RunStore = {
+            load() {
+                try {
+                    const raw = localStorage.getItem(RUN_STORE_KEY);
+                    if (!raw) return { version: 1, activeSeqId: '', order: [], runs: {} };
+                    const data = JSON.parse(raw);
+                    if (!data || data.version !== 1 || !Array.isArray(data.order) || typeof data.runs !== 'object') {
+                        return { version: 1, activeSeqId: '', order: [], runs: {} };
+                    }
+                    return data;
+                } catch (_) {
+                    return { version: 1, activeSeqId: '', order: [], runs: {} };
+                }
+            },
+            save(store) {
+                localStorage.setItem(RUN_STORE_KEY, JSON.stringify(store));
+            },
+            prune(store) {
+                while (store.order.length > RUN_STORE_MAX) {
+                    const old = store.order.shift();
+                    delete store.runs[old];
+                }
+                return store;
+            }
+        };
         // 全局图表色板（与 CSS 品牌色系保持一致：primary 起头，冷色系铺开）
         const CHART_PALETTE = ['#667eea', '#4facfe', '#43e97b', '#fa709a', '#f5576c', '#e8c43a', '#30cfd0', '#a18cd1'];
         const ERROR_PALETTE = ['#f5576c', '#fa709a', '#e8c43a', '#4facfe', '#a18cd1', '#30cfd0'];
@@ -709,8 +852,15 @@
                 requestUrl: "https://www.http3check.net",
                 workerApiEndpoint: "",
                 isRunning: false,
+                isStarting: false,
                 metricsTimer: undefined,
                 hasData: false,
+                sequenceId: '',
+                activeSeqId: '',
+                runOrder: [],
+                runs: {},
+                startedAtDisplay: '',
+                runStatus: '',
                 stats: { average: '0ms', rps: 0, fastest: '0ms', slowest: '0ms', errTotal: 0 },
                 monitor: {
                     timeLabels: [],
@@ -730,6 +880,20 @@
                         { key: 'slow', icon: '🐢', label: this.translate('stats.slowest'), value: this.stats.slowest },
                         { key: 'err', icon: '🚫', label: this.translate('stats.errors'), value: this.stats.errTotal }
                     ];
+                },
+                runOptions() {
+                    return this.runOrder.map(id => {
+                        const run = this.runs[id] || {};
+                        const t = run.startedAt ? new Date(run.startedAt).format('hh:mm:ss') : '';
+                        const short = id.length > 8 ? ('…' + id.slice(-8)) : id;
+                        return { value: id, label: t ? (short + ' · ' + t) : short };
+                    });
+                },
+                runStatusDisplay() {
+                    if (!this.runStatus) return '';
+                    const key = 'history.' + this.runStatus;
+                    const t = this.translate(key);
+                    return t === key ? this.runStatus : t;
                 }
             },
             methods: {
@@ -778,34 +942,43 @@
                     });
                 },
                 
-                // Start stress test
+                // Start stress test (plan4.0: wait for backend SeqID before polling)
                 startTest() {
-                    if (this.isRunning) return;
+                    if (this.isRunning || this.isStarting) return;
                     const validationError = this.validateConfig();
                     if (validationError) {
                         this.showMessage(validationError, 'warning', 4000);
                         return;
                     }
-                    this.sequenceId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+                    this.isStarting = true;
+                    this.sequenceId = '0';
                     const requestData = this.buildRequestData(API_COMMANDS.START);
                     const apiEndpoint = this.getWorkerApiEndpoint();
                     this.showMessage('start');
-                    this.isRunning = true;
-                    this.setupMetricsMonitoring(requestData, apiEndpoint);
                     fetch(apiEndpoint, {
                         method: 'POST',
                         headers: CONTENT_TYPE_JSON,
-                        body: JSON.stringify(requestData)
+                        body: stringifyWorkerBody(requestData)
                     })
                     .then(response => {
                         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                        return response.json();
+                        return response.text().then(parseWorkerJson);
                     })
                     .then(data => {
                         if (data.err_code !== 0) throw new Error(data.err_msg || 'Start request failed');
+                        const seq = String(data.sequence_id || '');
+                        if (!seq || seq === '0') throw new Error('missing sequence_id in start response');
+                        this.sequenceId = seq;
+                        this.activeSeqId = seq;
+                        this._liveBuf = null;
+                        this.upsertRunAfterStart(seq);
+                        this.isRunning = true;
+                        this.isStarting = false;
+                        this.setupMetricsMonitoring(this.buildRequestData(API_COMMANDS.GET_METRICS), apiEndpoint);
                     })
                     .catch(error => {
                         this.isRunning = false;
+                        this.isStarting = false;
                         clearInterval(this.metricsTimer);
                         this.metricsTimer = undefined;
                         this.showMessage(error.message, 'error', 5000);
@@ -838,7 +1011,7 @@
                 buildRequestData(command) {
                     return {
                         cmd: command,
-                        sequence_id: this.sequenceId,
+                        sequence_id: this.sequenceId === '' || this.sequenceId === undefined ? '0' : String(this.sequenceId),
                         request_method: this.requestMethod,
                         request_body: this.requestBody,
                         request_bodytype: this.requestBodyType,
@@ -1011,19 +1184,24 @@
                 setupMetricsMonitoring(requestData, apiEndpoint) {
                     clearInterval(this.metricsTimer);
                     this.monitor = { timeLabels: [], qpsData: [], total: 0, statusCodes: {}, prevStatusCounts: {} };
+                    this._liveBuf = this.monitor;
                     const interval = parseInt(this.metricsInterval) || DEFAULT_METRICS_INTERVAL;
                     let errTimes = 0;
 
                     this.isRunning = true;
                     this.metricsTimer = setInterval(() => {
+                        const body = stringifyWorkerBody(Object.assign({}, requestData, {
+                            cmd: API_COMMANDS.GET_METRICS,
+                            sequence_id: this.sequenceId
+                        }));
                         fetch(apiEndpoint, {
                             method: 'POST',
                             headers: CONTENT_TYPE_JSON,
-                            body: JSON.stringify({ ...requestData, cmd: API_COMMANDS.GET_METRICS })
+                            body
                         })
                         .then(r => {
                             if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                            return r.json();
+                            return r.text().then(parseWorkerJson);
                         })
                         .then(data => {
                             if (data.err_code !== 0) {
@@ -1042,45 +1220,72 @@
 
                 processMetricsData(data, interval) {
                     if (!data) return;
-                    if (!this.hasData) {
-                        this.hasData = true;
-                        this.$nextTick(() => {
-                            Object.values(this.charts).forEach(c => c && c.resize());
-                        });
+                    const viewingLive = String(this.activeSeqId || '') === String(this.sequenceId || '');
+                    if (!this._liveBuf) {
+                        this._liveBuf = this.monitor;
                     }
+                    const m = this._liveBuf;
 
-                    this.stats = {
+                    const liveStats = {
                         average: formatDuration(data.average),
                         rps: data.rps || 0,
                         fastest: formatDuration(data.fastest),
                         slowest: formatDuration(data.slowest),
                         errTotal: data.failed_requests || 0
                     };
-                    this.renderLatChart(data.latency_histogram);
-                    this.renderErrChart(data.error_counts);
 
-                    if (data.total_requests && (data.total_requests - this.monitor.total) >= 0) {
-                        this.monitor.timeLabels.push(new Date().format(TIME_FORMAT));
-                        const currentQps = (data.total_requests - this.monitor.total) * 1000 / interval;
-                        this.monitor.qpsData.push(currentQps);
-                        this.monitor.total = data.total_requests;
+                    if (data.total_requests && (data.total_requests - m.total) >= 0) {
+                        m.timeLabels.push(new Date().format(TIME_FORMAT));
+                        const currentQps = (data.total_requests - m.total) * 1000 / interval;
+                        m.qpsData.push(currentQps);
+                        m.total = data.total_requests;
 
                         const statusCounts = data.status_code_counts || {};
-                        // 本次未出现的状态码补 0，保证各 series 与 X 轴对齐
-                        for (let code in this.monitor.statusCodes) {
-                            if (!(code in statusCounts)) this.monitor.statusCodes[code].push(0);
+                        for (let code in m.statusCodes) {
+                            if (!(code in statusCounts)) m.statusCodes[code].push(0);
                         }
                         for (let code in statusCounts) {
-                            // 中途新出现的状态码补前导 0，避免曲线错位
-                            if (!this.monitor.statusCodes[code]) {
-                                this.monitor.statusCodes[code] = new Array(this.monitor.timeLabels.length - 1).fill(0);
+                            if (!m.statusCodes[code]) {
+                                m.statusCodes[code] = new Array(m.timeLabels.length - 1).fill(0);
                             }
                             const count = statusCounts[code];
-                            const prev = this.monitor.prevStatusCounts[code] || 0;
-                            this.monitor.statusCodes[code].push((count - prev) * 1000 / interval);
-                            this.monitor.prevStatusCounts[code] = count;
+                            const prev = m.prevStatusCounts[code] || 0;
+                            m.statusCodes[code].push((count - prev) * 1000 / interval);
+                            m.prevStatusCounts[code] = count;
                         }
-                        this.renderPerfChart(this.monitor.timeLabels, this.monitor.qpsData, this.monitor.statusCodes);
+                        const trimmed = trimSeries({
+                            timeLabels: m.timeLabels,
+                            qpsData: m.qpsData,
+                            statusCodes: m.statusCodes
+                        });
+                        m.timeLabels = trimmed.timeLabels;
+                        m.qpsData = trimmed.qpsData;
+                        m.statusCodes = trimmed.statusCodes;
+                    }
+
+                    if (viewingLive) {
+                        this.monitor = m;
+                        if (!this.hasData && (m.timeLabels.length || data.latency_histogram || data.error_counts)) {
+                            this.hasData = true;
+                            this.$nextTick(() => {
+                                Object.values(this.charts).forEach(c => c && c.resize());
+                            });
+                        }
+                        this.stats = liveStats;
+                        this.renderLatChart(data.latency_histogram);
+                        this.renderErrChart(data.error_counts);
+                        this.renderPerfChart(m.timeLabels, m.qpsData, m.statusCodes);
+                    }
+
+                    // Persist against live buffer
+                    const savedMonitor = this.monitor;
+                    const savedStats = this.stats;
+                    this.monitor = m;
+                    this.stats = liveStats;
+                    this.persistActiveRunMetrics(data, data.is_last);
+                    if (!viewingLive) {
+                        this.monitor = savedMonitor;
+                        this.stats = savedStats;
                     }
 
                     // 先渲染最后一帧数据再停止，避免短测试曲线完全丢失
@@ -1088,20 +1293,304 @@
                         this.stopTest();
                     }
                 },
-                
+
                 stopTest() {
                     const wasRunning = this.isRunning;
                     this.isRunning = false;
+                    this.isStarting = false;
                     clearInterval(this.metricsTimer);
                     this.metricsTimer = undefined;
                     if (!wasRunning) return;
                     this.showMessage('stop');
+                    this.markRunFinished('finished');
                     
                     fetch(this.getWorkerApiEndpoint(), {
                         method: 'POST',
                         headers: CONTENT_TYPE_JSON,
-                        body: JSON.stringify(this.buildRequestData(API_COMMANDS.STOP))
+                        body: stringifyWorkerBody(this.buildRequestData(API_COMMANDS.STOP))
                     }).catch(e => console.error(e));
+                },
+
+                snapshotRequest() {
+                    return {
+                        url: this.requestUrl,
+                        request_method: this.requestMethod,
+                        request_type: this.protocolType,
+                        n: parseInt(this.totalRequests) || 0,
+                        c: parseInt(this.concurrentConnections) || 1,
+                        duration_ms: parseInt(this.testDuration) || 0,
+                        timeout_ms: parseInt(this.requestTimeout) || 0,
+                        qps: parseInt(this.qpsLimit) || 0,
+                        headers: this.parseHeaders(this.requestHeaders),
+                        proxy_url: this.proxyUrl,
+                        request_body: this.requestBody,
+                        request_bodytype: this.requestBodyType,
+                        disable_compression: this.disableCompression,
+                        disable_keepalives: this.disableKeepalives,
+                        insecure: this.insecure,
+                        auth_username: this.authUsername,
+                        auth_password: this.authPassword,
+                        worker_api_endpoint: this.workerApiEndpoint,
+                        metrics_interval: parseInt(this.metricsInterval) || DEFAULT_METRICS_INTERVAL
+                    };
+                },
+
+                applyRequestSnapshot(req) {
+                    if (!req) return;
+                    this.requestUrl = req.url || '';
+                    this.requestMethod = req.request_method || 'GET';
+                    this.protocolType = req.request_type || 'http1';
+                    this.totalRequests = req.n || 0;
+                    this.concurrentConnections = req.c || 1;
+                    this.testDuration = req.duration_ms || 0;
+                    this.requestTimeout = req.timeout_ms || 3000;
+                    this.qpsLimit = req.qps || 0;
+                    this.proxyUrl = req.proxy_url || '';
+                    this.requestBody = req.request_body || '';
+                    this.requestBodyType = req.request_bodytype || 'string';
+                    this.disableCompression = !!req.disable_compression;
+                    this.disableKeepalives = !!req.disable_keepalives;
+                    this.insecure = req.insecure !== false;
+                    this.authUsername = req.auth_username || '';
+                    this.authPassword = req.auth_password || '';
+                    this.workerApiEndpoint = req.worker_api_endpoint || '';
+                    if (req.metrics_interval) this.metricsInterval = req.metrics_interval;
+                    // headers object → multiline text
+                    if (req.headers && typeof req.headers === 'object' && !Array.isArray(req.headers)) {
+                        const lines = [];
+                        for (const k in req.headers) {
+                            const vals = Array.isArray(req.headers[k]) ? req.headers[k] : [req.headers[k]];
+                            vals.forEach(v => lines.push(k + ': ' + v));
+                        }
+                        this.requestHeaders = lines.join('\n');
+                    }
+                },
+
+                loadRunStore() {
+                    const store = RunStore.load();
+                    // store.order is oldest→newest; UI select shows newest first
+                    this.runOrder = (store.order || []).slice().reverse();
+                    this.runs = store.runs || {};
+                    this.activeSeqId = store.activeSeqId || (this.runOrder[0] || '');
+                    if (this.activeSeqId && this.runs[this.activeSeqId]) {
+                        this.applyRunView(this.activeSeqId, false);
+                    }
+                },
+
+                flushRunStore() {
+                    try {
+                        // Persist order oldest→newest for FIFO prune
+                        const newestFirst = this.runOrder.slice();
+                        const order = newestFirst.slice().reverse();
+                        const store = { version: 1, activeSeqId: this.activeSeqId || '', order, runs: this.runs };
+                        RunStore.prune(store);
+                        // sync back after prune
+                        this.runOrder = store.order.slice().reverse();
+                        this.runs = store.runs;
+                        RunStore.save(store);
+                    } catch (e) {
+                        console.error(e);
+                        this.showMessage(this.translate('history.saveFailed'), 'warning', 4000);
+                    }
+                },
+
+                upsertRunAfterStart(seq) {
+                    const startedAt = new Date().toISOString();
+                    const run = {
+                        sequenceId: seq,
+                        startedAt,
+                        finishedAt: null,
+                        status: 'running',
+                        request: this.snapshotRequest(),
+                        series: { timeLabels: [], qpsData: [], statusCodes: {}, latencyHistogram: null, errorCounts: null },
+                        stats: Object.assign({}, this.stats, { totalRequests: 0 })
+                    };
+                    // newest first in runOrder
+                    this.runs = Object.assign({}, this.runs, { [seq]: run });
+                    this.runOrder = [seq].concat(this.runOrder.filter(id => id !== seq));
+                    while (this.runOrder.length > RUN_STORE_MAX) {
+                        const drop = this.runOrder.pop();
+                        if (drop && drop !== seq) {
+                            const copy = Object.assign({}, this.runs);
+                            delete copy[drop];
+                            this.runs = copy;
+                        }
+                    }
+                    this.startedAtDisplay = new Date(startedAt).format('yyyy-MM-dd hh:mm:ss');
+                    this.runStatus = 'running';
+                    this.hasData = false;
+                    this.stats = { average: '0ms', rps: 0, fastest: '0ms', slowest: '0ms', errTotal: 0 };
+                    this.flushRunStore();
+                },
+
+                persistActiveRunMetrics(data, immediate) {
+                    const seq = this.sequenceId;
+                    if (!seq || seq === '0' || !this.runs[seq]) return;
+                    // Always persist from the live buffer, even when the UI is
+                    // viewing a historical run (this.monitor may hold snapshot data).
+                    const live = this._liveBuf || this.monitor;
+                    const series = trimSeries({
+                        timeLabels: live.timeLabels.slice(),
+                        qpsData: live.qpsData.slice(),
+                        statusCodes: JSON.parse(JSON.stringify(live.statusCodes)),
+                        latencyHistogram: data.latency_histogram || null,
+                        errorCounts: data.error_counts || null
+                    });
+                    const liveStats = {
+                        average: formatDuration(data.average),
+                        rps: data.rps || 0,
+                        fastest: formatDuration(data.fastest),
+                        slowest: formatDuration(data.slowest),
+                        errTotal: data.failed_requests || 0
+                    };
+                    const stats = {
+                        average: liveStats.average,
+                        rps: liveStats.rps,
+                        fastest: liveStats.fastest,
+                        slowest: liveStats.slowest,
+                        errTotal: liveStats.errTotal,
+                        totalRequests: data.total_requests || 0
+                    };
+                    const prev = this.runs[seq];
+                    this.$set(this.runs, seq, Object.assign({}, prev, {
+                        series,
+                        stats,
+                        status: data.is_last ? 'finished' : prev.status
+                    }));
+                    if (immediate) {
+                        this.flushRunStore();
+                    } else {
+                        if (!this._persistRunDebounced) {
+                            this._persistRunDebounced = debounce(() => this.flushRunStore(), RUN_PERSIST_DEBOUNCE_MS);
+                        }
+                        this._persistRunDebounced();
+                    }
+                },
+
+                markRunFinished(status) {
+                    const seq = this.sequenceId;
+                    if (!seq || !this.runs[seq]) return;
+                    const prev = this.runs[seq];
+                    const live = this._liveBuf || this.monitor;
+                    this.$set(this.runs, seq, Object.assign({}, prev, {
+                        status: status || 'finished',
+                        finishedAt: new Date().toISOString(),
+                        series: trimSeries({
+                            timeLabels: live.timeLabels.slice(),
+                            qpsData: live.qpsData.slice(),
+                            statusCodes: JSON.parse(JSON.stringify(live.statusCodes)),
+                            latencyHistogram: (prev.series && prev.series.latencyHistogram) || null,
+                            errorCounts: (prev.series && prev.series.errorCounts) || null
+                        }),
+                        stats: Object.assign({}, prev.stats || {})
+                    }));
+                    if (this.activeSeqId === seq) this.runStatus = status || 'finished';
+                    this.flushRunStore();
+                },
+
+                onSelectRun(seqId) {
+                    if (!seqId) return;
+                    this.applyRunView(seqId, true);
+                },
+
+                applyRunView(seqId, fillForm) {
+                    const run = this.runs[seqId];
+                    if (!run) return;
+                    this.activeSeqId = seqId;
+                    if (fillForm !== false) this.applyRequestSnapshot(run.request);
+                    this.startedAtDisplay = run.startedAt
+                        ? new Date(run.startedAt).format('yyyy-MM-dd hh:mm:ss')
+                        : '';
+                    this.runStatus = run.status || '';
+                    // If this is the live running seq, keep live monitor; else load snapshot
+                    const live = this.isRunning && String(this.sequenceId) === String(seqId);
+                    if (live) {
+                        if (this._liveBuf && this._liveBuf.timeLabels && this._liveBuf.timeLabels.length) {
+                            this.monitor = this._liveBuf;
+                        }
+                        this.hasData = this.monitor.timeLabels.length > 0;
+                        this.renderPerfChart(this.monitor.timeLabels, this.monitor.qpsData, this.monitor.statusCodes);
+                        return;
+                    }
+                    // Leaving live view: snapshot live buffers so polling can keep appending
+                    if (this.isRunning && this.sequenceId) {
+                        if (!this._liveBuf || this._liveBuf === this.monitor) {
+                            this._liveBuf = {
+                                timeLabels: this.monitor.timeLabels.slice(),
+                                qpsData: this.monitor.qpsData.slice(),
+                                total: this.monitor.total,
+                                statusCodes: JSON.parse(JSON.stringify(this.monitor.statusCodes)),
+                                prevStatusCounts: Object.assign({}, this.monitor.prevStatusCounts || {})
+                            };
+                        }
+                    }
+                    const series = run.series || {};
+                    this.monitor = {
+                        timeLabels: (series.timeLabels || []).slice(),
+                        qpsData: (series.qpsData || []).slice(),
+                        total: (run.stats && run.stats.totalRequests) || 0,
+                        statusCodes: JSON.parse(JSON.stringify(series.statusCodes || {})),
+                        prevStatusCounts: {}
+                    };
+                    this.stats = Object.assign({
+                        average: '0ms', rps: 0, fastest: '0ms', slowest: '0ms', errTotal: 0
+                    }, run.stats || {});
+                    this.hasData = this.monitor.timeLabels.length > 0 || !!(series.latencyHistogram || series.errorCounts);
+                    this.$nextTick(() => {
+                        Object.values(this.charts).forEach(c => c && c.resize());
+                        this.renderPerfChart(this.monitor.timeLabels, this.monitor.qpsData, this.monitor.statusCodes);
+                        this.renderLatChart(series.latencyHistogram);
+                        this.renderErrChart(series.errorCounts);
+                    });
+                    try {
+                        const store = RunStore.load();
+                        store.activeSeqId = seqId;
+                        RunStore.save(store);
+                    } catch (_) {}
+                },
+
+                clearHistory() {
+                    if (!confirm(this.translate('history.clearConfirm'))) return;
+                    try { localStorage.removeItem(RUN_STORE_KEY); } catch (_) {}
+                    this.runOrder = [];
+                    this.runs = {};
+                    this.activeSeqId = '';
+                    this.startedAtDisplay = '';
+                    this.runStatus = '';
+                    // Keep live run memory if still running, but drop stored history UI
+                    if (!this.isRunning) {
+                        this.hasData = false;
+                        this.monitor = { timeLabels: [], qpsData: [], total: 0, statusCodes: {}, prevStatusCounts: {} };
+                        this.stats = { average: '0ms', rps: 0, fastest: '0ms', slowest: '0ms', errTotal: 0 };
+                        this.renderPerfChart([], [], {});
+                        this.renderLatChart(null);
+                        this.renderErrChart(null);
+                    } else if (this.sequenceId && this.sequenceId !== '0') {
+                        // re-seed only the live run into empty store (keep current buffers)
+                        const seq = this.sequenceId;
+                        const run = {
+                            sequenceId: seq,
+                            startedAt: new Date().toISOString(),
+                            finishedAt: null,
+                            status: 'running',
+                            request: this.snapshotRequest(),
+                            series: trimSeries({
+                                timeLabels: (this._liveBuf || this.monitor).timeLabels.slice(),
+                                qpsData: (this._liveBuf || this.monitor).qpsData.slice(),
+                                statusCodes: JSON.parse(JSON.stringify((this._liveBuf || this.monitor).statusCodes || {})),
+                                latencyHistogram: null,
+                                errorCounts: null
+                            }),
+                            stats: Object.assign({}, this.stats)
+                        };
+                        this.runs = { [seq]: run };
+                        this.runOrder = [seq];
+                        this.activeSeqId = seq;
+                        this.startedAtDisplay = new Date(run.startedAt).format('yyyy-MM-dd hh:mm:ss');
+                        this.runStatus = 'running';
+                        this.flushRunStore();
+                    }
+                    this.showMessage(this.translate('history.cleared'), 'success', 2000);
                 }
             },
             created() {
@@ -1112,11 +1601,20 @@
                 if (savedLanguage && translations[savedLanguage]) {
                     this.currentLanguage = savedLanguage;
                 }
+                this.loadRunStore();
             },
             mounted() {
                 this.$nextTick(() => {
                     this.initCharts();
                     this.updateStaticTexts();
+                    // created 阶段 initCharts 尚未执行，选中项的曲线需要在此补渲染
+                    if (this.activeSeqId && this.runs[this.activeSeqId]
+                        && !(this.isRunning && String(this.sequenceId) === String(this.activeSeqId))) {
+                        const series = this.runs[this.activeSeqId].series || {};
+                        this.renderPerfChart(this.monitor.timeLabels, this.monitor.qpsData, this.monitor.statusCodes);
+                        this.renderLatChart(series.latencyHistogram);
+                        this.renderErrChart(series.errorCounts);
+                    }
                     window.addEventListener('resize', debounce(() => {
                         Object.values(this.charts).forEach(c => c && c.resize());
                     }, 250));

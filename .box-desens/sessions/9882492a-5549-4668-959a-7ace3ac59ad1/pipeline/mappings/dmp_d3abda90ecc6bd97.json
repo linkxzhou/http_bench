@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "source_file": "/Volumes/my/github/http_bench/index.html",
+  "locale": "en",
+  "entries": [
+    {
+      "original": "this.authPassword,",
+      "token": "[Password00002]",
+      "context": [
+        "auth_password: this.authPassword,"
+      ],
+      "category": "密码",
+      "confidence": 1,
+      "source": "regex",
+      "occurrences": [
+        {
+          "id": "occ_24256effbc82",
+          "position": 28121,
+          "end_position": 28139,
+          "snippet": "auth_password: this.authPassword,",
+          "selected": true
+        }
+      ],
+      "riskHint": "direct_pii",
+      "defaultSelected": true,
+      "reason": "确定性 regex 识别（密码）"
+    }
+  ],
+  "source_sha256": "8eb7105f806e1938ccd03caaaa8d2217f70ab3893ab626b7079652d1f2752aa7",
+  "source_size": 38151,
+  "rules_profile": "default",
+  "scheme_fingerprint": "7fd9e7c2e7ec3dae",
+  "scheme_revision_id": "acc262cb-ef6a-4c0f-a9be-abb88aa67a06"
+}

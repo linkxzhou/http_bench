@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "messageId": "query-1784623103799",
+  "originalQuery": "index.html 的功能和 http_bench 对齐",
+  "desensitizedQuery": "[文件pnvdjzsc] 的功能和 http_bench 对齐\n\n<file_refs>\nAttached files are referenced by token above. Internal desensitization already finished before you run.\nYou MUST load each file ONLY via read_file using the exact token (one call per file):\n- [文件sfusbacj] → read_file(\"[文件sfusbacj]\") (already desensitized; read_file returns the reviewed view)\n- [文件pnvdjzsc] → read_file(\"[文件pnvdjzsc]\") (already desensitized; read_file returns the reviewed view)\nDo NOT use desens_redact, execute_command, use_skill, local paths, staging copies under .box-desens/sessions/, or artifact directories — those are internal and may contain raw PII.\n</file_refs>",
+  "displayQuery": "[文件pnvdjzsc] 的功能和 http_bench 对齐",
+  "roundNumber": 8,
+  "roundSeq": 8,
+  "frozenAt": "2026-07-21T08:38:26.084Z",
+  "registryUpdatedAt": "2026-07-21T08:38:26.082Z",
+  "mappingEntries": [
+    {
+      "original": "this.authPassword,",
+      "token": "[Password00002]",
+      "category": "密码"
+    }
+  ],
+  "pathRefs": [
+    {
+      "token": "[文件pnvdjzsc]",
+      "originalPath": "/Volumes/my/github/http_bench/index.html",
+      "reviewedPath": "/Volumes/my/github/http_bench/.box-desens/pnvdjzsc/by-scheme/7fd9e7c2e7ec3dae/reviewed.txt",
+      "artifactToken": "[脱敏文档pnvdjzsc]"
+    }
+  ],
+  "tokenToOriginal": {
+    "[Password00002]": "this.authPassword,",
+    "[文件pnvdjzsc]": "/Volumes/my/github/http_bench/index.html",
+    "[脱敏文档pnvdjzsc]": "/Volumes/my/github/http_bench/index.html"
+  }
+}

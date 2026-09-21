@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "messageId": "query-1784504311738",
+  "originalQuery": "不需要兼容 JSON tag 全部保留旧 snake_case，dashboard/worker API 跨版本兼容，检查/Volumes/my/github/http_bench/plan.md 是否都完成",
+  "desensitizedQuery": "不需要兼容 JSON tag 全部保留旧 snake_case，dashboard/worker API 跨版本兼容，检查[文件sfusbacj] 是否都完成\n\n<file_refs>\nAttached files are referenced by token above. Internal desensitization already finished before you run.\nYou MUST load each file ONLY via read_file using the exact token (one call per file):\n- [文件sfusbacj] → read_file(\"[文件sfusbacj]\")\nDo NOT use desens_redact, execute_command, use_skill, local paths, staging copies under .box-desens/sessions/, or artifact directories — those are internal and may contain raw PII.\n</file_refs>",
+  "displayQuery": "不需要兼容 JSON tag 全部保留旧 snake_case，dashboard/worker API 跨版本兼容，检查[文件sfusbacj] 是否都完成",
+  "roundNumber": 2,
+  "roundSeq": 2,
+  "frozenAt": "2026-07-19T23:38:34.090Z",
+  "registryUpdatedAt": "2026-07-19T23:38:34.088Z",
+  "mappingEntries": [],
+  "pathRefs": [
+    {
+      "token": "[文件sfusbacj]",
+      "originalPath": "/Volumes/my/github/http_bench/plan.md"
+    }
+  ],
+  "tokenToOriginal": {
+    "[文件sfusbacj]": "/Volumes/my/github/http_bench/plan.md"
+  }
+}

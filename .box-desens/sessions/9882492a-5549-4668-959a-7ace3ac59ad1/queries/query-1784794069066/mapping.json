@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "source_file": "这里执行 10 秒，似乎没有执行 10s，./http_bench -n 1000 -c 10 -d 10s  http://www.baidu.com/api/test\n[http1][GET] running 10 connections for 10 secs @ http://www.baidu.com/api/test\nSummary:\n  Total:\t1.6820 secs\n  Slowest:\t0.1480 secs\n  Fastest:\t0.0110 secs\n  Average:\t0.0170 secs\n  Requests/sec:\t594.00\n  Total data:\t201.17 KB\n  Size/request:\t206 bytes\n  Stop reason:\tcount\n\nStatus code distribution:\n  [404]\t1000 responses\n\nLatency distribution:\n  10% in 0.0130 secs\n  25% in 0.0140 secs\n  50% in 0.0150 secs\n  75% in 0.0160 secs\n  90% in 0.0190 secs\n  95% in 0.0240 secs\n  99% in 0.0930 secs",
+  "locale": "en",
+  "entries": []
+}

@@ -1,0 +1,25 @@
+### Request 10: POST JSON
+POST https://127.0.0.1:18091/user
+Content-Type: application/json
+
+{
+    "name": "test",
+    "age": {{ random 1 100 }}
+}
+
+### Request 11: PUT Form
+PUT https://127.0.0.1:18091/user/1
+Content-Type: application/x-www-form-urlencoded
+
+name=test&age=20
+
+### Request 12: DELETE
+DELETE https://127.0.0.1:18091/user/1
+
+### Request 13: PATCH
+PATCH https://127.0.0.1:18091/user/1
+Content-Type: application/json
+
+{
+    "name": "updated"
+}
